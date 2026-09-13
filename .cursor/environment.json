@@ -1,0 +1,12 @@
+{
+  "name": "Beanstalk",
+  "install": "export NVM_DIR=\"$HOME/.nvm\"; . \"$NVM_DIR/nvm.sh\"; export PATH=\"$NVM_DIR/versions/node/$(nvm version default)/bin:$PATH\"; cd food-recall-app && npm ci",
+  "ports": [{ "name": "vite dev server", "port": 5173 }],
+  "terminals": [
+    {
+      "name": "dev",
+      "command": "export NVM_DIR=\"$HOME/.nvm\"; . \"$NVM_DIR/nvm.sh\"; export PATH=\"$NVM_DIR/versions/node/$(nvm version default)/bin:$PATH\"; cd food-recall-app && npm run dev",
+      "description": "Vite dev server for the Beanstalk food-recall-app, served at http://localhost:5173/beanstalk/ (append ?demo=1 for fictional demo data). Uses the nvm default Node (>= 22.22) to satisfy jsdom/undici engine requirements."
+    }
+  ]
+}
