@@ -1,11 +1,12 @@
 name: ci
 
-# The one workflow that runs on every push and pull request. Two jobs:
+# The workflow that runs on every push and pull request:
 #
-#   checks  — install once, then lint, build and test in sequence on a single
-#             runner. `npm run build` already runs `tsc --noEmit`, so there is
-#             no separate typecheck step; it would only repeat the build's
-#             first half.
+#   checks  — lint, build and test the existing React/PWA. The job name is a
+#             protected-branch status context and must remain stable.
+#   service — lint, test and build the notification service on Node 22.
+#   native  — run the Swift tests and compile the Release app with the current
+#             App Store submission toolchain.
 #   pr      — pull requests only. Title format, the `Closes #N` reference, the
 #             template's Summary section, auto-labels, CODEOWNERS validity and
 #             a grep for hardcoded secrets in the diff. No Node, no install:
@@ -62,6 +63,73 @@ jobs:
 
       - name: Test
         run: npm run test:coverage
+
+  service:
+    name: notification service checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event.pull_request.draft != true
+    defaults:
+      run:
+        working-directory: notification-service
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: notification-service/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint, test, and build
+        run: npm run check
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev
+
+      - name: Validate and build production container
+        run: |
+          docker compose config --quiet
+          docker build --tag beanstalk-notifications:test .
+
+  native:
+    name: native release checks
+    runs-on: macos-26
+    timeout-minutes: 10
+    if: github.event.pull_request.draft != true
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Verify App Store toolchain
+        run: |
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+          version=$(xcodebuild -version | awk '/^Xcode / { print $2 }')
+          major=${version%%.*}
+          if [ -z "$major" ] || [ "$major" -lt 26 ]; then
+            echo "::error::App Store builds require Xcode 26 or later"
+            exit 1
+          fi
+
+      - name: Test portable Swift core
+        run: swift test --package-path ios/Core
+
+      - name: Build Release iPhone app for a generic simulator
+        run: >-
+          xcodebuild
+          -project ios/Beanstalk.xcodeproj
+          -scheme Beanstalk
+          -configuration Release
+          -sdk iphonesimulator
+          -destination 'generic/platform=iOS Simulator'
+          CODE_SIGNING_ALLOWED=NO
+          build
 
   pr:
     name: pull request hygiene
@@ -138,3 +206,14 @@ jobs:
             exit 1
           fi
           echo "No hardcoded secrets detected"
+
+          key_header='-----BEGIN '
+          key_suffix='(OPENSSH |RSA |EC |ENCRYPTED )?PRIVATE KEY-----'
+          if git diff "origin/${BASE_REF}...HEAD" \
+              | grep '^+' \
+              | grep -v '^+++' \
+              | grep -E -- "${key_header}${key_suffix}"; then
+            echo "::error::Private-key material found in the diff"
+            exit 1
+          fi
+          echo "No private-key material detected"

@@ -11,6 +11,17 @@ updates:
     labels:
       - dependencies
 
+  - package-ecosystem: npm
+    directory: "/notification-service"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: America/Los_Angeles
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+
   - package-ecosystem: github-actions
     directory: "/"
     schedule:

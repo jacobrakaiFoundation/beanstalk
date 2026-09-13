@@ -2,79 +2,93 @@
 
 # Beanstalk
 
-**FDA food recall records without the guesswork.**
+**FDA food recall announcements and historical records, with their limits made clear.**
 
-Beanstalk is a calm, searchable interface for the FDA's food enforcement archive and CAERS adverse event early signals. Search by product, hazard, or company; narrow results by risk class, status, state, or dietary concern; then open a record for its source fields and FDA links.
+Beanstalk is a free, accountless public-service project of JACOBRAKAI FOUNDATION. The iPhone app shows recent FDA-published food recall announcements, keeps saved records on the device, supports whole-word and phrase watchlists, and can deliver optional matching notifications. Historical enforcement search remains visibly separate because openFDA is an archive rather than a public-alert feed.
 
-> Beanstalk is a record browser, not a real-time safety alert service. Recall data is **as published by openFDA**, not a live FDA recall-lifecycle feed. Statuses may stay Ongoing after a recall ends. Verify the source notice before acting.
+[**Open the web app**](https://jacobrakaifoundation.github.io/beanstalk/) · [Read the privacy policy](https://jacobrakaifoundation.github.io/beanstalk/privacy.html) · [Get support](https://jacobrakaifoundation.github.io/beanstalk/support.html) · [Report a problem](https://github.com/jacobrakaiFoundation/beanstalk/issues)
 
-[**Open the app**](https://jacobrakaifoundation.github.io/beanstalk/) · [Browse openFDA's source](https://open.fda.gov/apis/food/enforcement/) · [Report a problem](https://github.com/jacobrakaiFoundation/beanstalk/issues)
+> Notifications may be delayed or incomplete, and not every recall has a public announcement. A search with no result does not establish that a product is safe. Verify the original FDA notice before acting.
 
-<img src="docs/readme/app-demo-20260911.png" alt="Beanstalk in demo mode: a search sidebar with classification, status, state and dietary filters beside a grid of recall cards, each showing a risk word and FDA class, a hazard category, a distribution scope and the recalling firm." width="1280">
+## iPhone app
 
-<sub>Demo mode. Every record shown is fictional and labeled as such in the app; live mode shows records as published by openFDA. Screenshot 11 September 2026.</sub>
+The native SwiftUI app targets iOS 17 and later. It includes:
 
-## What it does
+- **Recalls:** recent FDA public announcements and a separately labeled openFDA historical search.
+- **Saved:** offline SwiftData copies with a reminder that saved records can become outdated.
+- **Watchlist:** case-insensitive whole-word and phrase matching with visible match evidence. `salmon` does not match `salmonella`, and `cod` does not match `code`.
+- **Settings:** notification controls, privacy and support links, and an optional Foundation donation link that opens in the external browser. Donations unlock nothing.
+- Native search, server-side historical filters, pagination, sharing, dark appearance, Dynamic Type, VoiceOver labels, and notification-to-detail routing.
 
-- Searches FDA food enforcement records by product, reason, and recalling firm.
-- Surfaces Early Signals from unverified CAERS adverse event reports.
-- Filters by FDA classification, status, distribution state, and dietary terms.
-- Sorts listed recalls by date (newest first by default).
-- Shows provenance, distribution, code information, and source links in a detail drawer.
-- Saves successful queries in the browser so a clearly labeled saved copy can remain available during a temporary FDA/API failure.
-- Supports a local watchlist with optional browser alerts while the app is open.
-- Installs as a lightweight PWA and includes an explicit fictional demo mode at `?demo=1`.
+The app stores saved records and watch terms locally. If the user enables alerts, an app-specific APNs token, watch terms, and a random device credential are sent to the Foundation notification service. The credential is kept in the iPhone Keychain.
 
-Live mode uses records **as published by openFDA**. Demo records are labeled fictional; they are never presented as live recalls.
+## Data and notification boundaries
 
-## Data and trust boundary
+- **Latest announcements and notifications** come from the FDA Food Safety Recalls RSS feed and its linked public announcements. Existing history is seeded silently.
+- **Historical enforcement records** come from openFDA and never create alerts. Publication, initiation, and retrieval dates remain distinct.
+- If the short RSS feed loses the previous cursor, delivery pauses while official annual FDA data is reconciled. Annual-only, demo, archived, and stale rows cannot alert.
+- Watch terms match Unicode words and phrases without broad negation rules. Queue rows are durable and deduplicated by notice and device.
+- The existing web app remains available as a historical browser. Its CAERS Early Signals view is outside the first native iPhone release.
 
-Beanstalk reads the [openFDA Food Enforcement API](https://open.fda.gov/apis/food/enforcement/) and [openFDA Food Adverse Event API](https://open.fda.gov/apis/food/event/) (CAERS). Records are **as published by openFDA**, not a live FDA recall-lifecycle feed. The app preserves FDA-provided fields, identifies saved results when live retrieval fails, and links back to FDA source views for verification.
+Beanstalk is independent and is not affiliated with or endorsed by FDA. It is not medical advice. For meat, poultry, and processed egg products, also check [USDA FSIS recalls](https://www.fsis.usda.gov/recalls).
 
-This project is not medical advice. For meat, poultry, or processed egg products, also check [USDA FSIS recalls](https://www.fsis.usda.gov/recalls).
+## Run the iPhone project
 
-### openFDA search and freshness gotchas
-
-- **Empty / no-match search → HTTP 404** is expected. openFDA returns `404` + “No matches found”; Beanstalk treats that as zero results, not an outage.
-- **Wednesday publish lag.** The enforcement dataset typically refreshes mid-week. Do not treat “retrieved today” as a same-day FDA lifecycle update.
-- **`skip` max 25,000.** openFDA rejects deeper offset paging. This app caps `skip` and does **not** use `search_after`. Narrow filters to see more of a large result set.
-- **Related Events** use a parenthesized **OR** of product tokens (not a single phrase; [#102](https://github.com/jacobrakaiFoundation/beanstalk/pull/102)). Do not treat a zero-hit related-events list as an API failure.
-
-## Run it locally
+Install the current App Store-supported Xcode and iOS SDK, then open `ios/Beanstalk.xcodeproj`. The project can be regenerated with [XcodeGen](https://github.com/yonaskolb/XcodeGen):
 
 ```bash
-git clone https://github.com/jacobrakaiFoundation/beanstalk.git
-cd beanstalk/food-recall-app
+cd ios
+xcodegen generate
+open Beanstalk.xcodeproj
+```
+
+The portable core package can be checked without launching the app:
+
+```bash
+swift test --package-path ios/Core
+```
+
+Full simulator, signing, notification, and physical-device checks require Xcode, a Foundation Apple Developer team, and APNs credentials. None are stored in this repository.
+
+## Run the notification service
+
+The Node 22 service uses Fastify, SQLite, and a persistent delivery queue. APNs is deliberately degraded until all four credentials are supplied outside the repository.
+
+```bash
+cd notification-service
+cp .env.example .env
+npm ci
+npm run check
+npm run migrate
+npm run dev
+```
+
+Its production container binds to `127.0.0.1:8787` for an existing HTTPS proxy or tunnel. See [`notification-service/README.md`](notification-service/README.md) for deployment, backup, recovery, health monitoring, and APNs configuration.
+
+## Run the web app
+
+```bash
+cd food-recall-app
 npm ci
 npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173). The local Vite server proxies FDA requests through `/api/food` and can add `OPENFDA_API_KEY` server-side when one is configured. The client bundle does not contain an API key.
-
-## Verify a change
-
-Run these from `food-recall-app/`:
-
-```bash
-npm run check
-npx tsc --noEmit
-npm test
-npm run build
-```
-
-For UI changes, also check the live-data, empty, unavailable, filtered, paginated, detail-drawer, keyboard, dark-mode, and 375/768/1280px paths.
+For changes, run `npm run check`, `npm run build`, and `npm run test:coverage`. Check live, empty, unavailable, filtered, paginated, keyboard, dark-mode, and small-screen paths.
 
 ## Project layout
 
 ```text
-food-recall-app/
-├── src/components/   UI and accessible interaction patterns
-├── src/lib/          openFDA mapping, filters, caching, and tests
-├── src/types/        normalized recall data types
-└── public/           PWA icons and static assets
-docs/readme/          screenshots used on this page, date-stamped
+ios/                       Native SwiftUI app and portable core tests
+notification-service/      FDA notice ingestion, device API, SQLite queue, APNs
+food-recall-app/            Existing React/PWA historical browser and public pages
+docs/app-store/             Enrollment, privacy, metadata, review, and release package
+docs/readme/                Date-stamped project screenshots
 ```
 
-## Support
+## App Store release state
 
-[Support JACOBRAKAI FOUNDATION](https://donate.stripe.com/eVq4gy97DanS9h60phfrW00), a 501(c)(3) public charity (legal name JACOBRAKAI FOUNDATION; EIN 33-3382083).
+The repository contains the implementation and a draft release package. Its App Review placeholders, screenshots, public URLs, privacy audit, and generated age rating must be completed from the signed Release build. Apple Developer organization enrollment, fee-waiver approval, APNs provisioning, TestFlight, physical-device verification, App Review submission, and manual publication require current external evidence before they can be marked complete. Start with [`docs/app-store/README.md`](docs/app-store/README.md).
+
+## Support the Foundation
+
+[Donate to JACOBRAKAI FOUNDATION](https://jacobrakai.org/donate/), a 501(c)(3) public charity (legal name JACOBRAKAI FOUNDATION; EIN 33-3382083). Donations are optional and unlock no app feature.

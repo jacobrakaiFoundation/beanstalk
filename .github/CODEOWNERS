@@ -1,5 +1,8 @@
-# CODEOWNERS for jacobyoby/ponder
+# CODEOWNERS for jacobrakaiFoundation/beanstalk
 # https://docs.github.com/en/repositories/managing-your-repos-settings/managing-repository-settings/managing-a-team-or-persons-access#about-code-owners
 *       @jacobyoby
 /food-recall-app/src/  @jacobyoby
+/ios/                  @jacobyoby
+/notification-service/ @jacobyoby
+/docs/app-store/       @jacobyoby
 /.github/              @jacobyoby

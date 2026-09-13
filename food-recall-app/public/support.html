@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#f8f6ee" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#111e17" media="(prefers-color-scheme: dark)">
+    <meta name="description" content="Help with Beanstalk recall search, saved recalls, watchlists, notifications, and privacy.">
+    <title>Support — Beanstalk</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f8f6ee;
+        --paper: #fffdf7;
+        --text: #1b2d23;
+        --muted: #53614e;
+        --line: #c5ccbd;
+        --brand: #3d503d;
+        --focus: #047857;
+        --soft: #efeee4;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          color-scheme: dark;
+          --bg: #111e17;
+          --paper: #1b2d23;
+          --text: #f8f6ee;
+          --muted: #c5ccbd;
+          --line: #53614e;
+          --brand: #a0c3a3;
+          --focus: #6ee7b7;
+          --soft: #293c2e;
+        }
+      }
+      * { box-sizing: border-box; }
+      html { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.6; }
+      body { margin: 0; background: var(--bg); color: var(--text); }
+      a { color: var(--brand); text-underline-offset: 0.18em; text-decoration-thickness: 0.09em; }
+      a:hover { text-decoration-thickness: 0.14em; }
+      a:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; border-radius: 0.2rem; }
+      .skip { position: absolute; left: 1rem; top: -5rem; z-index: 2; padding: 0.65rem 0.9rem; background: var(--paper); border: 2px solid var(--brand); }
+      .skip:focus { top: 1rem; }
+      header { border-top: 4px solid var(--brand); border-bottom: 1px solid var(--line); background: var(--paper); }
+      .bar, main, footer { width: min(100% - 2rem, 58rem); margin-inline: auto; }
+      .bar { min-height: 4.5rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+      .brand { display: inline-flex; align-items: center; gap: 0.65rem; font-family: Georgia, Cambria, serif; font-size: 1.35rem; font-weight: 700; text-decoration: none; }
+      .mark { width: 2rem; height: 2rem; display: block; color: var(--brand); }
+      nav { display: flex; flex-wrap: wrap; gap: 1rem; font-size: 0.95rem; }
+      main { padding-block: clamp(2.5rem, 8vw, 5rem); }
+      h1, h2 { font-family: Georgia, Cambria, "Times New Roman", serif; line-height: 1.15; letter-spacing: -0.025em; }
+      h1 { margin: 0; font-size: clamp(2.35rem, 8vw, 4.5rem); max-width: 13ch; }
+      h2 { margin: 0 0 0.65rem; font-size: clamp(1.35rem, 4vw, 1.7rem); }
+      p, li { max-width: 70ch; }
+      .lede { color: var(--muted); font-size: clamp(1.05rem, 3vw, 1.25rem); max-width: 47rem; }
+      .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-top: 2rem; }
+      .card { padding: clamp(1.2rem, 4vw, 1.7rem); border: 1px solid var(--line); border-radius: 1.25rem; background: var(--paper); box-shadow: 0 0.35rem 1.4rem rgb(17 30 23 / 7%); }
+      .card p:last-child { margin-bottom: 0; }
+      .full { grid-column: 1 / -1; }
+      .button { display: inline-flex; min-height: 2.75rem; align-items: center; justify-content: center; padding: 0.55rem 1rem; border-radius: 999px; background: var(--brand); color: var(--paper); font-weight: 700; text-decoration: none; }
+      .button:focus-visible { outline-color: var(--focus); outline-offset: 4px; }
+      .eyebrow { color: var(--muted); font-size: 0.78rem; font-weight: 750; letter-spacing: 0.08em; text-transform: uppercase; }
+      ul { padding-left: 1.3rem; }
+      li + li { margin-top: 0.6rem; }
+      footer { padding-block: 2rem 3rem; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.9rem; }
+      footer p { margin: 0; }
+      @media (max-width: 42rem) {
+        .grid { grid-template-columns: 1fr; }
+        .full { grid-column: auto; }
+      }
+      @media (max-width: 34rem) {
+        .bar { align-items: flex-start; flex-direction: column; padding-block: 1rem; }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip" href="#content">Skip to support</a>
+    <header>
+      <div class="bar">
+        <a class="brand" href="./" aria-label="Beanstalk home">
+          <svg class="mark" viewBox="0 0 48 48" aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 42c0-13 1-22 4-31" stroke-width="3" />
+            <path d="M24 20C14 21 9 15 10 8c8 0 14 4 14 12Z" fill="currentColor" fill-opacity=".13" stroke-width="2.5" />
+            <path d="M25 15C27 7 33 4 40 6c-1 8-7 12-15 9Z" fill="currentColor" fill-opacity=".2" stroke-width="2.5" />
+          </svg>
+          <span>beanstalk</span>
+        </a>
+        <nav aria-label="Page links">
+          <a href="privacy.html">Privacy</a>
+          <a aria-current="page" href="support.html">Support</a>
+          <a href="./">Open the app</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="content">
+      <p class="eyebrow">Beanstalk for iPhone</p>
+      <h1>Help with recalls and alerts.</h1>
+      <p class="lede">Start with the original FDA notice when a food-safety decision cannot wait. For app problems, privacy questions, or a record that looks wrong, use the routes below.</p>
+
+      <div class="grid">
+        <section class="card" aria-labelledby="official-heading">
+          <h2 id="official-heading">Check the official source</h2>
+          <p>Beanstalk is independent and may be delayed or incomplete. FDA says not every recall has a public announcement. A search with no result does not establish that a product is safe.</p>
+          <p><a class="button" href="https://www.fda.gov/safety/recalls-market-withdrawals-safety-alerts">Open FDA recalls</a></p>
+        </section>
+
+        <section class="card" aria-labelledby="contact-heading">
+          <h2 id="contact-heading">Contact the Foundation</h2>
+          <p>Report a Beanstalk bug, accessibility barrier, privacy concern, or source discrepancy through the Foundation's current public contact route.</p>
+          <p><a class="button" href="https://jacobrakai.org/about/">Open contact page</a></p>
+        </section>
+
+        <section class="card" aria-labelledby="report-heading">
+          <h2 id="report-heading">Include these details</h2>
+          <ul>
+            <li>Beanstalk version and iOS version;</li>
+            <li>what you searched, tapped, or expected;</li>
+            <li>the recall number, product, and original FDA link for a data issue; and</li>
+            <li>a screenshot with personal information removed, if useful.</li>
+          </ul>
+          <p>Do not send an APNs token, app credential, payment information, or private health information.</p>
+        </section>
+
+        <section class="card" aria-labelledby="alerts-heading">
+          <h2 id="alerts-heading">Fix a missing alert</h2>
+          <ul>
+            <li>Confirm the term appears as a full word or phrase in the notice.</li>
+            <li>Check notification permission in iOS Settings.</li>
+            <li>Open Beanstalk and review Watchlist status.</li>
+            <li>Use Remove this device from Beanstalk alerts before creating a fresh registration.</li>
+          </ul>
+          <p>Notifications match published announcements. They are not guaranteed to be immediate or complete.</p>
+        </section>
+
+        <section class="card full" aria-labelledby="privacy-heading">
+          <h2 id="privacy-heading">Saved recalls, deletion, and donations</h2>
+          <p>Saved recalls stay on your iPhone and can be removed from the Saved tab. Open Settings → Notifications → Remove this device from Beanstalk alerts to remove your watch terms, push token, and alert registration from the Foundation service. Read the <a href="privacy.html">Beanstalk privacy policy</a> for details.</p>
+          <p>Every Beanstalk feature is free. The optional Donate action opens the Foundation's donation page in your browser; Stripe handles payment only if you continue. A donation unlocks nothing and is never required for support.</p>
+        </section>
+      </div>
+    </main>
+
+    <footer>
+      <p>© 2026 JACOBRAKAI FOUNDATION · <a href="./">Beanstalk</a> · <a href="privacy.html">Privacy</a></p>
+    </footer>
+  </body>
+</html>
