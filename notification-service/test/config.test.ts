@@ -18,4 +18,21 @@ describe("service configuration", () => {
 
     expect(() => loadConfig()).toThrow("FDA_ANNUAL_XML_URLS must include at most 2 official XML URLs");
   });
+
+  it("loads FCM project and service-account path without reading secret contents", () => {
+    vi.stubEnv("FCM_PROJECT_ID", "beanstalk-prod");
+    vi.stubEnv("FCM_SERVICE_ACCOUNT_PATH", "/run/secrets/firebase-service-account.json");
+    vi.stubEnv("FCM_ANDROID_PACKAGE_NAME", "org.jacobrakaifoundation.beanstalk");
+
+    expect(loadConfig().fcm).toEqual({
+      projectId: "beanstalk-prod",
+      serviceAccountPath: "/run/secrets/firebase-service-account.json",
+      androidPackageName: "org.jacobrakaifoundation.beanstalk",
+    });
+  });
+
+  it("rejects an invalid FCM Android application ID", () => {
+    vi.stubEnv("FCM_ANDROID_PACKAGE_NAME", "https://not-a-package.example");
+    expect(() => loadConfig()).toThrow("FCM_ANDROID_PACKAGE_NAME must be a valid Android application ID");
+  });
 });

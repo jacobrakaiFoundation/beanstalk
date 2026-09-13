@@ -1,6 +1,7 @@
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import Database from "better-sqlite3";
 import { describe, expect, it } from "vitest";
 import { AppDatabase } from "../src/database.js";
 
@@ -32,6 +33,57 @@ describe("database file protections", () => {
       expect(existsSync(`${databasePath}-shm`)).toBe(true);
       expect(mode(`${databasePath}-wal`)).toBe(0o600);
       expect(mode(`${databasePath}-shm`)).toBe(0o600);
+    } finally {
+      database?.close();
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("migrates existing APNs registrations to provider-aware storage", () => {
+    const root = mkdtempSync(join(tmpdir(), "beanstalk-provider-migration-"));
+    const dataDirectory = join(root, "data");
+    const databasePath = join(dataDirectory, "service.sqlite");
+    let database: AppDatabase | null = null;
+    try {
+      mkdirSync(dataDirectory, { recursive: true });
+      const legacy = new Database(databasePath);
+      legacy.exec(`
+        CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL);
+        INSERT INTO schema_migrations VALUES (1, '2026-09-13T00:00:00.000Z');
+        INSERT INTO schema_migrations VALUES (2, '2026-09-13T00:00:00.000Z');
+        CREATE TABLE devices (
+          id TEXT PRIMARY KEY, secret_hash TEXT NOT NULL, device_token TEXT NOT NULL,
+          environment TEXT NOT NULL CHECK (environment IN ('sandbox', 'production')),
+          active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1)), disabled_reason TEXT,
+          created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+        );
+        CREATE UNIQUE INDEX active_device_token_idx
+          ON devices(device_token, environment) WHERE active = 1;
+        INSERT INTO devices VALUES (
+          'legacy-device', '${"a".repeat(64)}', '${"b".repeat(64)}', 'production', 1, NULL,
+          '2026-09-13T00:00:00.000Z', '2026-09-13T00:00:00.000Z'
+        );
+        CREATE TABLE delivery_queue (
+          id INTEGER PRIMARY KEY, failure_kind TEXT
+            CHECK (failure_kind IN ('apns', 'canceled', 'internal'))
+        );
+        INSERT INTO delivery_queue VALUES (1, 'apns');
+      `);
+      legacy.close();
+
+      database = new AppDatabase(databasePath);
+      expect(database.connection.prepare("SELECT provider, identifier_kind FROM devices").get()).toEqual({
+        provider: "apns",
+        identifier_kind: "token",
+      });
+      expect(database.connection.prepare("SELECT failure_provider FROM delivery_queue").get()).toEqual({
+        failure_provider: "apns",
+      });
+      expect(database.connection.prepare("SELECT version FROM schema_migrations ORDER BY version").pluck().all()).toEqual([
+        1,
+        2,
+        3,
+      ]);
     } finally {
       database?.close();
       rmSync(root, { recursive: true, force: true });

@@ -1,0 +1,112 @@
+name: Prepare Google Play bundle
+
+# This manually prepares the signed, Firebase-enabled artifact for internal
+# testing. It never uploads to Google Play or changes a public release.
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: google-play-bundle-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    name: Signed Android test-track bundle
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: google-play
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@4733eaac7c1b0da527e4206b7671e0061de1ce37 # v6.3.0
+
+      - name: Materialize protected Android inputs
+        env:
+          GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
+          ANDROID_UPLOAD_KEYSTORE_B64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_B64 }}
+        run: |
+          set -euo pipefail
+          test -n "$GOOGLE_SERVICES_JSON_B64" || { echo "::error::GOOGLE_SERVICES_JSON_B64 is required"; exit 1; }
+          test -n "$ANDROID_UPLOAD_KEYSTORE_B64" || { echo "::error::ANDROID_UPLOAD_KEYSTORE_B64 is required"; exit 1; }
+          umask 077
+          printf '%s' "$GOOGLE_SERVICES_JSON_B64" | base64 --decode > app/google-services.json
+          printf '%s' "$ANDROID_UPLOAD_KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/beanstalk-upload.jks"
+          jq -e '.client | any(.client_info.android_client_info.package_name == "org.jacobrakaifoundation.beanstalk")' \
+            app/google-services.json >/dev/null
+
+      - name: Verify protected signing inputs
+        env:
+          ANDROID_UPLOAD_KEYSTORE_PATH: ${{ runner.temp }}/beanstalk-upload.jks
+          ANDROID_UPLOAD_STORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_STORE_PASSWORD }}
+          ANDROID_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
+          ANDROID_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
+          ANDROID_UPLOAD_CERT_SHA256: ${{ secrets.ANDROID_UPLOAD_CERT_SHA256 }}
+        run: |
+          set -euo pipefail
+          test -n "$ANDROID_UPLOAD_STORE_PASSWORD" || { echo "::error::ANDROID_UPLOAD_STORE_PASSWORD is required"; exit 1; }
+          test -n "$ANDROID_UPLOAD_KEY_ALIAS" || { echo "::error::ANDROID_UPLOAD_KEY_ALIAS is required"; exit 1; }
+          test -n "$ANDROID_UPLOAD_KEY_PASSWORD" || { echo "::error::ANDROID_UPLOAD_KEY_PASSWORD is required"; exit 1; }
+          test -n "$ANDROID_UPLOAD_CERT_SHA256" || { echo "::error::ANDROID_UPLOAD_CERT_SHA256 is required"; exit 1; }
+          keytool -list \
+            -keystore "$ANDROID_UPLOAD_KEYSTORE_PATH" \
+            -storepass "$ANDROID_UPLOAD_STORE_PASSWORD" \
+            -alias "$ANDROID_UPLOAD_KEY_ALIAS" >/dev/null
+          actual_fingerprint=$(keytool -exportcert \
+            -keystore "$ANDROID_UPLOAD_KEYSTORE_PATH" \
+            -storepass "$ANDROID_UPLOAD_STORE_PASSWORD" \
+            -alias "$ANDROID_UPLOAD_KEY_ALIAS" \
+            | openssl dgst -sha256 -binary | xxd -p -c 256)
+          expected_fingerprint=$(printf '%s' "$ANDROID_UPLOAD_CERT_SHA256" | tr -d ':[:space:]' | tr '[:upper:]' '[:lower:]')
+          [[ $expected_fingerprint =~ ^[a-f0-9]{64}$ ]]
+          test "$actual_fingerprint" = "$expected_fingerprint"
+
+      - name: Test, lint, and build protected Release bundle
+        env:
+          ANDROID_UPLOAD_KEYSTORE_PATH: ${{ runner.temp }}/beanstalk-upload.jks
+          ANDROID_UPLOAD_STORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_STORE_PASSWORD }}
+          ANDROID_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
+          ANDROID_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
+        run: ./gradlew --no-daemon clean testDebugUnitTest lintRelease bundleRelease
+
+      - name: Verify Firebase resources and bundle signature
+        run: |
+          set -euo pipefail
+          values=app/build/generated/res/processReleaseGoogleServices/values/values.xml
+          bundle=app/build/outputs/bundle/release/app-release.aab
+          test -s "$values"
+          grep -q 'name="google_app_id"' "$values"
+          grep -q 'name="gcm_defaultSenderId"' "$values"
+          test -s "$bundle"
+          verification=$(jarsigner -verify -verbose -certs "$bundle" 2>&1)
+          grep -q 'jar verified.' <<<"$verification"
+          bundle_entries=$(unzip -Z1 "$bundle")
+          grep -Eq '^META-INF/[^/]+\.(SF|RSA|DSA|EC)$' <<<"$bundle_entries"
+          shasum -a 256 "$bundle" | tee app/build/outputs/bundle/release/app-release.aab.sha256
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: beanstalk-google-play-${{ github.sha }}
+          path: |
+            android/app/build/outputs/bundle/release/app-release.aab
+            android/app/build/outputs/bundle/release/app-release.aab.sha256
+            android/app/build/reports/lint-results-release.html
+            android/app/build/reports/tests/testDebugUnitTest/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Remove protected files
+        if: always()
+        run: rm -f app/google-services.json "$RUNNER_TEMP/beanstalk-upload.jks"

@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Beanstalk</string>
+    <string name="notification_channel_name">Watchlist matches</string>
+    <string name="notification_channel_description">FDA recall announcements matching watch terms</string>
+</resources>

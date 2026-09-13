@@ -141,6 +141,51 @@ describe("device API", () => {
       ].sort((left, right) => left.id.localeCompare(right.id)),
     );
   });
+
+  it("registers and rotates an Android Firebase Installation ID without exposing it", async () => {
+    const { app, database } = await context();
+    const firstFid = "cAbCdEfGhIjKlMnOpQrStU";
+    const nextFid = "dUvWxYz0123456789_AbCd";
+    const registration = await app.inject({
+      method: "POST",
+      url: "/v1/devices",
+      payload: { provider: "fcm", pushIdentifier: firstFid, identifierKind: "fid" },
+    });
+    expect(registration.statusCode).toBe(201);
+    const credentials = registration.json<{ deviceId: string; clientSecret: string }>();
+    const authorization = `Bearer ${credentials.deviceId}.${credentials.clientSecret}`;
+
+    const current = await app.inject({ method: "GET", url: "/v1/devices/me", headers: { authorization } });
+    expect(current.json()).toEqual({
+      id: credentials.deviceId,
+      provider: "fcm",
+      identifierKind: "fid",
+      environment: null,
+      active: true,
+      disabledReason: null,
+      terms: [],
+    });
+    expect(JSON.stringify(current.json())).not.toContain(firstFid);
+
+    const rotation = await app.inject({
+      method: "PUT",
+      url: "/v1/devices/me/token",
+      headers: { authorization },
+      payload: { provider: "fcm", pushIdentifier: nextFid, identifierKind: "fid" },
+    });
+    expect(rotation.statusCode).toBe(200);
+    expect(
+      database.connection.prepare("SELECT device_token, provider, identifier_kind FROM devices WHERE id = ?").get(credentials.deviceId),
+    ).toEqual({ device_token: nextFid, provider: "fcm", identifier_kind: "fid" });
+
+    const providerChange = await app.inject({
+      method: "PUT",
+      url: "/v1/devices/me/token",
+      headers: { authorization },
+      payload: { deviceToken: "d".repeat(64), environment: "production" },
+    });
+    expect(providerChange.statusCode).toBe(400);
+  });
 });
 
 describe("notice API", () => {
@@ -275,6 +320,49 @@ describe("notice API", () => {
     });
   });
 
+  it("returns HTTP 503 for a recent permanent FCM failure", async () => {
+    const database = new AppDatabase(":memory:");
+    const devices = new DeviceStore(database);
+    const sender = new FakeSender([{ kind: "invalid", code: "UNREGISTERED" }]);
+    const queue = new NotificationQueue(database, devices, sender);
+    const current = "2026-09-13T20:00:00.000Z";
+    database.updatePollState(
+      { initialized: 1, last_success_at: current, gap_status: "normal", consecutive_failures: 0 },
+      current,
+    );
+    const registration = devices.create(
+      { provider: "fcm", pushIdentifier: "cAbCdEfGhIjKlMnOpQrStU", identifierKind: "fid" },
+      current,
+    );
+    devices.setWatchlist(registration.deviceId, ["salmonella"], current);
+    const notice = storedNotice("fcm-health-failure", current, "Salmonella recall");
+    database.upsertNotice(notice);
+    queue.enqueueNotice(notice.id, current);
+    await queue.processDue(current);
+    const app = await buildApp({
+      database,
+      devices,
+      queue,
+      sender,
+      now: () => new Date(current),
+      pollStaleAfterMs: 30 * 60 * 1000,
+    });
+    openApps.push(app);
+    openDatabases.push(database);
+
+    const response = await app.inject({ method: "GET", url: "/healthz" });
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toMatchObject({
+      status: "unhealthy",
+      queue: {
+        recentPushFailures: 1,
+        recentApnsFailures: 0,
+        recentFcmFailures: 1,
+        lastFcmFailureAt: current,
+      },
+    });
+  });
+
   it("logs route and status without retaining query terms, tokens, or remote IP", async () => {
     const chunks: string[] = [];
     const logStream = new Writable({
@@ -300,11 +388,18 @@ describe("notice API", () => {
       url: "/v1/devices",
       payload: { deviceToken: "c".repeat(64), environment: "sandbox" },
     });
+    const privateFid = "cPrivateFid1234567890X";
+    await app.inject({
+      method: "POST",
+      url: "/v1/devices",
+      payload: { provider: "fcm", pushIdentifier: privateFid, identifierKind: "fid" },
+    });
     const logs = chunks.join("");
     expect(logs).toContain('"route":"/v1/notices"');
     expect(logs).toContain('"statusCode":200');
     expect(logs).not.toContain("private-milk-term");
     expect(logs).not.toContain("203.0.113.44");
     expect(logs).not.toContain("c".repeat(64));
+    expect(logs).not.toContain(privateFid);
   });
 });

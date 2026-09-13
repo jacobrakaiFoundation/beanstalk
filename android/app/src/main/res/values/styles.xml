@@ -1,0 +1,10 @@
+<resources>
+    <style name="Theme.Beanstalk" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:statusBarColor">#F8F6EE</item>
+        <item name="android:navigationBarColor">#FFFDF7</item>
+        <item name="android:colorAccent">#3D503D</item>
+    </style>
+</resources>

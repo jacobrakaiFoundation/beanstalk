@@ -7,6 +7,8 @@ name: ci
 #   service — lint, test and build the notification service on Node 22.
 #   native  — run the Swift tests and compile the Release app with the current
 #             App Store submission toolchain.
+#   android — test, lint and compile an unsigned, Firebase-free Release bundle.
+#             google-play-bundle.yml is the protected signed-artifact lane.
 #   pr      — pull requests only. Title format, the `Closes #N` reference, the
 #             template's Summary section, auto-labels, CODEOWNERS validity and
 #             a grep for hardcoded secrets in the diff. No Node, no install:
@@ -142,6 +144,40 @@ jobs:
           -destination 'generic/platform=iOS Simulator'
           CODE_SIGNING_ALLOWED=NO
           build
+
+  android:
+    name: Android compile checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.event.pull_request.draft != true
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@4733eaac7c1b0da527e4206b7671e0061de1ce37 # v6.3.0
+
+      - name: Test, lint, and compile unsigned Release bundle
+        run: ./gradlew --no-daemon testDebugUnitTest lintRelease bundleRelease
+
+      - name: Verify compile-check bundle is not a release artifact
+        run: |
+          set -euo pipefail
+          bundle=app/build/outputs/bundle/release/app-release.aab
+          test -s "$bundle"
+          test ! -f app/google-services.json
+          bundle_entries=$(unzip -Z1 "$bundle")
+          if grep -Eq '^META-INF/[^/]+\.(SF|RSA|DSA|EC)$' <<<"$bundle_entries"; then
+            echo "::error::The ordinary CI bundle must remain unsigned"
+            exit 1
+          fi
+          echo "Unsigned and Firebase-free by design; use the protected Google Play workflow for a test-track bundle"
 
   pr:
     name: pull request hygiene
