@@ -11,9 +11,12 @@ interface QueueRow {
   matched_term: string;
   matched_field: string;
   attempts: number;
+  publication_date: string;
   device_token: string;
   environment: ApnsEnvironment;
 }
+
+export const MAXIMUM_ALERT_AGE_MS = 24 * 60 * 60 * 1_000;
 
 export interface QueueHealth {
   queued: number;
@@ -42,6 +45,7 @@ export class NotificationQueue {
     private readonly devices: DeviceStore,
     private readonly sender: PushSender,
     private readonly maximumAttempts = 8,
+    private readonly maximumAlertAgeMs = MAXIMUM_ALERT_AGE_MS,
   ) {}
 
   recoverInterrupted(now: string): void {
@@ -89,14 +93,15 @@ export class NotificationQueue {
   }
 
   async processDue(now: string, limit = 50): Promise<number> {
+    this.cancelIneligiblePending(now);
     if (!this.sender.configured) return 0;
-    const pollState = this.database.getPollState();
-    if (!pollState.initialized || pollState.gapStatus !== "normal") return 0;
+    if (!this.deliveryAllowed()) return 0;
     const due = this.database.connection
       .prepare(`
         SELECT q.id, q.notice_id, q.device_id, q.matched_term, q.matched_field, q.attempts,
-               d.device_token, d.environment
+               n.publication_date, d.device_token, d.environment
         FROM delivery_queue q
+        JOIN notices n ON n.id = q.notice_id
         JOIN devices d ON d.id = q.device_id
         WHERE q.status IN ('queued', 'retry') AND q.next_attempt_at <= ? AND d.active = 1
         ORDER BY q.next_attempt_at, q.id
@@ -105,13 +110,38 @@ export class NotificationQueue {
       .all(now, limit) as QueueRow[];
     let processed = 0;
     for (const row of due) {
+      if (!this.deliveryAllowed()) break;
+      const dateFailure = this.alertDateFailure(row.publication_date, now);
+      if (dateFailure) {
+        this.cancelPermanently(row.id, dateFailure, now);
+        continue;
+      }
       const claimed = this.database.connection
-        .prepare("UPDATE delivery_queue SET status = 'sending', updated_at = ? WHERE id = ? AND status IN ('queued', 'retry')")
+        .prepare(`
+          UPDATE delivery_queue
+          SET status = 'sending', updated_at = ?
+          WHERE id = ? AND status IN ('queued', 'retry')
+            AND EXISTS (
+              SELECT 1 FROM poll_state
+              WHERE id = 1 AND initialized = 1 AND gap_status = 'normal'
+            )
+        `)
         .run(now, row.id);
       if (claimed.changes !== 1) continue;
+      if (!this.deliveryAllowed()) {
+        this.database.connection
+          .prepare("UPDATE delivery_queue SET status = 'queued', next_attempt_at = ?, last_error_code = 'gap_paused', updated_at = ? WHERE id = ? AND status = 'sending'")
+          .run(now, now, row.id);
+        break;
+      }
       const notice = this.database.getStoredNotice(row.notice_id);
       if (!notice) {
         this.failPermanently(row.id, row.attempts + 1, "notice_missing", "internal", now);
+        continue;
+      }
+      const currentDateFailure = this.alertDateFailure(notice.publicationDate, now);
+      if (currentDateFailure) {
+        this.cancelPermanently(row.id, currentDateFailure, now);
         continue;
       }
       const result = await this.sender.send({
@@ -200,6 +230,53 @@ export class NotificationQueue {
     return this.database.connection
       .prepare("DELETE FROM delivery_queue WHERE created_at < ?")
       .run(before).changes;
+  }
+
+  private deliveryAllowed(): boolean {
+    const state = this.database.getPollState();
+    return state.initialized && state.gapStatus === "normal";
+  }
+
+  private alertDateFailure(publicationDate: string, now: string): "alert_expired" | "notice_date_invalid" | "notice_date_future" | null {
+    const nowMilliseconds = Date.parse(now);
+    const publicationMilliseconds = Date.parse(publicationDate);
+    if (!Number.isFinite(nowMilliseconds) || !Number.isFinite(publicationMilliseconds)) return "notice_date_invalid";
+    if (publicationMilliseconds > nowMilliseconds) return "notice_date_future";
+    if (nowMilliseconds - publicationMilliseconds > this.maximumAlertAgeMs) return "alert_expired";
+    return null;
+  }
+
+  private cancelIneligiblePending(now: string): number {
+    const rows = this.database.connection
+      .prepare(`
+        SELECT q.id, n.publication_date
+        FROM delivery_queue q
+        JOIN notices n ON n.id = q.notice_id
+        WHERE q.status IN ('queued', 'retry')
+      `)
+      .all() as Array<{ id: number; publication_date: string }>;
+    let canceled = 0;
+    const cancel = this.database.connection.transaction(() => {
+      for (const row of rows) {
+        const failure = this.alertDateFailure(row.publication_date, now);
+        if (!failure) continue;
+        canceled += this.database.connection
+          .prepare(`
+            UPDATE delivery_queue
+            SET status = 'permanent_failure', last_error_code = ?, failure_kind = 'canceled', updated_at = ?
+            WHERE id = ? AND status IN ('queued', 'retry')
+          `)
+          .run(failure, now, row.id).changes;
+      }
+    });
+    cancel();
+    return canceled;
+  }
+
+  private cancelPermanently(id: number, code: string, now: string): void {
+    this.database.connection
+      .prepare("UPDATE delivery_queue SET status = 'permanent_failure', last_error_code = ?, failure_kind = 'canceled', updated_at = ? WHERE id = ? AND status IN ('queued', 'retry', 'sending')")
+      .run(code, now, id);
   }
 
   private failPermanently(

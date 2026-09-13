@@ -74,6 +74,7 @@ export class DeviceStore {
     const expected = Buffer.from(row.secret_hash, "hex");
     const actual = hashSecret(row.id, secret);
     if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) return null;
+    if (row.active !== 1 && row.disabled_reason !== "restored_quarantine") return null;
     return this.toRecord(row);
   }
 
@@ -85,17 +86,17 @@ export class DeviceStore {
   updateToken(id: string, deviceToken: string, environment: ApnsEnvironment, now: string): void {
     const token = validateDeviceToken(deviceToken);
     const update = this.database.connection.transaction(() => {
-      const previous = this.database.connection
-        .prepare("SELECT id FROM devices WHERE device_token = ? AND environment = ? AND active = 1 AND id <> ?")
-        .all(token, environment, id) as { id: string }[];
-      for (const row of previous) {
-        this.database.connection
-          .prepare("UPDATE devices SET active = 0, disabled_reason = 'replaced', updated_at = ? WHERE id = ?")
-          .run(now, row.id);
-        this.database.connection
-          .prepare("UPDATE delivery_queue SET status = 'permanent_failure', last_error_code = 'device_replaced', failure_kind = 'canceled', updated_at = ? WHERE device_id = ? AND status IN ('queued', 'retry', 'sending')")
-          .run(now, row.id);
+      const current = this.database.connection
+        .prepare("SELECT active, disabled_reason FROM devices WHERE id = ?")
+        .get(id) as { active: number; disabled_reason: string | null } | undefined;
+      if (!current) throw new Error("Device not found");
+      if (current.active !== 1 && current.disabled_reason !== "restored_quarantine") {
+        throw new Error("deviceToken update is not permitted for superseded or disabled credentials");
       }
+      const owner = this.database.connection
+        .prepare("SELECT id FROM devices WHERE device_token = ? AND environment = ? AND active = 1 AND id <> ?")
+        .get(token, environment, id) as { id: string } | undefined;
+      if (owner) throw new Error("deviceToken is already registered to another active device");
       const result = this.database.connection
         .prepare("UPDATE devices SET device_token = ?, environment = ?, active = 1, disabled_reason = NULL, updated_at = ? WHERE id = ?")
         .run(token, environment, now, id);

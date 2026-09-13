@@ -5,6 +5,9 @@ services:
     image: beanstalk-notifications:local
     restart: unless-stopped
     init: true
+    mem_limit: 768m
+    cpus: 1.0
+    pids_limit: 128
     env_file:
       - path: .env
         required: false

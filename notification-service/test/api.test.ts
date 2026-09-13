@@ -88,6 +88,59 @@ describe("device API", () => {
       ).statusCode,
     ).toBe(400);
   });
+
+  it("transfers a registration once and prevents old or unrelated credentials from reclaiming its token", async () => {
+    const { app, database } = await context();
+    const initial = await app.inject({
+      method: "POST",
+      url: "/v1/devices",
+      payload: { deviceToken: "a".repeat(64), environment: "sandbox" },
+    });
+    const initialCredentials = initial.json<{ deviceId: string; clientSecret: string }>();
+    const replacement = await app.inject({
+      method: "POST",
+      url: "/v1/devices",
+      payload: { deviceToken: "a".repeat(64), environment: "sandbox" },
+    });
+    const replacementCredentials = replacement.json<{ deviceId: string; clientSecret: string }>();
+    const unrelated = await app.inject({
+      method: "POST",
+      url: "/v1/devices",
+      payload: { deviceToken: "b".repeat(64), environment: "sandbox" },
+    });
+    const unrelatedCredentials = unrelated.json<{ deviceId: string; clientSecret: string }>();
+
+    const oldAuthorization = `Bearer ${initialCredentials.deviceId}.${initialCredentials.clientSecret}`;
+    expect(
+      (
+        await app.inject({
+          method: "PUT",
+          url: "/v1/devices/me/token",
+          headers: { authorization: oldAuthorization },
+          payload: { deviceToken: "c".repeat(64), environment: "sandbox" },
+        })
+      ).statusCode,
+    ).toBe(401);
+
+    const collision = await app.inject({
+      method: "PUT",
+      url: "/v1/devices/me/token",
+      headers: { authorization: `Bearer ${unrelatedCredentials.deviceId}.${unrelatedCredentials.clientSecret}` },
+      payload: { deviceToken: "a".repeat(64), environment: "sandbox" },
+    });
+    expect(collision.statusCode).toBe(400);
+    expect(collision.json()).toMatchObject({ error: { code: "invalid_request" } });
+    expect(
+      database.connection
+        .prepare("SELECT id, device_token, active FROM devices WHERE active = 1 ORDER BY id")
+        .all(),
+    ).toEqual(
+      [
+        { id: replacementCredentials.deviceId, device_token: "a".repeat(64), active: 1 },
+        { id: unrelatedCredentials.deviceId, device_token: "b".repeat(64), active: 1 },
+      ].sort((left, right) => left.id.localeCompare(right.id)),
+    );
+  });
 });
 
 describe("notice API", () => {

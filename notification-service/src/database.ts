@@ -1,5 +1,5 @@
-import { chmodSync, mkdirSync } from "node:fs";
-import { dirname } from "node:path";
+import { chmodSync, existsSync, mkdirSync } from "node:fs";
+import { dirname, isAbsolute, parse } from "node:path";
 import Database from "better-sqlite3";
 import type { RecallNotice, StoredNotice } from "./domain.js";
 
@@ -198,7 +198,13 @@ export class AppDatabase {
 
   constructor(readonly path: string) {
     if (path !== ":memory:") {
-      mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
+      const directory = dirname(path);
+      if (!isAbsolute(path) || directory === parse(path).root) {
+        throw new Error("Database path must be absolute and inside a dedicated data directory");
+      }
+      process.umask(0o077);
+      mkdirSync(directory, { recursive: true, mode: 0o700 });
+      chmodSync(directory, 0o700);
     }
     this.connection = new Database(path);
     this.connection.pragma("journal_mode = WAL");
@@ -206,7 +212,13 @@ export class AppDatabase {
     this.connection.pragma("busy_timeout = 5000");
     this.migrate();
     if (path !== ":memory:") {
-      chmodSync(path, 0o600);
+      this.hardenFiles();
+    }
+  }
+
+  private hardenFiles(): void {
+    for (const candidate of [this.path, `${this.path}-wal`, `${this.path}-shm`]) {
+      if (existsSync(candidate)) chmodSync(candidate, 0o600);
     }
   }
 

@@ -1,4 +1,5 @@
 import {
+  chmodSync,
   copyFileSync,
   existsSync,
   mkdirSync,
@@ -6,6 +7,7 @@ import {
   readFileSync,
   readdirSync,
   rmSync,
+  statSync,
   utimesSync,
   writeFileSync,
 } from "node:fs";
@@ -26,6 +28,17 @@ const quarantineSql = readFileSync(
 const backupScript = fileURLToPath(new URL("../scripts/backup.sh", import.meta.url));
 const restoreScript = fileURLToPath(new URL("../scripts/restore.sh", import.meta.url));
 const sqliteAvailable = spawnSync("sqlite3", ["-version"], { stdio: "ignore" }).status === 0;
+
+function mode(path: string): number {
+  return statSync(path).mode & 0o777;
+}
+
+function runWithPermissiveUmask(script: string, arguments_: string[], environment: NodeJS.ProcessEnv) {
+  return spawnSync("bash", ["-c", 'umask 000; exec bash "$@"', "beanstalk-script", script, ...arguments_], {
+    encoding: "utf8",
+    env: environment,
+  });
+}
 
 describe("restore quarantine", () => {
   it("cannot reactivate a deleted device or replay backup deliveries without an explicit token refresh", async () => {
@@ -119,24 +132,34 @@ describe("restore quarantine", () => {
       database = null;
 
       mkdirSync(backupDirectory, { recursive: true });
+      chmodSync(directory, 0o777);
+      chmodSync(backupDirectory, 0o777);
+      chmodSync(livePath, 0o666);
       const prunedBackup = join(backupDirectory, "beanstalk-notifications-prune.sqlite");
       const retainedBackup = join(backupDirectory, "beanstalk-notifications-retain.sqlite");
+      const prunedSnapshot = `${livePath}.before-restore-prune`;
+      const retainedSnapshot = `${livePath}.before-restore-retain`;
       writeFileSync(prunedBackup, "expired");
       writeFileSync(retainedBackup, "retained");
+      writeFileSync(prunedSnapshot, "expired snapshot");
+      writeFileSync(retainedSnapshot, "retained snapshot");
       const now = Date.now();
       const hour = 60 * 60 * 1_000;
       utimesSync(prunedBackup, new Date(now - 13 * 24 * hour - 2 * hour), new Date(now - 13 * 24 * hour - 2 * hour));
       utimesSync(retainedBackup, new Date(now - 12 * 24 * hour), new Date(now - 12 * 24 * hour));
+      utimesSync(prunedSnapshot, new Date(now - 13 * 24 * hour - 2 * hour), new Date(now - 13 * 24 * hour - 2 * hour));
+      utimesSync(retainedSnapshot, new Date(now - 12 * 24 * hour), new Date(now - 12 * 24 * hour));
 
-      const backup = spawnSync("bash", [backupScript], {
-        encoding: "utf8",
-        env: {
+      const backup = runWithPermissiveUmask(
+        backupScript,
+        [],
+        {
           ...process.env,
           DATABASE_PATH: livePath,
           BACKUP_DIRECTORY: backupDirectory,
           BACKUP_RETENTION_DAYS: "14",
         },
-      });
+      );
       expect(backup.status, backup.stderr).toBe(0);
       const backupPath = backup.stdout.trim().split("\n").at(-1) as string;
       expect(existsSync(backupPath)).toBe(true);
@@ -144,6 +167,12 @@ describe("restore quarantine", () => {
       expect(existsSync(`${backupPath}-shm`)).toBe(false);
       expect(existsSync(prunedBackup)).toBe(false);
       expect(existsSync(retainedBackup)).toBe(true);
+      expect(existsSync(prunedSnapshot)).toBe(false);
+      expect(existsSync(retainedSnapshot)).toBe(true);
+      expect(mode(directory)).toBe(0o700);
+      expect(mode(backupDirectory)).toBe(0o700);
+      expect(mode(livePath)).toBe(0o600);
+      expect(mode(backupPath)).toBe(0o600);
       expect(spawnSync("sqlite3", [backupPath, "PRAGMA journal_mode;"], { encoding: "utf8" }).stdout.trim()).toBe(
         "delete",
       );
@@ -153,14 +182,32 @@ describe("restore quarantine", () => {
       database.close();
       database = null;
 
-      const restore = spawnSync("bash", [restoreScript, "--confirm", backupPath], {
-        encoding: "utf8",
-        env: { ...process.env, DATABASE_PATH: livePath },
-      });
+      const restorePrunedSnapshot = `${livePath}.before-restore-old`;
+      writeFileSync(restorePrunedSnapshot, "expired restore snapshot");
+      utimesSync(
+        restorePrunedSnapshot,
+        new Date(now - 13 * 24 * hour - 2 * hour),
+        new Date(now - 13 * 24 * hour - 2 * hour),
+      );
+      chmodSync(directory, 0o777);
+      chmodSync(livePath, 0o666);
+
+      const restore = runWithPermissiveUmask(
+        restoreScript,
+        ["--confirm", backupPath],
+        { ...process.env, DATABASE_PATH: livePath, BACKUP_RETENTION_DAYS: "14" },
+      );
       expect(restore.status, restore.stderr).toBe(0);
       expect(readdirSync(directory).filter((name) => name.startsWith(".restore-candidate."))).toEqual([]);
       expect(existsSync(`${livePath}-wal`)).toBe(false);
       expect(existsSync(`${livePath}-shm`)).toBe(false);
+      expect(existsSync(restorePrunedSnapshot)).toBe(false);
+      expect(existsSync(retainedSnapshot)).toBe(true);
+      const currentSnapshots = readdirSync(directory).filter((name) => name.startsWith("live.sqlite.before-restore-"));
+      expect(currentSnapshots).toHaveLength(2);
+      expect(mode(directory)).toBe(0o700);
+      expect(mode(livePath)).toBe(0o600);
+      for (const snapshot of currentSnapshots) expect(mode(join(directory, snapshot))).toBe(0o600);
       expect(spawnSync("sqlite3", [livePath, "PRAGMA journal_mode;"], { encoding: "utf8" }).stdout.trim()).toBe(
         "delete",
       );
@@ -174,15 +221,16 @@ describe("restore quarantine", () => {
         database.connection.prepare("SELECT status, last_error_code FROM delivery_queue").get(),
       ).toEqual({ status: "permanent_failure", last_error_code: "restore_quarantine" });
 
-      const invalidRetention = spawnSync("bash", [backupScript], {
-        encoding: "utf8",
-        env: {
+      const invalidRetention = runWithPermissiveUmask(
+        backupScript,
+        [],
+        {
           ...process.env,
           DATABASE_PATH: livePath,
           BACKUP_DIRECTORY: backupDirectory,
           BACKUP_RETENTION_DAYS: "0",
         },
-      });
+      );
       expect(invalidRetention.status).toBe(2);
       expect(invalidRetention.stderr).toContain("positive integer");
     } finally {

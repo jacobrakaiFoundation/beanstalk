@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { DEFAULT_ANNUAL_XML_URL, DEFAULT_RSS_URL } from "./sources.js";
 
+const MAX_ANNUAL_XML_URLS = 2;
+
 export interface ServiceConfig {
   host: string;
   port: number;
@@ -49,6 +51,9 @@ export function loadConfig(): ServiceConfig {
     .map((value) => value.trim())
     .filter(Boolean);
   if (annualXmlUrls.length === 0) throw new Error("FDA_ANNUAL_XML_URLS must include at least one official XML URL");
+  if (annualXmlUrls.length > MAX_ANNUAL_XML_URLS) {
+    throw new Error(`FDA_ANNUAL_XML_URLS must include at most ${MAX_ANNUAL_XML_URLS} official XML URLs`);
+  }
   const announcementConcurrency = integer("ANNOUNCEMENT_FETCH_CONCURRENCY", 4, 1);
   if (announcementConcurrency > 8) throw new Error("ANNOUNCEMENT_FETCH_CONCURRENCY must be <= 8");
   return {

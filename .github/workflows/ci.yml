@@ -84,6 +84,18 @@ jobs:
       - name: Install
         run: npm ci
 
+      - name: Install and verify recovery prerequisite
+        working-directory: .
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends sqlite3
+          sqlite_path=$(command -v sqlite3)
+          test -x "$sqlite_path"
+          "$sqlite_path" --version
+
+      - name: Validate operations scripts
+        run: bash -n scripts/backup.sh scripts/restore.sh scripts/monitor.sh
+
       - name: Lint, test, and build
         run: npm run check
 
