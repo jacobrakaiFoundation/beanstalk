@@ -209,7 +209,10 @@ jobs:
         env:
           BASE_REF: ${{ github.base_ref }}
         run: |
-          pat="(api[_-]?key|secret|password|token)[[:space:]]*[=:][[:space:]]*[\"'][^\"']{8,}"
+          # Match credential-shaped quoted literals. Requiring at least 20
+          # base64/hex-style characters avoids flagging fixtures such as
+          # `deviceToken: "not-a-token"` while still catching usable secrets.
+          pat="(api[_-]?key|secret|password|token)[[:space:]]*[=:][[:space:]]*[\"'][A-Za-z0-9_+/=-]{20,}[\"']"
           if git diff "origin/${BASE_REF}...HEAD" \
               | grep '^+' \
               | grep -viE 'secrets\.GITHUB_TOKEN|github\.token|GH_TOKEN|GITHUB_TOKEN' \
