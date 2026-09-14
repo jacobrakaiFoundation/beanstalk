@@ -38,10 +38,12 @@ final class NotificationRegistrationService: ObservableObject {
 
     func requestAfterFirstWatchTerm(terms: [String]) async {
         _ = captureTerms(terms)
+        let requestIntentRevision = notificationIntentRevision
         isWorking = true
         defer { isWorking = false }
         do {
             let granted = try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound])
+            guard requestIntentRevision == notificationIntentRevision else { return }
             await refreshStatus()
             guard granted else {
                 notificationIntentRevision &+= 1
@@ -66,6 +68,14 @@ final class NotificationRegistrationService: ObservableObject {
         await refreshStatus()
         alertsEnabled = await deviceAPI.alertsEnabled()
         hasStoredRegistration = await deviceAPI.hasStoredRegistration()
+        if !alertsEnabled {
+            guard hasStoredRegistration else { return }
+            let deletion = operationQueue.enqueue { [weak self] in
+                await self?.performRegistrationDeletion()
+            }
+            await deletion.value
+            return
+        }
         guard AlertControlPolicy.shouldAttemptRegistration(alertsEnabled: alertsEnabled) else { return }
         guard authorizationStatus == .authorized || authorizationStatus == .provisional else { return }
         UIApplication.shared.registerForRemoteNotifications()

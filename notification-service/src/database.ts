@@ -285,6 +285,8 @@ export class AppDatabase {
   }
 
   upsertNotice(notice: StoredNotice): boolean {
+    // Enriched RSS rows are complete authoritative snapshots, including cleared
+    // fields. Annual imports must not replace them or falsely advance freshness.
     const existing = this.connection
       .prepare("SELECT id FROM notices WHERE canonical_url = ?")
       .get(notice.canonicalURL) as { id: string } | undefined;
@@ -302,24 +304,26 @@ export class AppDatabase {
           @eligibleForAlert, @createdAt, @updatedAt
         )
         ON CONFLICT(canonical_url) DO UPDATE SET
-          source_guid = COALESCE(excluded.source_guid, notices.source_guid),
-          title = CASE WHEN excluded.source_kind = 'rss' THEN excluded.title ELSE notices.title END,
-          summary = CASE WHEN excluded.source_kind = 'rss' THEN excluded.summary ELSE notices.summary END,
-          product_description = COALESCE(notices.product_description, excluded.product_description),
-          reason_for_recall = COALESCE(notices.reason_for_recall, excluded.reason_for_recall),
-          company_name = COALESCE(notices.company_name, excluded.company_name),
-          classification = COALESCE(notices.classification, excluded.classification),
-          status = COALESCE(notices.status, excluded.status),
-          distribution = COALESCE(notices.distribution, excluded.distribution),
-          code_info = COALESCE(notices.code_info, excluded.code_info),
-          publication_date = CASE WHEN excluded.source_kind = 'rss' THEN excluded.publication_date ELSE notices.publication_date END,
-          recall_initiation_date = COALESCE(notices.recall_initiation_date, excluded.recall_initiation_date),
+          source_guid = excluded.source_guid,
+          title = excluded.title,
+          summary = excluded.summary,
+          product_description = excluded.product_description,
+          reason_for_recall = excluded.reason_for_recall,
+          company_name = excluded.company_name,
+          classification = excluded.classification,
+          status = excluded.status,
+          distribution = excluded.distribution,
+          code_info = excluded.code_info,
+          publication_date = excluded.publication_date,
+          recall_initiation_date = excluded.recall_initiation_date,
           retrieved_at = excluded.retrieved_at,
-          source_url = CASE WHEN excluded.source_kind = 'rss' THEN excluded.source_url ELSE notices.source_url END,
-          source_kind = CASE WHEN excluded.source_kind = 'rss' THEN 'rss' ELSE notices.source_kind END,
-          food_classification = CASE WHEN excluded.food_classification = 'food' THEN 'food' ELSE notices.food_classification END,
+          source_url = excluded.source_url,
+          source_kind = excluded.source_kind,
+          food_classification = excluded.food_classification,
           eligible_for_alert = MAX(notices.eligible_for_alert, excluded.eligible_for_alert),
           updated_at = excluded.updated_at
+        WHERE (excluded.source_kind = 'rss' OR notices.source_kind <> 'rss')
+          AND (excluded.retrieved_at >= notices.retrieved_at OR excluded.source_kind <> notices.source_kind)
       `)
       .run({
         ...notice,

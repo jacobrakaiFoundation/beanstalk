@@ -1,6 +1,6 @@
 import type { AppDatabase } from "./database.js";
 import type { NotificationQueue } from "./queue.js";
-import { enrichFromAnnouncement, parseAnnualXml, parseRss, type FdaSource, type ParsedRssItem } from "./sources.js";
+import { enrichFromAnnouncement, parseAnnualDocument, parseRss, type FdaSource, type ParsedRssItem } from "./sources.js";
 
 export interface PollLogger {
   info(data: Record<string, unknown>, message: string): void;
@@ -89,10 +89,16 @@ export class FdaPoller {
   }
 
   private async ingestNormal(items: ParsedRssItem[], cursorIndex: number, now: string): Promise<PollResult> {
-    const newItems = await this.enrich(items.slice(0, cursorIndex));
+    // FDA can correct the linked announcement without moving its RSS URL or date.
+    // Refresh the complete short feed, but only newly discovered URLs may alert.
+    const enrichedItems = await this.enrich(items);
+    const newItems = enrichedItems.slice(0, cursorIndex).filter((item) => !this.database.hasCanonicalUrl(item.cursorKey));
+    const newIds = new Set(newItems.map((item) => item.notice.id));
     let queuedCount = 0;
     const ingest = this.database.connection.transaction(() => {
-      for (const item of newItems) this.database.upsertNotice({ ...item.notice, eligibleForAlert: true });
+      for (const item of enrichedItems) {
+        this.database.upsertNotice({ ...item.notice, eligibleForAlert: newIds.has(item.notice.id) });
+      }
       const newest = items[0];
       if (!newest) throw new Error("FDA RSS update contained no items");
       this.database.updatePollState(
@@ -122,8 +128,11 @@ export class FdaPoller {
     this.database.updatePollState({ gap_status: "reconciling" }, now);
     const annualDocuments = await this.source.fetchAnnual();
     if (annualDocuments.length === 0) throw new Error("No FDA annual XML sources are configured");
-    const annualNotices = annualDocuments.flatMap((xml) => parseAnnualXml(xml, now));
-    const annualUrls = new Set(annualNotices.map((notice) => notice.canonicalURL));
+    const annualRecords = annualDocuments.map((xml) => parseAnnualDocument(xml, now));
+    const annualNotices = annualRecords.flatMap((document) => document.foodNotices);
+    // The food feed can contain non-food announcements; their URLs still prove
+    // continuity, although the records themselves must never become food alerts.
+    const annualUrls = new Set(annualRecords.flatMap((document) => document.canonicalURLs));
     if (!state.cursorKey || !annualUrls.has(state.cursorKey)) {
       const failure = "Official annual XML did not contain the previous RSS cursor";
       this.database.updatePollState(
@@ -144,11 +153,15 @@ export class FdaPoller {
     const candidates = items.filter(
       (item) => !this.database.hasCanonicalUrl(item.notice.canonicalURL) && Date.parse(item.notice.publicationDate) > cutoff,
     );
-    const enrichedCandidates = await this.enrich(candidates);
+    const candidateIds = new Set(candidates.map((item) => item.notice.id));
+    const enrichedItems = await this.enrich(items);
+    const enrichedCandidates = enrichedItems.filter((item) => candidateIds.has(item.notice.id));
     let queuedCount = 0;
     const reconcile = this.database.connection.transaction(() => {
       for (const notice of annualNotices) this.database.upsertNotice({ ...notice, eligibleForAlert: false });
-      for (const item of enrichedCandidates) this.database.upsertNotice({ ...item.notice, eligibleForAlert: true });
+      for (const item of enrichedItems) {
+        this.database.upsertNotice({ ...item.notice, eligibleForAlert: candidateIds.has(item.notice.id) });
+      }
       const newest = items[0];
       if (!newest) throw new Error("FDA RSS reconciliation contained no items");
       this.database.updatePollState(

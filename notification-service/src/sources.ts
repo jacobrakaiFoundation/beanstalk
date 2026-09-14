@@ -1,4 +1,5 @@
 import { load } from "cheerio";
+import type { AnyNode } from "domhandler";
 import { XMLParser } from "fast-xml-parser";
 import {
   canonicalizeFdaUrl,
@@ -120,50 +121,53 @@ export function enrichFromAnnouncement(notice: StoredNotice, document: Announcem
   const announcementParts: string[] = [];
   const codeParts: string[] = [];
   const distributionParts: string[] = [];
-  let current = announcementHeading.next();
-  while (current.length > 0) {
-    if (current.attr("id") === "recall-photos") break;
-    const nestedHeading = normalizedPageText(current.find("h2").first().text());
-    if (/^Company Contact Information$/iu.test(nestedHeading)) break;
+  const collectAnnouncement = (node: AnyNode): boolean => {
+    if (node.type === "text") {
+      announcementParts.push(node.data);
+      return false;
+    }
+    if (node.type !== "tag") return false;
+    const element = $(node);
+    if (element.attr("id") === "recall-photos" ||
+        (node.name === "h2" && /^Company Contact Information$/iu.test(normalizedPageText(element.text())))) return true;
 
-    const tableRows: string[] = [];
-    current
-      .find("table")
-      .addBack("table")
-      .each((_tableIndex, table) => {
-        $(table)
-          .find("tr")
-          .each((_rowIndex, row) => {
-            const cells = $(row)
-              .find("th, td")
-              .map((_cellIndex, cell) => normalizedPageText($(cell).text()))
-              .get()
-              .filter(Boolean);
-            if (cells.length > 0) tableRows.push(cells.join(" | "));
-          });
-      });
-    const blockText = tableRows.length > 0 ? tableRows.join("\n") : normalizedPageText(current.text());
-    if (blockText) announcementParts.push(blockText);
-    if (tableRows.length > 0) codeParts.push(tableRows.join("\n"));
-
-    current
-      .find("p, li")
-      .addBack("p, li")
-      .each((_textIndex, element) => {
-        const value = normalizedPageText($(element).text());
-        if (!value) return;
+    if (node.name === "table") {
+      const tableRows = element.find("tr").map((_rowIndex, row) =>
+        $(row).find("th, td").map((_cellIndex, cell) => normalizedPageText($(cell).text())).get().join(" | "),
+      ).get().filter(Boolean);
+      const tableText = tableRows.join("\n");
+      if (tableText) {
+        announcementParts.push(`\n\n${tableText}\n\n`);
+        codeParts.push(tableText);
+        if (tableRows.some((row) => /\b(state|distribution|location)s?\b/iu.test(row))) distributionParts.push(tableText);
+      }
+      return false;
+    }
+    if (node.name === "p" || node.name === "li") {
+      const value = normalizedPageText(element.text());
+      if (value) {
         if (/\b(lot|code|upc|plu|best by|use by|sell by|expiration|package)\b/iu.test(value)) codeParts.push(value);
         if (/\b(distribut(?:ed|ion)|sold|available|stores?|states?|nationwide|online)\b/iu.test(value)) {
           distributionParts.push(value);
         }
-      });
-    if (tableRows.some((row) => /\b(state|distribution|location)s?\b/iu.test(row))) {
-      distributionParts.push(tableRows.join("\n"));
+      }
     }
+    const block = /^(?:p|li|div|section|article|h[1-6]|ul|ol|blockquote|br)$/u.test(node.name);
+    if (block) announcementParts.push("\n\n");
+    for (const child of node.children) {
+      if (collectAnnouncement(child)) return true;
+    }
+    if (block) announcementParts.push("\n\n");
+    return false;
+  };
+  let current = announcementHeading.next();
+  while (current.length > 0) {
+    const node = current[0];
+    if (node && collectAnnouncement(node)) break;
     current = current.next();
   }
 
-  const summary = announcementParts.join("\n\n").trim();
+  const summary = normalizedPageText(announcementParts.join("")).replace(/\n{3,}/gu, "\n\n");
   if (summary.length < 40) throw new Error("FDA announcement page has no usable official announcement text");
   const productType = definition("Product Type");
   if (!productType) throw new Error("FDA announcement page is missing Product Type");
@@ -234,18 +238,21 @@ export function parseRss(xml: string, retrievedAt: string): ParsedRssItem[] {
   return results;
 }
 
-export function parseAnnualXml(xml: string, retrievedAt: string): StoredNotice[] {
+export function parseAnnualDocument(xml: string, retrievedAt: string): { foodNotices: StoredNotice[]; canonicalURLs: string[] } {
   const document = parser.parse(xml) as {
     recallsdata?: { recalls?: AnnualItemXml | AnnualItemXml[] };
   };
   const items = list(document.recallsdata?.recalls);
   const results: StoredNotice[] = [];
+  const canonicalURLs = new Set<string>();
   for (const item of items) {
+    const url = verifiedFdaUrl(text(item.Url));
+    if (!url) continue;
+    canonicalURLs.add(url.canonicalURL);
     const productType = text(item.ProductType);
     if (!/(?:Food\s*&\s*Beverages|Pet Food)/iu.test(productType)) continue;
-    const url = verifiedFdaUrl(text(item.Url));
     const publicationDate = annualIsoDate(text(item.Date));
-    if (!url || !publicationDate) continue;
+    if (!publicationDate) continue;
     const brand = optionalText(item.Brand);
     const company = optionalText(item.Company);
     const product = optionalText(item.ProductDescription);
@@ -275,8 +282,12 @@ export function parseAnnualXml(xml: string, retrievedAt: string): StoredNotice[]
       eligibleForAlert: false,
     });
   }
-  if (results.length === 0) throw new Error("FDA annual XML contained no valid food recall records");
-  return results;
+  if (canonicalURLs.size === 0) throw new Error("FDA annual XML contained no valid official recall URLs");
+  return { foodNotices: results, canonicalURLs: [...canonicalURLs] };
+}
+
+export function parseAnnualXml(xml: string, retrievedAt: string): StoredNotice[] {
+  return parseAnnualDocument(xml, retrievedAt).foodNotices;
 }
 
 export interface FdaSource {

@@ -38,7 +38,7 @@ describe("FDA poller", () => {
     ]);
     expect(await poller.pollOnce()).toEqual({ kind: "updated", newNoticeCount: 1, queuedCount: 1 });
     expect(queueCount(database)).toBe(1);
-    expect(source.announcementFetches).toBe(2);
+    expect(source.announcementFetches).toBe(3);
   });
 
   it("pauses when a gap cannot be proven against official annual XML", async () => {

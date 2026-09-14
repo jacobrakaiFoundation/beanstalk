@@ -99,6 +99,19 @@ public enum SourceDateFormatter {
 
     public static func display(_ sourceValue: String) -> String {
         guard !sourceValue.isEmpty else { return "Not provided" }
+        // FDA's compact values are calendar dates, not UTC instants. Parse them
+        // in the user's current time zone so western U.S. devices do not show
+        // the previous calendar day.
+        if sourceValue.range(of: #"^\d{8}$"#, options: .regularExpression) != nil {
+            let calendarDate = DateFormatter()
+            calendarDate.calendar = Calendar(identifier: .gregorian)
+            calendarDate.locale = Locale(identifier: "en_US_POSIX")
+            calendarDate.timeZone = .current
+            calendarDate.dateFormat = "yyyyMMdd"
+            if let date = calendarDate.date(from: sourceValue) {
+                return date.formatted(date: .abbreviated, time: .omitted)
+            }
+        }
         if let date = date(from: sourceValue) {
             return date.formatted(date: .abbreviated, time: .omitted)
         }

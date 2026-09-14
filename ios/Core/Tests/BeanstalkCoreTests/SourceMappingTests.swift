@@ -75,4 +75,13 @@ final class SourceMappingTests: XCTestCase {
             SourceDateFormatter.display("2026-09-13T18:00:00.000Z")
         )
     }
+
+    func testSourceDateFormatterKeepsCompactFDACalendarDatesInWesternTimeZones() {
+        let originalTimeZone = NSTimeZone.default
+        NSTimeZone.default = TimeZone(identifier: "America/Los_Angeles")!
+        defer { NSTimeZone.default = originalTimeZone }
+
+        XCTAssertEqual(SourceDateFormatter.display("20260913"), "Sep 13, 2026")
+        XCTAssertEqual(SourceDateFormatter.display("20260101"), "Jan 1, 2026")
+    }
 }

@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
-import { enrichFromAnnouncement, HttpFdaSource } from "../src/sources.js";
-import { storedNotice } from "./helpers.js";
+import { enrichFromAnnouncement, HttpFdaSource, parseAnnualDocument } from "../src/sources.js";
+import { annual, storedNotice } from "./helpers.js";
 
 const fixture = readFileSync(fileURLToPath(new URL("./fixtures/fda-announcement.html", import.meta.url)), "utf8");
 
@@ -33,6 +33,24 @@ describe("FDA announcement enrichment", () => {
     expect(enrichFromAnnouncement(notice, { html, finalURL: notice.canonicalURL }).foodClassification).toBe("unknown");
   });
 
+  it("preserves prose and table cells in document order inside one minified wrapper", () => {
+    const notice = storedNotice("wrapped-food", "2026-09-11T22:15:00.000Z");
+    const html = fixture
+      .replace('</h2>\n    <p>Whole Foods', '</h2><div class="field--item"><p>Whole Foods')
+      .replace("</body>", "</div></body>")
+      .replace(/>\s+</gu, "><");
+    const enriched = enrichFromAnnouncement(notice, { html, finalURL: notice.canonicalURL });
+    expect(enriched.summary).toContain("People with an egg allergy risk a serious reaction.");
+    expect(enriched.summary).toContain("Consumers should destroy the affected product.");
+    expect(enriched.summary).toContain("Cabricharme Raw Milk Cheese | 57953 | California, New Jersey | Through 10/7/2026");
+    expect(enriched.summary.indexOf("serious reaction")).toBeLessThan(enriched.summary.indexOf("57953"));
+    expect(enriched.summary.indexOf("57953")).toBeLessThan(enriched.summary.indexOf("Consumers should destroy"));
+    expect(enriched.summary).not.toContain("This text must not enter");
+    expect(enriched.summary.match(/57953/gu)).toHaveLength(1);
+    expect(enriched.codeInfo).toContain("57953");
+    expect(enriched.distribution).toContain("Arizona");
+  });
+
   it("fails safe when an official Food Product Type conflicts with plainly non-food wording", () => {
     const notice = storedNotice(
       "misclassified-injection",
@@ -54,6 +72,22 @@ describe("FDA announcement enrichment", () => {
         finalURL: "https://www.fda.gov/safety/recalls-market-withdrawals-safety-alerts/different",
       }),
     ).toThrow("different canonical URL");
+  });
+});
+
+describe("annual continuity identifiers", () => {
+  it("retains official non-food URLs for continuity without importing them as food", () => {
+    const xml = annual([{ slug: "drug-cursor", date: "09/11/2026" }])
+      .replace("Food &amp; Beverages, Foodborne Illness", "Drugs");
+    expect(parseAnnualDocument(xml, "2026-09-13T20:00:00.000Z")).toEqual({
+      foodNotices: [],
+      canonicalURLs: ["https://www.fda.gov/safety/recalls-market-withdrawals-safety-alerts/drug-cursor"],
+    });
+  });
+
+  it("rejects unverified URLs even when their path matches a previous cursor", () => {
+    const xml = annual([{ slug: "cursor", date: "09/11/2026" }]).replace("www.fda.gov", "example.com");
+    expect(() => parseAnnualDocument(xml, "2026-09-13T20:00:00.000Z")).toThrow("no valid official recall URLs");
   });
 });
 

@@ -68,10 +68,11 @@ struct WatchlistView: View {
 
                 if !terms.isEmpty {
                     Section("Matches in recent announcements") {
+                        if let message = model.message {
+                            InformationBanner(icon: "wifi.exclamationmark", text: message, color: .orange)
+                        }
                         if model.isLoading && model.results.isEmpty {
                             ProgressView("Checking recent announcements…")
-                        } else if let message = model.message, model.results.isEmpty {
-                            InformationBanner(icon: "wifi.exclamationmark", text: message, color: .orange)
                         } else if model.results.isEmpty {
                             VStack(alignment: .leading, spacing: 6) {
                                 Text("No recent loaded announcement matches these terms.")
@@ -81,7 +82,9 @@ struct WatchlistView: View {
                             }
                         } else {
                             ForEach(model.results) { result in
-                                NavigationLink { NoticeDetailView(notice: result.notice) } label: {
+                                NavigationLink {
+                                    NoticeDetailView(notice: result.notice, offlineCopyMessage: model.message)
+                                } label: {
                                     WatchMatchRow(result: result)
                                 }
                             }

@@ -111,6 +111,13 @@ export class NotificationQueue {
     let processed = 0;
     for (const row of due) {
       if (!this.deliveryAllowed()) break;
+      // Registration updates can occur while an earlier send is awaiting APNs.
+      // Resolve the destination immediately before claiming this row.
+      const destination = this.devices.get(row.device_id);
+      if (!destination?.active) {
+        this.cancelPermanently(row.id, "device_disabled", now);
+        continue;
+      }
       const dateFailure = this.alertDateFailure(row.publication_date, now);
       if (dateFailure) {
         this.cancelPermanently(row.id, dateFailure, now);
@@ -144,14 +151,26 @@ export class NotificationQueue {
         this.cancelPermanently(row.id, currentDateFailure, now);
         continue;
       }
+      if (!notice.eligibleForAlert || notice.foodClassification !== "food" || notice.sourceKind !== "rss") {
+        this.cancelPermanently(row.id, "notice_ineligible", now);
+        continue;
+      }
+      const match = findNoticeMatch(publicNotice(notice), destination.terms);
+      if (!match) {
+        this.cancelPermanently(row.id, "watchlist_changed", now);
+        continue;
+      }
+      this.database.connection
+        .prepare("UPDATE delivery_queue SET matched_term = ?, matched_field = ? WHERE id = ?")
+        .run(match.term, match.field, row.id);
       const result = await this.sender.send({
-        deviceToken: row.device_token,
-        environment: row.environment,
+        deviceToken: destination.deviceToken,
+        environment: destination.environment,
         noticeId: notice.id,
         title: truncate(notice.title, 100),
         body: truncate(notice.reasonForRecall ?? notice.summary, 170),
-        matchedTerm: row.matched_term,
-        matchedField: row.matched_field,
+        matchedTerm: match.term,
+        matchedField: match.field,
       });
       const stillClaimed = this.database.connection
         .prepare("SELECT 1 FROM delivery_queue WHERE id = ? AND status = 'sending'")
@@ -168,7 +187,12 @@ export class NotificationQueue {
       } else if (result.kind === "invalid") {
         const code = safeErrorCode(result.code);
         const disable = this.database.connection.transaction(() => {
-          this.devices.disable(row.device_id, code, now);
+          if (!this.devices.disableIfCurrent(destination, code, now)) {
+            this.database.connection
+              .prepare("UPDATE delivery_queue SET status = 'retry', next_attempt_at = ?, last_error_code = 'destination_rotated', updated_at = ? WHERE id = ? AND status = 'sending'")
+              .run(now, now, row.id);
+            return;
+          }
           this.failPermanently(row.id, attempt, code, "apns", now);
           this.database.connection
             .prepare("UPDATE delivery_queue SET status = 'permanent_failure', last_error_code = 'device_disabled', failure_kind = 'canceled', updated_at = ? WHERE device_id = ? AND status IN ('queued', 'retry')")

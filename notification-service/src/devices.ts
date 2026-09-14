@@ -137,6 +137,13 @@ export class DeviceStore {
       .run(reason, now, id);
   }
 
+  disableIfCurrent(destination: DeviceRecord, reason: string, now: string): boolean {
+    return this.database.connection
+      .prepare(`UPDATE devices SET active = 0, disabled_reason = ?, updated_at = ?
+                WHERE id = ? AND active = 1 AND device_token = ? AND environment = ?`)
+      .run(reason, now, destination.id, destination.deviceToken, destination.environment).changes === 1;
+  }
+
   pruneInactive(before: string): number {
     return this.database.connection
       .prepare("DELETE FROM devices WHERE active = 0 AND updated_at < ?")
