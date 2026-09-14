@@ -39,6 +39,10 @@ describe("notification queue", () => {
     expect(queue.enqueueNotice(notice.id, now)).toBe(1);
     expect(queue.enqueueNotice(notice.id, now)).toBe(0);
     expect(queueCount(database)).toBe(1);
+    expect(queue.health("2026-09-13T20:05:00.000Z")).toMatchObject({
+      oldestPendingAt: now,
+      oldestPendingAgeSeconds: 300,
+    });
 
     expect(await queue.processDue(now)).toBe(1);
     expect(queue.health().retrying).toBe(1);
@@ -79,6 +83,104 @@ describe("notification queue", () => {
       recentApnsFailures: 1,
       lastApnsFailureAt: now,
       lastApnsFailureCode: "BadDeviceToken",
+    });
+  });
+
+  it("delivers through configured FCM while leaving unconfigured APNs jobs untouched", async () => {
+    const database = new AppDatabase(":memory:");
+    databases.push(database);
+    const devices = new DeviceStore(database);
+    const messages: PushMessage[] = [];
+    const sender: PushSender = {
+      configured: true,
+      isConfigured: (provider) => provider === "fcm",
+      async send(message) {
+        messages.push(message);
+        return { kind: "success" };
+      },
+      close() {},
+    };
+    const queue = new NotificationQueue(database, devices, sender);
+    const now = "2026-09-13T20:00:00.000Z";
+    enableDelivery(database, now);
+    const apns = devices.create("a".repeat(64), "sandbox", now);
+    const fcm = devices.create(
+      { provider: "fcm", pushIdentifier: "cAbCdEfGhIjKlMnOpQrStU", identifierKind: "fid" },
+      now,
+    );
+    devices.setWatchlist(apns.deviceId, ["salmonella"], now);
+    devices.setWatchlist(fcm.deviceId, ["salmonella"], now);
+    const notice = storedNotice("provider-routing", now, "Salmonella recall");
+    database.upsertNotice(notice);
+    expect(queue.enqueueNotice(notice.id, now)).toBe(2);
+
+    expect(await queue.processDue(now)).toBe(1);
+    expect(messages).toHaveLength(1);
+    expect(messages[0]).toMatchObject({
+      provider: "fcm",
+      identifierKind: "fid",
+      pushIdentifier: "cAbCdEfGhIjKlMnOpQrStU",
+      environment: null,
+    });
+    expect(
+      database.connection
+        .prepare("SELECT d.provider, q.status, q.attempts FROM delivery_queue q JOIN devices d ON d.id = q.device_id ORDER BY d.provider")
+        .all(),
+    ).toEqual([
+      { provider: "apns", status: "queued", attempts: 0 },
+      { provider: "fcm", status: "sent", attempts: 1 },
+    ]);
+  });
+
+  it("disables an invalid FCM installation and reports provider-specific health", async () => {
+    const database = new AppDatabase(":memory:");
+    databases.push(database);
+    const devices = new DeviceStore(database);
+    const sender = new FakeSender([{ kind: "invalid", code: "UNREGISTERED" }]);
+    const queue = new NotificationQueue(database, devices, sender);
+    const now = "2026-09-13T20:00:00.000Z";
+    enableDelivery(database, now);
+    const registration = devices.create(
+      { provider: "fcm", pushIdentifier: "cAbCdEfGhIjKlMnOpQrStU", identifierKind: "fid" },
+      now,
+    );
+    devices.setWatchlist(registration.deviceId, ["salmonella"], now);
+    const notice = storedNotice("bad-fid", now, "Salmonella recall");
+    database.upsertNotice(notice);
+    queue.enqueueNotice(notice.id, now);
+
+    expect(await queue.processDue(now)).toBe(1);
+    expect(devices.get(registration.deviceId)).toMatchObject({ active: false, disabledReason: "UNREGISTERED" });
+    expect(queue.health(now)).toMatchObject({
+      recentPushFailures: 1,
+      recentApnsFailures: 0,
+      recentFcmFailures: 1,
+      lastFcmFailureCode: "UNREGISTERED",
+    });
+  });
+
+  it("uses a provider Retry-After value without consuming extra delivery attempts", async () => {
+    const database = new AppDatabase(":memory:");
+    databases.push(database);
+    const devices = new DeviceStore(database);
+    const sender = new FakeSender([{ kind: "transient", code: "QUOTA_EXCEEDED", retryAfterSeconds: 120 }]);
+    const queue = new NotificationQueue(database, devices, sender);
+    const now = "2026-09-13T20:00:00.000Z";
+    enableDelivery(database, now);
+    const registration = devices.create(
+      { provider: "fcm", pushIdentifier: "cAbCdEfGhIjKlMnOpQrStU", identifierKind: "fid" },
+      now,
+    );
+    devices.setWatchlist(registration.deviceId, ["salmonella"], now);
+    const notice = storedNotice("fcm-quota", now, "Salmonella recall");
+    database.upsertNotice(notice);
+    queue.enqueueNotice(notice.id, now);
+
+    expect(await queue.processDue(now)).toBe(1);
+    expect(database.connection.prepare("SELECT status, attempts, next_attempt_at FROM delivery_queue").get()).toEqual({
+      status: "retry",
+      attempts: 1,
+      next_attempt_at: "2026-09-13T20:02:00.000Z",
     });
   });
 
@@ -149,6 +251,7 @@ describe("notification queue", () => {
     const messages: PushMessage[] = [];
     const sender: PushSender = {
       configured: true,
+      isConfigured: () => true,
       async send(message) {
         messages.push(message);
         database.updatePollState(
@@ -320,7 +423,7 @@ describe("notification queue", () => {
     ).toThrow("superseded or disabled credentials");
     expect(devices.get(replacement.deviceId)).toMatchObject({
       active: true,
-      deviceToken: "a".repeat(64),
+      pushIdentifier: "a".repeat(64),
     });
     const jobs = database.connection
       .prepare("SELECT status, last_error_code FROM delivery_queue ORDER BY id")

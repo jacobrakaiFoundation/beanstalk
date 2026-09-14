@@ -1,16 +1,21 @@
-import { createPushSender } from "./apns.js";
+import { createApnsPushSender } from "./apns.js";
 import { buildApp } from "./app.js";
 import { loadConfig } from "./config.js";
 import { AppDatabase } from "./database.js";
 import { DeviceStore } from "./devices.js";
+import { createFcmPushSender } from "./fcm.js";
 import { FdaPoller, type PollLogger } from "./poller.js";
 import { NotificationQueue } from "./queue.js";
+import { RoutedPushSender } from "./push.js";
 import { HttpFdaSource } from "./sources.js";
 
 const config = loadConfig();
 const database = new AppDatabase(config.databasePath);
 const devices = new DeviceStore(database);
-const sender = createPushSender(config.apns);
+const sender = new RoutedPushSender([
+  createApnsPushSender(config.apns),
+  createFcmPushSender(config.fcm),
+]);
 const queue = new NotificationQueue(database, devices, sender);
 const startupRetentionCutoff = new Date(Date.now() - config.retentionDays * 86_400_000).toISOString();
 queue.prune(startupRetentionCutoff);
@@ -105,7 +110,12 @@ process.once("SIGINT", () => void shutdown("SIGINT"));
 
 await app.listen({ host: config.host, port: config.port });
 app.log.info(
-  { host: config.host, port: config.port, pushDisabled: !sender.configured },
+  {
+    host: config.host,
+    port: config.port,
+    pushDisabled: !sender.configured,
+    pushProviders: { apns: sender.isConfigured("apns"), fcm: sender.isConfigured("fcm") },
+  },
   "Beanstalk notification service listening",
 );
 void runPoll();

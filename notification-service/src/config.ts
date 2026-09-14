@@ -22,6 +22,11 @@ export interface ServiceConfig {
     bundleId?: string;
     privateKey?: string;
   };
+  fcm: {
+    projectId?: string;
+    serviceAccountPath?: string;
+    androidPackageName?: string;
+  };
 }
 
 function integer(name: string, fallback: number, minimum: number): number {
@@ -38,6 +43,15 @@ function privateKey(): string | undefined {
   return undefined;
 }
 
+function androidPackageName(): string | undefined {
+  const value = process.env.FCM_ANDROID_PACKAGE_NAME;
+  if (!value) return undefined;
+  if (!/^[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)+$/u.test(value)) {
+    throw new Error("FCM_ANDROID_PACKAGE_NAME must be a valid Android application ID");
+  }
+  return value;
+}
+
 export function loadConfig(): ServiceConfig {
   const key = privateKey();
   const apns = {
@@ -45,6 +59,13 @@ export function loadConfig(): ServiceConfig {
     ...(process.env.APNS_KEY_ID ? { keyId: process.env.APNS_KEY_ID } : {}),
     ...(process.env.APNS_BUNDLE_ID ? { bundleId: process.env.APNS_BUNDLE_ID } : {}),
     ...(key ? { privateKey: key } : {}),
+  };
+  const serviceAccountPath = process.env.FCM_SERVICE_ACCOUNT_PATH ?? process.env.GOOGLE_APPLICATION_CREDENTIALS;
+  const packageName = androidPackageName();
+  const fcm = {
+    ...(process.env.FCM_PROJECT_ID ? { projectId: process.env.FCM_PROJECT_ID } : {}),
+    ...(serviceAccountPath ? { serviceAccountPath: resolve(serviceAccountPath) } : {}),
+    ...(packageName ? { androidPackageName: packageName } : {}),
   };
   const annualXmlUrls = (process.env.FDA_ANNUAL_XML_URLS ?? process.env.FDA_ANNUAL_XML_URL ?? DEFAULT_ANNUAL_XML_URL)
     .split(",")
@@ -69,5 +90,6 @@ export function loadConfig(): ServiceConfig {
     pollStaleAfterMs: integer("POLL_STALE_AFTER_MS", 35 * 60 * 1000, 60_000),
     announcementConcurrency,
     apns,
+    fcm,
   };
 }

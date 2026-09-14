@@ -3,11 +3,35 @@ import type { AppDatabase } from "./database.js";
 import { validateAndNormalizeTerms } from "./domain.js";
 
 export type ApnsEnvironment = "sandbox" | "production";
+export type PushProvider = "apns" | "fcm";
+export type PushIdentifierKind = "token" | "fid";
+
+export type DeviceRegistration =
+  | {
+      provider: "apns";
+      pushIdentifier: string;
+      identifierKind?: "token";
+      environment: ApnsEnvironment;
+    }
+  | {
+      provider: "fcm";
+      pushIdentifier: string;
+      identifierKind: PushIdentifierKind;
+    };
+
+interface NormalizedRegistration {
+  provider: PushProvider;
+  pushIdentifier: string;
+  identifierKind: PushIdentifierKind;
+  environment: ApnsEnvironment;
+}
 
 export interface DeviceRecord {
   id: string;
-  deviceToken: string;
-  environment: ApnsEnvironment;
+  pushIdentifier: string;
+  provider: PushProvider;
+  identifierKind: PushIdentifierKind;
+  environment: ApnsEnvironment | null;
   active: boolean;
   disabledReason: string | null;
   terms: string[];
@@ -18,6 +42,8 @@ interface DeviceRow {
   secret_hash: string;
   device_token: string;
   environment: ApnsEnvironment;
+  provider: PushProvider;
+  identifier_kind: PushIdentifierKind;
   active: number;
   disabled_reason: string | null;
 }
@@ -34,18 +60,71 @@ export function validateDeviceToken(value: string): string {
   return normalized;
 }
 
+export function validatePushIdentifier(
+  provider: PushProvider,
+  identifierKind: PushIdentifierKind,
+  value: string,
+): string {
+  if (provider === "apns") {
+    if (identifierKind !== "token") throw new Error("identifierKind must be token for APNs");
+    return validateDeviceToken(value);
+  }
+  const normalized = value.trim();
+  const hasInvalidTokenCharacter = [...normalized].some((character) => {
+    const codePoint = character.codePointAt(0) ?? 0;
+    return /\s/u.test(character) || codePoint <= 0x1f || codePoint === 0x7f;
+  });
+  if (identifierKind === "fid") {
+    // FIDs are URL-safe base64 identifiers. The bounded range permits future
+    // Firebase format changes while rejecting whitespace and control characters.
+    if (!/^[A-Za-z0-9_-]{10,200}$/u.test(normalized)) {
+      throw new Error("pushIdentifier must be a 10 to 200 character URL-safe Firebase Installation ID");
+    }
+  } else if (normalized.length < 20 || normalized.length > 4096 || hasInvalidTokenCharacter) {
+    throw new Error("pushIdentifier must be a valid 20 to 4096 character FCM registration token");
+  }
+  return normalized;
+}
+
+function normalizeRegistration(registration: DeviceRegistration): NormalizedRegistration {
+  const identifierKind = registration.provider === "apns" ? "token" : registration.identifierKind;
+  return {
+    provider: registration.provider,
+    identifierKind,
+    pushIdentifier: validatePushIdentifier(registration.provider, identifierKind, registration.pushIdentifier),
+    environment: registration.provider === "apns" ? registration.environment : "production",
+  };
+}
+
 export class DeviceStore {
   constructor(private readonly database: AppDatabase) {}
 
-  create(deviceToken: string, environment: ApnsEnvironment, now: string): { deviceId: string; clientSecret: string } {
-    const token = validateDeviceToken(deviceToken);
+  create(deviceToken: string, environment: ApnsEnvironment, now: string): { deviceId: string; clientSecret: string };
+  create(registration: DeviceRegistration, now: string): { deviceId: string; clientSecret: string };
+  create(
+    registrationOrToken: DeviceRegistration | string,
+    environmentOrNow: ApnsEnvironment | string,
+    legacyNow?: string,
+  ): { deviceId: string; clientSecret: string } {
+    const registration = normalizeRegistration(
+      typeof registrationOrToken === "string"
+        ? {
+            provider: "apns",
+            pushIdentifier: registrationOrToken,
+            environment: environmentOrNow as ApnsEnvironment,
+          }
+        : registrationOrToken,
+    );
+    const now = typeof registrationOrToken === "string" ? (legacyNow as string) : environmentOrNow;
     const deviceId = randomUUID();
     const clientSecret = randomBytes(32).toString("base64url");
     const secretHash = hashSecret(deviceId, clientSecret).toString("hex");
     const create = this.database.connection.transaction(() => {
       const previous = this.database.connection
-        .prepare("SELECT id FROM devices WHERE device_token = ? AND environment = ? AND active = 1")
-        .all(token, environment) as { id: string }[];
+        .prepare(
+          "SELECT id FROM devices WHERE provider = ? AND device_token = ? AND environment = ? AND active = 1",
+        )
+        .all(registration.provider, registration.pushIdentifier, registration.environment) as { id: string }[];
       for (const row of previous) {
         this.database.connection
           .prepare("UPDATE devices SET active = 0, disabled_reason = 'replaced', updated_at = ? WHERE id = ?")
@@ -55,9 +134,19 @@ export class DeviceStore {
           .run(now, row.id);
       }
       this.database.connection
-        .prepare(`INSERT INTO devices(id, secret_hash, device_token, environment, created_at, updated_at)
-                  VALUES (?, ?, ?, ?, ?, ?)`)
-        .run(deviceId, secretHash, token, environment, now, now);
+        .prepare(`INSERT INTO devices(
+                    id, secret_hash, device_token, environment, provider, identifier_kind, created_at, updated_at
+                  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+        .run(
+          deviceId,
+          secretHash,
+          registration.pushIdentifier,
+          registration.environment,
+          registration.provider,
+          registration.identifierKind,
+          now,
+          now,
+        );
     });
     create();
     return { deviceId, clientSecret };
@@ -83,23 +172,48 @@ export class DeviceStore {
     return row ? this.toRecord(row) : null;
   }
 
-  updateToken(id: string, deviceToken: string, environment: ApnsEnvironment, now: string): void {
-    const token = validateDeviceToken(deviceToken);
+  updateToken(id: string, deviceToken: string, environment: ApnsEnvironment, now: string): void;
+  updateToken(id: string, registration: DeviceRegistration, now: string): void;
+  updateToken(
+    id: string,
+    registrationOrToken: DeviceRegistration | string,
+    environmentOrNow: ApnsEnvironment | string,
+    legacyNow?: string,
+  ): void {
+    const registration = normalizeRegistration(
+      typeof registrationOrToken === "string"
+        ? {
+            provider: "apns",
+            pushIdentifier: registrationOrToken,
+            environment: environmentOrNow as ApnsEnvironment,
+          }
+        : registrationOrToken,
+    );
+    const now = typeof registrationOrToken === "string" ? (legacyNow as string) : environmentOrNow;
     const update = this.database.connection.transaction(() => {
       const current = this.database.connection
-        .prepare("SELECT active, disabled_reason FROM devices WHERE id = ?")
-        .get(id) as { active: number; disabled_reason: string | null } | undefined;
+        .prepare("SELECT active, disabled_reason, provider FROM devices WHERE id = ?")
+        .get(id) as { active: number; disabled_reason: string | null; provider: PushProvider } | undefined;
       if (!current) throw new Error("Device not found");
+      if (current.provider !== registration.provider) {
+        throw new Error("provider cannot change for existing device credentials");
+      }
       if (current.active !== 1 && current.disabled_reason !== "restored_quarantine") {
-        throw new Error("deviceToken update is not permitted for superseded or disabled credentials");
+        throw new Error("pushIdentifier update is not permitted for superseded or disabled credentials");
       }
       const owner = this.database.connection
-        .prepare("SELECT id FROM devices WHERE device_token = ? AND environment = ? AND active = 1 AND id <> ?")
-        .get(token, environment, id) as { id: string } | undefined;
-      if (owner) throw new Error("deviceToken is already registered to another active device");
+        .prepare(
+          "SELECT id FROM devices WHERE provider = ? AND device_token = ? AND environment = ? AND active = 1 AND id <> ?",
+        )
+        .get(registration.provider, registration.pushIdentifier, registration.environment, id) as
+        | { id: string }
+        | undefined;
+      if (owner) throw new Error("pushIdentifier is already registered to another active device");
       const result = this.database.connection
-        .prepare("UPDATE devices SET device_token = ?, environment = ?, active = 1, disabled_reason = NULL, updated_at = ? WHERE id = ?")
-        .run(token, environment, now, id);
+        .prepare(
+          "UPDATE devices SET device_token = ?, environment = ?, identifier_kind = ?, active = 1, disabled_reason = NULL, updated_at = ? WHERE id = ?",
+        )
+        .run(registration.pushIdentifier, registration.environment, registration.identifierKind, now, id);
       if (result.changes !== 1) throw new Error("Device not found");
     });
     update();
@@ -140,8 +254,10 @@ export class DeviceStore {
   disableIfCurrent(destination: DeviceRecord, reason: string, now: string): boolean {
     return this.database.connection
       .prepare(`UPDATE devices SET active = 0, disabled_reason = ?, updated_at = ?
-                WHERE id = ? AND active = 1 AND device_token = ? AND environment = ?`)
-      .run(reason, now, destination.id, destination.deviceToken, destination.environment).changes === 1;
+                WHERE id = ? AND active = 1 AND provider = ? AND device_token = ?
+                  AND identifier_kind = ? AND environment = ?`)
+      .run(reason, now, destination.id, destination.provider, destination.pushIdentifier,
+        destination.identifierKind, destination.environment ?? "production").changes === 1;
   }
 
   pruneInactive(before: string): number {
@@ -157,8 +273,10 @@ export class DeviceStore {
       .map((item) => (item as { term: string }).term);
     return {
       id: row.id,
-      deviceToken: row.device_token,
-      environment: row.environment,
+      pushIdentifier: row.device_token,
+      provider: row.provider,
+      identifierKind: row.identifier_kind,
+      environment: row.provider === "apns" ? row.environment : null,
       active: row.active === 1,
       disabledReason: row.disabled_reason,
       terms,

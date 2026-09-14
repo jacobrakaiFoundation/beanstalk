@@ -100,6 +100,19 @@ const MIGRATIONS = [
         ELSE NULL
       END;
   `,
+  `
+    DROP INDEX active_device_token_idx;
+    ALTER TABLE devices ADD COLUMN provider TEXT NOT NULL DEFAULT 'apns'
+      CHECK (provider IN ('apns', 'fcm'));
+    ALTER TABLE devices ADD COLUMN identifier_kind TEXT NOT NULL DEFAULT 'token'
+      CHECK (identifier_kind IN ('token', 'fid'));
+    CREATE UNIQUE INDEX active_push_identifier_idx
+      ON devices(provider, device_token, environment) WHERE active = 1;
+
+    ALTER TABLE delivery_queue ADD COLUMN failure_provider TEXT
+      CHECK (failure_provider IN ('apns', 'fcm'));
+    UPDATE delivery_queue SET failure_provider = 'apns' WHERE failure_kind = 'apns';
+  `,
 ] as const;
 
 interface PollStateRow {

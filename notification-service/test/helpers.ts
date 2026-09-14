@@ -1,5 +1,6 @@
 import type { DeliveryResult, PushMessage, PushSender } from "../src/apns.js";
 import type { AppDatabase } from "../src/database.js";
+import type { PushProvider } from "../src/devices.js";
 import type { StoredNotice } from "../src/domain.js";
 import { canonicalizeFdaUrl, noticeIdForUrl } from "../src/domain.js";
 import type { AnnouncementDocument, FdaSource } from "../src/sources.js";
@@ -18,6 +19,10 @@ export class FakeSender implements PushSender {
   async send(message: PushMessage): Promise<DeliveryResult> {
     this.messages.push(message);
     return this.results.shift() ?? { kind: "success" };
+  }
+
+  isConfigured(_provider: PushProvider): boolean {
+    return this.configured;
   }
 
   close(): void {}
