@@ -224,6 +224,32 @@ describe("RecallDetail", () => {
     expect(screen.getByText("—")).toBeTruthy();
   });
 
+  it("renders FSIS provenance: source, establishment, FSIS link, no FDA links", () => {
+    render(
+      <RecallDetail
+        recall={makeRecall({
+          source: "USDA-FSIS",
+          recallNumber: "FSIS-021-2026",
+          eventId: "",
+          productDescription: "Pork Cracklings",
+          establishmentNumber: "Est. 123",
+          hazard: "Import Violation",
+          link: "http://www.fsis.usda.gov/recalls-alerts/test",
+          moreCodeInfo: "Summary excerpt",
+        })}
+        onClose={() => {}}
+      />,
+    );
+    expect(screen.getByText("USDA-FSIS")).toBeTruthy();
+    expect(screen.getByText("Est. 123")).toBeTruthy();
+    expect(screen.getByText(/View on FSIS/)).toBeTruthy();
+    expect(screen.getByText(/View on FSIS/).getAttribute("href")).toBe(
+      "http://www.fsis.usda.gov/recalls-alerts/test",
+    );
+    expect(screen.queryByText(/View on FDA/)).toBeNull();
+    expect(screen.queryByText("raw openFDA JSON")).toBeNull();
+  });
+
   it("focuses the close button on mount", () => {
     render(<RecallDetail recall={makeRecall()} onClose={() => {}} />);
     expect(screen.getByRole("button", { name: /close/i })).toHaveFocus();

@@ -72,6 +72,16 @@ describe("RecallCard", () => {
     expect(screen.getByText("Ongoing")).toBeTruthy();
   });
 
+  it("renders source badge", () => {
+    render(<RecallCard recall={makeRecall()} onSelect={() => {}} isNew={false} watchlist={[]} />);
+    expect(screen.getByText("FDA")).toBeTruthy();
+  });
+
+  it("renders USDA-FSIS source badge for FSIS recalls", () => {
+    render(<RecallCard recall={makeRecall({ source: "USDA-FSIS" })} onSelect={() => {}} isNew={false} watchlist={[]} />);
+    expect(screen.getByText("USDA-FSIS")).toBeTruthy();
+  });
+
   it("renders firm location with the firm name when present", () => {
     render(<RecallCard recall={makeRecall({ state: "CA" })} onSelect={() => {}} isNew={false} watchlist={[]} />);
     expect(screen.getByText("Test Corp · New York, CA")).toBeTruthy();

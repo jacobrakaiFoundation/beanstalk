@@ -113,9 +113,14 @@ export default function RecallDetail({ recall, onClose, onSelectEvent }: Props) 
   const hazard = hazardLabel(recall.reasonForRecall);
   const firmLocation = [recall.city, recall.state].filter(Boolean).join(", ");
   const hasAddress = Boolean(recall.address1 || recall.postalCode);
+  const firmLocation = [recall.city, recall.state].filter(Boolean).join(", ");
   const address = [recall.address1, recall.address2, `${recall.city}, ${recall.state} ${recall.postalCode}`]
     .filter(Boolean)
     .join(", ");
+  const isFsis = recall.source === "USDA-FSIS";
+  const rawLink = recall.link ?? "";
+  const fsisLink =
+    isFsis && (rawLink.startsWith("http://") || rawLink.startsWith("https://")) ? rawLink : "";
   const classificationNote =
     recall.rawClassification && recall.rawClassification !== recall.classification
       ? ` (FDA value: “${recall.rawClassification}”)`
@@ -211,8 +216,10 @@ export default function RecallDetail({ recall, onClose, onSelectEvent }: Props) 
 
           <Section title="Record">
             <dl className="divide-y divide-zinc-100 dark:divide-zinc-800">
+              <Fact term="Source">{recall.source}</Fact>
               <Fact term="Recall #">{recall.recallNumber || "Not stated"}</Fact>
               <Fact term="Event">{recall.eventId || "Not stated"}</Fact>
+              {recall.establishmentNumber && <Fact term="Establishment">{recall.establishmentNumber}</Fact>}
               <Fact term="Classification">
                 {recall.classification}
                 {classificationNote}
@@ -225,29 +232,44 @@ export default function RecallDetail({ recall, onClose, onSelectEvent }: Props) 
                 <span className="hint block">{OPENFDA_AS_PUBLISHED}</span>
               </Fact>
             </dl>
-            <p className="mt-3">
-              <a
-                href={`https://www.accessdata.fda.gov/scripts/ires/index.cfm?Product=${encodeURIComponent(
-                  recall.productDescription.slice(0, 80),
-                )}#tabNav_advancedSearch`}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex min-h-[44px] items-center font-medium text-emerald-800 underline underline-offset-2 dark:text-emerald-300"
-              >
-                View on FDA Enforcement Reports →
-              </a>
-            </p>
-            <p className="hint">
-              Developer:{" "}
-              <a
-                href={`https://api.fda.gov/food/enforcement.json?search=recall_number:"${encodeURIComponent(recall.recallNumber)}"`}
-                target="_blank"
-                rel="noreferrer"
-                className="underline underline-offset-2"
-              >
-                raw openFDA JSON
-              </a>
-            </p>
+            {fsisLink ? (
+              <p className="mt-3">
+                <a
+                  href={fsisLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex min-h-[44px] items-center font-medium text-emerald-800 underline underline-offset-2 dark:text-emerald-300"
+                >
+                  View on FSIS →
+                </a>
+              </p>
+            ) : (
+              <p className="mt-3">
+                <a
+                  href={`https://www.accessdata.fda.gov/scripts/ires/index.cfm?Product=${encodeURIComponent(
+                    recall.productDescription.slice(0, 80),
+                  )}#tabNav_advancedSearch`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex min-h-[44px] items-center font-medium text-emerald-800 underline underline-offset-2 dark:text-emerald-300"
+                >
+                  View on FDA Enforcement Reports →
+                </a>
+              </p>
+            )}
+            {!isFsis && (
+              <p className="hint">
+                Developer:{" "}
+                <a
+                  href={`https://api.fda.gov/food/enforcement.json?search=recall_number:"${encodeURIComponent(recall.recallNumber)}"`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline underline-offset-2"
+                >
+                  raw openFDA JSON
+                </a>
+              </p>
+            )}
           </Section>
 
           {onSelectEvent && (

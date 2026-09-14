@@ -48,6 +48,7 @@ export default function RecallCard({ recall, onSelect, isNew, watchlist, dietary
         <div className="flex flex-wrap items-center gap-1.5">
           <RiskBadge classification={recall.classification} showClass={true} />
           <span className={statusChipClass(recall.status)}>{recall.status}</span>
+          <span className="chip chip-neutral">{recall.source}</span>
           {scope.label !== "Unclear" && (
             <span className="chip chip-neutral" title={scope.states.length > 0 ? scope.states.join(", ") : undefined}>
               {scope.label}
