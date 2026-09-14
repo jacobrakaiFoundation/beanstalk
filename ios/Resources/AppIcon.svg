@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="1024" height="1024">
+  <title>Beanstalk app icon</title>
+  <rect width="192" height="192" fill="#264f3b"/>
+  <g transform="scale(4)" fill="none" stroke="#f8f4e7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M17 17C10 18 6 13 7 8C13 8 18 11 17 17Z" fill="#f8f4e7" fill-opacity=".12" stroke-width="2"/>
+    <path d="M17 17C17 10 22 6 29 7C28 14 23 18 17 17Z" fill="#f8f4e7" fill-opacity=".2" stroke-width="2"/>
+    <path d="M17 17V40M17 29C18 25 22 23 27 23C33 23 37 27 37 32C37 38 33 41 27 41C21 41 17 37 17 32" stroke-width="3.5"/>
+  </g>
+</svg>

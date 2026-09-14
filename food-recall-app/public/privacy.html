@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#f8f6ee" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#111e17" media="(prefers-color-scheme: dark)">
+    <meta name="description" content="How Beanstalk for iPhone handles saved recalls, watchlists, notifications, and deletion.">
+    <title>Privacy — Beanstalk</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f8f6ee;
+        --paper: #fffdf7;
+        --text: #1b2d23;
+        --muted: #53614e;
+        --line: #c5ccbd;
+        --brand: #3d503d;
+        --focus: #047857;
+        --soft: #efeee4;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          color-scheme: dark;
+          --bg: #111e17;
+          --paper: #1b2d23;
+          --text: #f8f6ee;
+          --muted: #c5ccbd;
+          --line: #53614e;
+          --brand: #a0c3a3;
+          --focus: #6ee7b7;
+          --soft: #293c2e;
+        }
+      }
+      * { box-sizing: border-box; }
+      html { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.6; }
+      body { margin: 0; background: var(--bg); color: var(--text); }
+      a { color: var(--brand); text-underline-offset: 0.18em; text-decoration-thickness: 0.09em; }
+      a:hover { text-decoration-thickness: 0.14em; }
+      a:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; border-radius: 0.2rem; }
+      .skip { position: absolute; left: 1rem; top: -5rem; z-index: 2; padding: 0.65rem 0.9rem; background: var(--paper); border: 2px solid var(--brand); }
+      .skip:focus { top: 1rem; }
+      header { border-top: 4px solid var(--brand); border-bottom: 1px solid var(--line); background: var(--paper); }
+      .bar, main, footer { width: min(100% - 2rem, 48rem); margin-inline: auto; }
+      .bar { min-height: 4.5rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+      .brand { display: inline-flex; align-items: center; gap: 0.65rem; font-family: Georgia, Cambria, serif; font-size: 1.35rem; font-weight: 700; text-decoration: none; }
+      .mark { width: 2rem; height: 2rem; display: block; color: var(--brand); }
+      nav { display: flex; flex-wrap: wrap; gap: 1rem; font-size: 0.95rem; }
+      main { padding-block: clamp(2.5rem, 8vw, 5rem); }
+      h1, h2 { font-family: Georgia, Cambria, "Times New Roman", serif; line-height: 1.15; letter-spacing: -0.025em; }
+      h1 { margin: 0; font-size: clamp(2.35rem, 8vw, 4.5rem); max-width: 12ch; }
+      h2 { margin: 2.5rem 0 0.65rem; font-size: clamp(1.4rem, 4vw, 1.8rem); }
+      p, li { max-width: 70ch; }
+      .lede { color: var(--muted); font-size: clamp(1.05rem, 3vw, 1.25rem); max-width: 45rem; }
+      .meta { display: inline-block; margin-top: 1rem; padding: 0.35rem 0.65rem; border-radius: 999px; background: var(--soft); color: var(--muted); font-size: 0.86rem; font-weight: 650; }
+      .card { margin-top: 2rem; padding: clamp(1.2rem, 4vw, 2rem); border: 1px solid var(--line); border-radius: 1.25rem; background: var(--paper); box-shadow: 0 0.35rem 1.4rem rgb(17 30 23 / 7%); }
+      ul { padding-left: 1.3rem; }
+      li + li { margin-top: 0.6rem; }
+      .notice { border-left: 4px solid var(--brand); padding-left: 1rem; }
+      footer { padding-block: 2rem 3rem; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.9rem; }
+      footer p { margin: 0; }
+      @media (max-width: 34rem) {
+        .bar { align-items: flex-start; flex-direction: column; padding-block: 1rem; }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip" href="#content">Skip to privacy policy</a>
+    <header>
+      <div class="bar">
+        <a class="brand" href="./" aria-label="Beanstalk home">
+          <svg class="mark" viewBox="0 0 48 48" aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 42c0-13 1-22 4-31" stroke-width="3" />
+            <path d="M24 20C14 21 9 15 10 8c8 0 14 4 14 12Z" fill="currentColor" fill-opacity=".13" stroke-width="2.5" />
+            <path d="M25 15C27 7 33 4 40 6c-1 8-7 12-15 9Z" fill="currentColor" fill-opacity=".2" stroke-width="2.5" />
+          </svg>
+          <span>beanstalk</span>
+        </a>
+        <nav aria-label="Page links">
+          <a aria-current="page" href="privacy.html">Privacy</a>
+          <a href="support.html">Support</a>
+          <a href="./">Open the app</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="content">
+      <h1>Privacy, in plain language.</h1>
+      <p class="lede">No account. No ads. No tracking. Saved recalls stay on your iPhone. Alert data goes to the Foundation only when you choose to enable watchlist notifications.</p>
+      <span class="meta">Effective September 13, 2026</span>
+
+      <section class="card" aria-labelledby="summary-heading">
+        <h2 id="summary-heading">What stays on your iPhone</h2>
+        <p>Recalls you save are stored locally on your device. Beanstalk does not upload your saved-recall list. You can remove individual records from the Saved tab.</p>
+
+        <h2>What alerts send</h2>
+        <p>If you create a watchlist and enable notifications, Beanstalk sends the following to a service operated by JACOBRAKAI FOUNDATION:</p>
+        <ul>
+          <li>the words and phrases on your watchlist;</li>
+          <li>an Apple Push Notification service token unique to Beanstalk on that device; and</li>
+          <li>a random app credential used to update or delete that alert registration.</li>
+        </ul>
+        <p>The random credential is not based on your name, email address, Apple Account, or advertising identifier. It is stored in the iOS Keychain. The service uses this data only to match FDA-published food recall announcements and deliver the alerts you requested.</p>
+
+        <h2>How long alert data remains</h2>
+        <p>Your active watch terms, push token, random registration ID, and credential-verification hash remain until you use Remove this device from Beanstalk alerts in Settings. The full client secret stays in iOS Keychain. A registration that is replaced or rejected by Apple becomes inactive and is deleted with its watch terms within 30 days. Every notification delivery record, including a queued or retrying record, is also deleted within 30 days for reliability, security, and troubleshooting.</p>
+        <p>Encrypted rotating backups may retain a deleted server record for up to 14 additional days. Access is limited to authorized service operators. If a backup is restored, every restored alert registration is disabled and its pending notifications are canceled; alerts resume only after an iPhone with valid credentials refreshes its current Apple notification token. The application service records route names instead of full request URLs and does not retain search terms or client IP addresses. The same logging restriction applies to the production HTTPS gateway.</p>
+      </section>
+
+      <section id="choices" aria-labelledby="choices-heading">
+        <h2 id="choices-heading">Your choices and deletion</h2>
+        <ul>
+          <li>Use search, browse notices, and save recalls without enabling notifications.</li>
+          <li>Allow or deny notifications when iOS asks. You can change permission later in iOS Settings.</li>
+          <li>Open Beanstalk Settings → Notifications → Remove this device from Beanstalk alerts to remove the server registration and local alert credential.</li>
+          <li>Remove locally saved recalls separately from the Saved tab.</li>
+        </ul>
+        <p class="notice"><strong>Before uninstalling:</strong> use Remove this device from Beanstalk alerts if you want the server registration removed immediately. Deleting the app by itself does not reliably tell the service to delete it.</p>
+      </section>
+
+      <section aria-labelledby="services-heading">
+        <h2 id="services-heading">Services Beanstalk uses</h2>
+        <p><strong>FDA and openFDA.</strong> Browsing, searching, and opening original sources makes network requests to FDA services. FDA receives normal web-request information under its website policies. Beanstalk does not use those requests to build a search-history profile.</p>
+        <p><strong>Apple Push Notification service.</strong> Apple processes the app-specific token and notification delivery after you grant permission.</p>
+        <p><strong>The Foundation donation page and Stripe, only if you tap Donate.</strong> The Foundation's donation page opens outside Beanstalk in your browser. Stripe handles payment only if you choose to continue. No payment details are entered into or received by the app. A donation is optional and unlocks no feature.</p>
+      </section>
+
+      <section aria-labelledby="uses-heading">
+        <h2 id="uses-heading">What the Foundation does not do</h2>
+        <p>Beanstalk has no advertising SDK and does not sell or rent app data, show targeted ads, share app data with data brokers, or combine it with third-party data to track you across apps or websites.</p>
+
+        <h2>Safety and scope</h2>
+        <p>Beanstalk uses reasonable safeguards, including an app-specific credential stored in Keychain and encrypted HTTPS connections. No system is risk-free. This policy covers the Beanstalk iPhone app; websites you choose to open have their own policies.</p>
+        <p>Beanstalk is an independent project of JACOBRAKAI FOUNDATION. It is not affiliated with or endorsed by FDA. Recall information is not medical advice, and a search with no results does not establish that a product is safe.</p>
+
+        <h2>Questions</h2>
+        <p>Use the <a href="support.html">Beanstalk support page</a> for app or privacy questions. The Foundation's current public contact route is also available on its <a href="https://jacobrakai.org/about/">About page</a>.</p>
+      </section>
+    </main>
+
+    <footer>
+      <p>© 2026 JACOBRAKAI FOUNDATION · <a href="./">Beanstalk</a> · <a href="support.html">Support</a></p>
+    </footer>
+  </body>
+</html>
