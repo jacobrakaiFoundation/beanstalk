@@ -12,7 +12,7 @@ The intended users are people checking food products or dietary concerns, commun
 
 ## What exists today
 
-The free, accountless web app searches the openFDA food enforcement archive by product, company, and hazard. It supports state and dietary-term filters, local watchlists, saved query results, and source detail views. A separate Early Signals view labels CAERS adverse event reports as unverified.
+The free, accountless web app searches the openFDA food enforcement archive by product, company, and hazard. It supports state and dietary-term filters, local watchlists, locally cached query results, and source detail views. A separate Early Signals view labels CAERS adverse event reports as unverified.
 
 The repository also contains a native iPhone implementation and a notification service designed around FDA public announcements. That implementation is not evidence of an App Store release or operating production alerts. The [release checklist](app-store/release-checklist.md) tracks the required checks.
 
@@ -34,7 +34,7 @@ For a funded package, the proposed reporting format is a short progress note wit
 
 - [Working web application](https://jacobrakaifoundation.github.io/beanstalk/) and [dated demo screenshot](readme/app-demo-20260911.png), with fictional records explicitly labeled.
 - [Source and setup instructions](../README.md), [automated check runs](https://github.com/jacobrakaiFoundation/beanstalk/actions/workflows/ci.yml), and [open issues](https://github.com/jacobrakaiFoundation/beanstalk/issues).
-- [Privacy policy](../food-recall-app/public/privacy.html), [support page](../food-recall-app/public/support.html), and [native release checklist](app-store/release-checklist.md).
+- [Privacy policy](https://jacobrakaifoundation.github.io/beanstalk/privacy.html), [support page](https://jacobrakaifoundation.github.io/beanstalk/support.html), and [native release checklist](app-store/release-checklist.md).
 - [Foundation identity and contact details](https://jacobrakai.org/about/) and [donation information](https://jacobrakai.org/donate/).
 
 The proposed evaluation starts by establishing a baseline for task completion, source-finding time, and errors. Technical checks document software behavior; health outcomes have not been evaluated in this proposal.
