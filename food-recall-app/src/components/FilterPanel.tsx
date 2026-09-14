@@ -1,5 +1,5 @@
 import type { DietaryConcern } from "../lib/dietary";
-import { OPENFDA_AS_PUBLISHED, type RecallClassification } from "../types/recall";
+import { OPENFDA_AS_PUBLISHED, type RecallClassification, type RecallSource } from "../types/recall";
 import DietaryFilter from "./DietaryFilter";
 import StateFilter from "./StateFilter";
 
@@ -8,10 +8,12 @@ interface Props {
   status: string;
   state: string;
   dietary: DietaryConcern[];
+  source?: RecallSource | "";
   onClassification: (v: RecallClassification | "") => void;
   onStatus: (v: string) => void;
   onState: (v: string) => void;
   onDietary: (v: DietaryConcern[]) => void;
+  onSource?: (v: RecallSource | "") => void;
   onClear: () => void;
 }
 
@@ -20,8 +22,9 @@ export function countActiveFilters(
   status: string,
   state: string,
   dietary: DietaryConcern[],
+  source: RecallSource | "" = "",
 ): number {
-  return [classification, status, state].filter(Boolean).length + dietary.length;
+  return [classification, status, state, source].filter(Boolean).length + dietary.length;
 }
 
 export default function FilterPanel({
@@ -29,13 +32,15 @@ export default function FilterPanel({
   status,
   state,
   dietary,
+  source = "",
   onClassification,
   onStatus,
   onState,
   onDietary,
+  onSource = () => {},
   onClear,
 }: Props) {
-  const active = countActiveFilters(classification, status, state, dietary);
+  const active = countActiveFilters(classification, status, state, dietary, source);
   return (
     <div className="panel divide-y divide-zinc-100 dark:divide-zinc-800">
       <div className="flex items-center justify-between px-4 py-3">
@@ -76,6 +81,21 @@ export default function FilterPanel({
             <option value="Terminated">Terminated</option>
           </select>
           <p className="hint mt-1">{OPENFDA_AS_PUBLISHED}</p>
+        </div>
+        <div>
+          <label htmlFor="source-select" className="label mb-1">
+            Source
+          </label>
+          <select
+            id="source-select"
+            value={source}
+            onChange={(e) => onSource(e.target.value as RecallSource | "")}
+            className="input"
+          >
+            <option value="">All sources</option>
+            <option value="FDA">FDA</option>
+            <option value="USDA-FSIS">USDA-FSIS</option>
+          </select>
         </div>
         <StateFilter selected={state} onChange={onState} />
       </div>

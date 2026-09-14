@@ -1,7 +1,15 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.5.12/schema.json",
   "files": {
-    "includes": ["**", "!!dist", "!!node_modules", "!!coverage", "!!dev-dist", "!!package-lock.json"]
+    "includes": [
+      "**",
+      "!!dist",
+      "!!node_modules",
+      "!!coverage",
+      "!!dev-dist",
+      "!!package-lock.json",
+      "!!public/fsis-recalls.json"
+    ]
   },
   "formatter": {
     "enabled": true,

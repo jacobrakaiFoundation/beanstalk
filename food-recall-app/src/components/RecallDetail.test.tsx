@@ -243,9 +243,7 @@ describe("RecallDetail", () => {
     expect(screen.getByText("USDA-FSIS")).toBeTruthy();
     expect(screen.getByText("Est. 123")).toBeTruthy();
     expect(screen.getByText(/View on FSIS/)).toBeTruthy();
-    expect(screen.getByText(/View on FSIS/).getAttribute("href")).toBe(
-      "http://www.fsis.usda.gov/recalls-alerts/test",
-    );
+    expect(screen.getByText(/View on FSIS/).getAttribute("href")).toBe("http://www.fsis.usda.gov/recalls-alerts/test");
     expect(screen.queryByText(/View on FDA/)).toBeNull();
     expect(screen.queryByText("raw openFDA JSON")).toBeNull();
   });

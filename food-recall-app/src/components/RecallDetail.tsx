@@ -113,14 +113,12 @@ export default function RecallDetail({ recall, onClose, onSelectEvent }: Props) 
   const hazard = hazardLabel(recall.reasonForRecall);
   const firmLocation = [recall.city, recall.state].filter(Boolean).join(", ");
   const hasAddress = Boolean(recall.address1 || recall.postalCode);
-  const firmLocation = [recall.city, recall.state].filter(Boolean).join(", ");
   const address = [recall.address1, recall.address2, `${recall.city}, ${recall.state} ${recall.postalCode}`]
     .filter(Boolean)
     .join(", ");
   const isFsis = recall.source === "USDA-FSIS";
   const rawLink = recall.link ?? "";
-  const fsisLink =
-    isFsis && (rawLink.startsWith("http://") || rawLink.startsWith("https://")) ? rawLink : "";
+  const fsisLink = isFsis && (rawLink.startsWith("http://") || rawLink.startsWith("https://")) ? rawLink : "";
   const classificationNote =
     recall.rawClassification && recall.rawClassification !== recall.classification
       ? ` (FDA value: “${recall.rawClassification}”)`

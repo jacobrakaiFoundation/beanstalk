@@ -78,7 +78,9 @@ describe("RecallCard", () => {
   });
 
   it("renders USDA-FSIS source badge for FSIS recalls", () => {
-    render(<RecallCard recall={makeRecall({ source: "USDA-FSIS" })} onSelect={() => {}} isNew={false} watchlist={[]} />);
+    render(
+      <RecallCard recall={makeRecall({ source: "USDA-FSIS" })} onSelect={() => {}} isNew={false} watchlist={[]} />,
+    );
     expect(screen.getByText("USDA-FSIS")).toBeTruthy();
   });
 

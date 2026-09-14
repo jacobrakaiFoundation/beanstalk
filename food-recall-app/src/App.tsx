@@ -25,7 +25,7 @@ import { type DateSortDirection, sortRecallsByDate } from "./lib/sortRecalls";
 import { matchesWatchlist } from "./lib/watchlist";
 import type { AdverseEvent } from "./types/event";
 import { FDA_EVENT_DISCLAIMER } from "./types/event";
-import { OPENFDA_AS_PUBLISHED, type Recall, type RecallClassification } from "./types/recall";
+import { OPENFDA_AS_PUBLISHED, type Recall, type RecallClassification, type RecallSource } from "./types/recall";
 
 type AppTab = "recalls" | "events";
 
@@ -59,6 +59,7 @@ export default function App() {
   const [status, setStatus] = useState("");
   const [state, setState] = useState("");
   const [dietary, setDietary] = useState<DietaryConcern[]>([]);
+  const [source, setSource] = useState<RecallSource | "">("");
   const [selected, setSelected] = useState<Recall | null>(null);
   const [page, setPage] = useState(0);
   const [dateSort, setDateSort] = useState<DateSortDirection>("newest");
@@ -136,6 +137,7 @@ export default function App() {
     void debounced;
     void tab;
     void hazard;
+    void source;
     setPage((prev) => {
       if (prev !== 0) return 0;
       return prev;
@@ -144,7 +146,7 @@ export default function App() {
       if (prev !== 0) return 0;
       return prev;
     });
-  }, [classification, status, state, dietary, debounced, tab, hazard]);
+  }, [classification, status, state, dietary, debounced, tab, hazard, source]);
 
   useEffect(() => {
     if (page >= totalPages) setPage(totalPages - 1);
@@ -173,6 +175,7 @@ export default function App() {
       state,
       dietary,
       hazard,
+      source,
       signal: controller.signal,
     })
       .then(({ recalls: data, total: t, error: err, isStale: stale, isDemo: demo }) => {
@@ -213,7 +216,7 @@ export default function App() {
         setLoading(false);
       });
     return () => controller.abort();
-  }, [tab, debounced, page, classification, status, state, dietary, hazard, reloadKey]);
+  }, [tab, debounced, page, classification, status, state, dietary, hazard, source, reloadKey]);
 
   // Adverse events fetch
   useEffect(() => {
@@ -275,13 +278,14 @@ export default function App() {
   const showLastSynced = tab === "recalls" ? lastSynced : eventLastSynced;
   const onRetry = tab === "recalls" ? triggerReload : triggerEventReload;
 
-  const activeFilters = countActiveFilters(classification, status, state, dietary) + (hazard ? 1 : 0);
+  const activeFilters = countActiveFilters(classification, status, state, dietary, source) + (hazard ? 1 : 0);
   const clearAll = () => {
     setClassification("");
     setStatus("");
     setState("");
     setDietary([]);
     setHazard("");
+    setSource("");
     setQuery("");
   };
 
@@ -297,10 +301,12 @@ export default function App() {
         status={status}
         state={state}
         dietary={dietary}
+        source={source}
         onClassification={setClassification}
         onStatus={setStatus}
         onState={setState}
         onDietary={setDietary}
+        onSource={setSource}
         onClear={clearAll}
       />
       <WatchlistPanel items={watchlist} onAdd={addToWatchlist} onRemove={removeFromWatchlist} />

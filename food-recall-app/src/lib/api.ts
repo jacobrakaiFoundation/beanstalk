@@ -1,9 +1,9 @@
 import type { Recall, RecallClassification } from "../types/recall";
 import { buildDietaryPredicate, type DietaryConcern, matchesDietaryConcerns } from "./dietary";
+import { type FsisApiRecord, mapFsisRecord } from "./fsis";
 import { mockRecalls } from "./mockData";
 import { buildReasonCategoryPredicate, categorizeReason, isReasonCategory } from "./reasonCategory";
 import { STATE_NAMES } from "./usStates";
-import { mapFsisRecord, type FsisApiRecord } from "./fsis";
 
 // ---------- FSIS (USDA) recalls ----------
 
@@ -278,6 +278,7 @@ export function buildCacheKey(
   limit: number,
   skip: number,
   hazard: string,
+  source: string,
 ): string {
   const sortedDietary = [...dietary].sort();
   return JSON.stringify([
@@ -289,6 +290,7 @@ export function buildCacheKey(
     limit,
     skip,
     hazard,
+    source,
   ]);
 }
 
@@ -420,6 +422,7 @@ export async function fetchRecalls(params?: {
   dietary?: string[];
   /** Reason category name from reasonCategory.ts; filters reason_for_recall server-side. */
   hazard?: string;
+  source?: string;
   signal?: AbortSignal;
 }): Promise<FetchResult> {
   const limit = params?.limit ?? 20;
@@ -430,6 +433,7 @@ export async function fetchRecalls(params?: {
   const state = params?.state || "";
   const dietary = params?.dietary || [];
   const hazard = params?.hazard || "";
+  const source = params?.source || "";
   const predicates: string[] = [];
   if (classification) predicates.push(`classification:"${sanitizeSearchQuery(classification)}"`);
   if (hazard && isReasonCategory(hazard)) predicates.push(buildReasonCategoryPredicate(hazard));
@@ -466,7 +470,7 @@ export async function fetchRecalls(params?: {
       isDemo: false,
     };
   }
-  const cacheKey = buildCacheKey(search, classification, status, state, dietary, limit, cappedSkip, hazard);
+  const cacheKey = buildCacheKey(search, classification, status, state, dietary, limit, cappedSkip, hazard, source);
   const cachedEntry = getCacheEntry(cacheKey);
   const cached = cachedEntry?.data ?? null;
   const demo = isDemoMode();
@@ -489,6 +493,7 @@ export async function fetchRecalls(params?: {
     if (state) filtered = filtered.filter((r) => matchesDistributionPattern(r.distributionPattern, state));
     if (dietary.length > 0) filtered = filtered.filter((r) => matchesDietaryConcerns(r, dietary as DietaryConcern[]));
     if (hazard) filtered = filtered.filter((r) => categorizeReason(r.reasonForRecall) === hazard);
+    if (source) filtered = filtered.filter((r) => r.source === source);
     const total = filtered.length;
     const paged = filtered.slice(cappedSkip, cappedSkip + limit);
     return { recalls: paged, total, error: null, isStale: false, lastSynced: getLastSynced(), isDemo: true };
@@ -499,8 +504,8 @@ export async function fetchRecalls(params?: {
       const err: FetchError = { code: "NETWORK", message: "Aborted", retryable: false };
       return { recalls: [], total: 0, error: err, isStale: false, lastSynced: getLastSynced(), isDemo: false };
     }
-    // Start FSIS fetch in parallel with FDA fetch
-    const fsisPromise = fetchFsisRecalls(params?.signal);
+    // Start FSIS fetch in parallel with FDA fetch (skip when FDA-only)
+    const fsisPromise = source === "FDA" ? Promise.resolve([] as Recall[]) : fetchFsisRecalls(params?.signal);
     const isBrowser = typeof window !== "undefined" && window.location.origin !== "null";
     const proxyBase = isBrowser
       ? `${window.location.origin}/api/food/enforcement.json`
@@ -638,29 +643,68 @@ export async function fetchRecalls(params?: {
     const fdaTotal = typeof data.meta?.results?.total === "number" ? data.meta.results.total : fdaRecalls.length;
 
     // Merge FSIS recalls (page 0 only)
+    // When the user filters to a single source, return only that source.
     let recalls = fdaRecalls;
     let total = fdaTotal;
-    try {
-      const fsisRecalls = await fsisPromise;
-      if (fsisRecalls.length > 0) {
-        const filteredFsis = filterFsisRecalls(fsisRecalls, { search, classification, status, state, dietary, hazard });
-        if (filteredFsis.length > 0 && cappedSkip === 0) {
-          // Prepend FSIS recalls to page 0, dedup against FDA
-          const fdaIds = new Set(fdaRecalls.map((r) => r.id));
-          const newFsis = filteredFsis.filter((r) => !fdaIds.has(r.id));
-          // Sort merged by date descending
-          const merged = [...newFsis, ...fdaRecalls];
-          merged.sort((a, b) => {
+    if (source === "FDA") {
+      // Ignore FSIS entirely
+    } else if (source === "USDA-FSIS") {
+      try {
+        const fsisRecalls = await fsisPromise;
+        const filteredFsis = filterFsisRecalls(fsisRecalls, {
+          search,
+          classification,
+          status,
+          state,
+          dietary,
+          hazard,
+        });
+        if (cappedSkip === 0) {
+          const sorted = [...filteredFsis].sort((a, b) => {
             const da = a.recallInitiationDate || "";
             const db = b.recallInitiationDate || "";
             return db.localeCompare(da);
           });
-          recalls = merged.slice(0, limit);
-          total = fdaTotal + filteredFsis.length;
+          recalls = sorted.slice(0, limit);
+          total = filteredFsis.length;
+        } else {
+          recalls = [];
+          total = filteredFsis.length;
         }
+      } catch {
+        recalls = [];
+        total = 0;
       }
-    } catch {
-      /* FSIS failure is non-fatal */
+    } else {
+      try {
+        const fsisRecalls = await fsisPromise;
+        if (fsisRecalls.length > 0) {
+          const filteredFsis = filterFsisRecalls(fsisRecalls, {
+            search,
+            classification,
+            status,
+            state,
+            dietary,
+            hazard,
+          });
+          if (filteredFsis.length > 0 && cappedSkip === 0) {
+            // Prepend FSIS recalls to page 0, dedup against FDA
+            const fdaIds = new Set(fdaRecalls.map((r) => r.id));
+            const newFsis = filteredFsis.filter((r) => !fdaIds.has(r.id));
+            // Sort merged by date descending
+            const merged = [...newFsis, ...fdaRecalls];
+            merged.sort((a, b) => {
+              const da = a.recallInitiationDate || "";
+              const db = b.recallInitiationDate || "";
+              return db.localeCompare(da);
+            });
+            recalls = merged.slice(0, limit);
+            total = fdaTotal + filteredFsis.length;
+          }
+        }
+      } catch {
+        /* FSIS failure is non-fatal */
+      }
     }
 
     setCache(cacheKey, { recalls, total });
