@@ -5,6 +5,7 @@ import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -52,6 +53,7 @@ class BeanstalkMessagingService : FirebaseMessagingService() {
             }
             .build()
         val intent = Intent(this, MainActivity::class.java).apply {
+            component = ComponentName(this@BeanstalkMessagingService, MainActivity::class.java)
             action = Intent.ACTION_VIEW
             data = uri
             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
@@ -60,7 +62,7 @@ class BeanstalkMessagingService : FirebaseMessagingService() {
             this,
             target.noticeID.hashCode(),
             intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            PendingIntent.FLAG_IMMUTABLE,
         )
         val title = message.notification?.title ?: message.data["title"] ?: "Recall watchlist match"
         val body = message.notification?.body ?: message.data["body"]
