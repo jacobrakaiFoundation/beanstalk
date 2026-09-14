@@ -1,4 +1,5 @@
 export type RecallClassification = "Class I" | "Class II" | "Class III" | "Not Yet Classified" | "Unknown";
+export type RecallSource = "FDA" | "USDA-FSIS";
 
 /** Records are an openFDA snapshot, not a live FDA recall-lifecycle feed. */
 export const OPENFDA_AS_PUBLISHED = "As published by openFDA — not a live FDA recall lifecycle.";
@@ -29,6 +30,11 @@ export interface Recall {
   initialFirmNotification: string;
   productQuantity: string;
   terminationDate: string;
+  source: RecallSource;
+  // FSIS-specific fields (empty for FDA recalls)
+  establishmentNumber?: string;
+  hazard?: string;
+  link?: string;
 }
 export interface OpenFDAResponse {
   meta: { results: { total: number; skip: number; limit: number } };

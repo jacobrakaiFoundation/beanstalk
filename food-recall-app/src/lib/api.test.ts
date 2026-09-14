@@ -4,6 +4,7 @@ import {
   buildGroupedSearchClause,
   buildSearchParam,
   clearCache,
+  fetchFsisRecalls,
   fetchRecalls,
   sanitizeSearchQuery,
 } from "./api";
@@ -308,7 +309,14 @@ describe("fetchRecalls — no synthetic fallback", () => {
         meta: { results: { total: 1 } },
       }),
     } as Response);
-    const fetchMock = vi.fn().mockReturnValueOnce(firstPromise).mockReturnValueOnce(secondPromise);
+    const fsisEmpty = { ok: true, json: async () => [] };
+    let fdaCallCount = 0;
+    const fetchMock = vi.fn((url: unknown) => {
+      // FSIS side-fetch resolves to an empty API response; FDA calls keep their queued order
+      if (String(url).includes("/api/fsis-recalls")) return Promise.resolve(fsisEmpty);
+      fdaCallCount += 1;
+      return fdaCallCount === 1 ? firstPromise : secondPromise;
+    });
     vi.stubGlobal("fetch", fetchMock);
     // Start first
     const p1 = fetchRecalls({ search: "first", limit: 6, skip: 0 });
@@ -335,8 +343,43 @@ describe("fetchRecalls — no synthetic fallback", () => {
     // Both resolve, caller would use generation to keep second
     expect(r1.recalls[0].productDescription).toBe("First");
     expect(r2.recalls[0].productDescription).toBe("Second");
-    // Verify fetch called twice with different search params
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    // Verify FDA fetch called twice with different search params (excluding FSIS side-fetch)
+    const fdaUrls = fetchMock.mock.calls.map((call) => String(call[0])).filter((u) => !u.includes("/api/fsis-recalls"));
+    expect(fdaUrls).toHaveLength(2);
+    expect(fdaUrls[0]).toContain("first");
+    expect(fdaUrls[1]).toContain("second");
+  });
+
+  it("fetchFsisRecalls maps FSIS API records to Recall in dev", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => [
+          {
+            field_title: "Acme Foods Recalls Contaminated Widgets",
+            field_recall_number: "001-2026",
+            field_recall_url: "http://www.fsis.usda.gov/recalls-alerts/acme",
+            field_recall_type: "Active Recall",
+            field_recall_classification: "Class I",
+            field_recall_reason: ["Product Contamination"],
+            field_recall_date: "2026-01-15",
+            field_states: ["Texas"],
+            field_establishment: ["Est. 123"],
+            field_product_items: "10-lb boxes",
+            field_summary: "<p>Summary.</p>",
+            field_archive_recall: "False",
+          },
+        ],
+      }),
+    );
+    const recalls = await fetchFsisRecalls();
+    expect(recalls.length).toBe(1);
+    expect(recalls[0].id).toBe("FSIS-001-2026");
+    expect(recalls[0].source).toBe("USDA-FSIS");
+    expect(recalls[0].classification).toBe("Class I");
+    expect(recalls[0].recallingFirm).toBe("Acme Foods");
+    expect(recalls[0].establishmentNumber).toBe("Est. 123");
   });
 });
 
@@ -532,20 +575,24 @@ describe("SPA static host fallback (#90)", () => {
         throw new SyntaxError("Unexpected token <");
       },
     };
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(htmlResponse) // proxy returns HTML
-      .mockResolvedValueOnce(goodJsonResponse); // direct FDA returns JSON
+    const fsisEmpty = { ok: true, json: async () => [] };
+    const fetchMock = vi.fn((url: unknown) => {
+      const u = String(url);
+      if (u.includes("/api/fsis-recalls")) return Promise.resolve(fsisEmpty); // FSIS side-fetch: empty API response
+      if (u.includes("api.fda.gov")) return Promise.resolve(goodJsonResponse); // direct FDA returns JSON
+      return Promise.resolve(htmlResponse); // proxy returns SPA shell HTML
+    });
     vi.stubGlobal("fetch", fetchMock);
 
     const res = await fetchRecalls({ search: "", limit: 6, skip: 0 });
     expect(res.error).toBeNull();
     expect(res.recalls.length).toBe(1);
     expect(res.recalls[0].productDescription).toBe("Direct");
-    // Verify fetch was called twice: proxy then direct
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    const secondCallUrl = fetchMock.mock.calls[1][0] as string;
-    expect(secondCallUrl).toContain("api.fda.gov/food/enforcement.json");
+    // Verify fallback: FSIS side-fetch + proxy (HTML) + direct FDA
+    const urls = fetchMock.mock.calls.map((call) => String(call[0]));
+    expect(urls).toHaveLength(3);
+    expect(urls.filter((u) => u.includes("/api/food/enforcement.json"))).toHaveLength(1);
+    expect(urls.filter((u) => u.includes("api.fda.gov/food/enforcement.json"))).toHaveLength(1);
   });
 
   it("JSON parse failure returns MALFORMED, not NETWORK", async () => {

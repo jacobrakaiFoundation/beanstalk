@@ -28,6 +28,7 @@ const makeRecall = (overrides: Partial<Recall> = {}): Recall => ({
   initialFirmNotification: "",
   productQuantity: "",
   terminationDate: "",
+  source: "FDA",
   ...overrides,
 });
 
