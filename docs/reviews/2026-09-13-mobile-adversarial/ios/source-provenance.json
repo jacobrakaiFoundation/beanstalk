@@ -1,0 +1,58 @@
+{
+  "prHeads": {
+    "PR142": "e4c590e86717de181e049c348925e6024a8fa3a4",
+    "PR144": "f22a0032aec14a1f8d1ca5b5e1a75c38de7991d3"
+  },
+  "sourceFiles": {
+    "ios/Core/Sources/BeanstalkCore/OpenFDA.swift": {
+      "sha256": "d0a19dae36851ec4f75488e9f436328156ca1d14e545f2ca419d58bfd6cc7f85",
+      "PR142MatchesWorkingTree": true,
+      "PR144MatchesWorkingTree": true
+    },
+    "ios/App/Networking/NotificationRegistrationService.swift": {
+      "sha256": "16d7aa6405532c96110b34f5d6a3538f39fe042af344eb19d812fc714dbc2f0c",
+      "PR142MatchesWorkingTree": true,
+      "PR144MatchesWorkingTree": true
+    },
+    "ios/Core/Sources/BeanstalkCore/SerializedAsyncQueue.swift": {
+      "sha256": "6f5e516507b6fb64e0efe504e2a140976c688b6ca1c6d6aef3a381a6fb348e3c",
+      "PR142MatchesWorkingTree": true,
+      "PR144MatchesWorkingTree": true
+    },
+    "ios/Core/Sources/BeanstalkCore/WatchMatcher.swift": {
+      "sha256": "2c7c04db66758e3613603b0eb07904668045f2d00bae09b73c7ccc4d4edd76aa",
+      "PR142MatchesWorkingTree": true,
+      "PR144MatchesWorkingTree": true
+    },
+    "ios/Core/Sources/BeanstalkCore/AlertControlPolicy.swift": {
+      "sha256": "936dd18a3329ad821b7952e1edea04d27ddeae159bad9625c2489f34f7f7afb0",
+      "PR142MatchesWorkingTree": true,
+      "PR144MatchesWorkingTree": true
+    },
+    "ios/App/Views/WatchlistView.swift": {
+      "sha256": "d228fbf0f31129710e80c2b3b49cdf7f332d7cc56f37c951a32b2fe075309316",
+      "PR142MatchesWorkingTree": true,
+      "PR144MatchesWorkingTree": true
+    },
+    "ios/App/ViewModels/WatchlistViewModel.swift": {
+      "sha256": "12974dbe59e78f06709c6d9c7dbacb03e9a35229689bac8ba5e2260ac88b294d",
+      "PR142MatchesWorkingTree": true,
+      "PR144MatchesWorkingTree": true
+    },
+    "ios/App/Networking/APIClient.swift": {
+      "sha256": "f3776e4afbfc38b621021e00b318e8f4b35d7bc76c40ecd8551db3c0f9f30407",
+      "PR142MatchesWorkingTree": true,
+      "PR144MatchesWorkingTree": true
+    },
+    "ios/App/Networking/DeviceAPI.swift": {
+      "sha256": "285a17ee625c7c3ce7ff9e2fab18f60c9d290b34c4d8a7202adf885f89cbf947",
+      "PR142MatchesWorkingTree": true,
+      "PR144MatchesWorkingTree": true
+    }
+  },
+  "entireIOSTreesIdenticalBetweenPRs": true,
+  "probeSources": {
+    "beanstalk-ios-date-probe.swift": "3e7469fce25b442fc4251fba55308879a3df29a3c9d5073149b2c32244c25bd6",
+    "beanstalk-ios-registration-probe.swift": "fc59030a98e6fac84670da2c949c79c1e429c865ddfcc5afca8705a49dad5d49"
+  }
+}

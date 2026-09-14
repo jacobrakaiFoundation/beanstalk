@@ -1,8 +1,8 @@
-import type { PushSender } from "./apns.js";
 import type { AppDatabase } from "./database.js";
 import { publicNotice } from "./database.js";
-import type { ApnsEnvironment, DeviceStore } from "./devices.js";
+import type { DeviceStore, PushProvider } from "./devices.js";
 import { findNoticeMatch } from "./domain.js";
+import type { PushSender } from "./push.js";
 
 interface QueueRow {
   id: number;
@@ -12,8 +12,6 @@ interface QueueRow {
   matched_field: string;
   attempts: number;
   publication_date: string;
-  device_token: string;
-  environment: ApnsEnvironment;
 }
 
 export const MAXIMUM_ALERT_AGE_MS = 24 * 60 * 60 * 1_000;
@@ -23,11 +21,18 @@ export interface QueueHealth {
   retrying: number;
   sending: number;
   failed: number;
+  recentPushFailures: number;
+  lastPushFailureAt: string | null;
+  lastPushFailureCode: string | null;
   recentApnsFailures: number;
   lastApnsFailureAt: string | null;
   lastApnsFailureCode: string | null;
+  recentFcmFailures: number;
+  lastFcmFailureAt: string | null;
+  lastFcmFailureCode: string | null;
   lastSentAt: string | null;
   oldestPendingAt: string | null;
+  oldestPendingAgeSeconds: number | null;
 }
 
 function safeErrorCode(value: string): string {
@@ -96,28 +101,32 @@ export class NotificationQueue {
     this.cancelIneligiblePending(now);
     if (!this.sender.configured) return 0;
     if (!this.deliveryAllowed()) return 0;
+    const apnsConfigured = this.sender.isConfigured("apns") ? 1 : 0;
+    const fcmConfigured = this.sender.isConfigured("fcm") ? 1 : 0;
     const due = this.database.connection
       .prepare(`
         SELECT q.id, q.notice_id, q.device_id, q.matched_term, q.matched_field, q.attempts,
-               n.publication_date, d.device_token, d.environment
+               n.publication_date
         FROM delivery_queue q
         JOIN notices n ON n.id = q.notice_id
         JOIN devices d ON d.id = q.device_id
         WHERE q.status IN ('queued', 'retry') AND q.next_attempt_at <= ? AND d.active = 1
+          AND ((d.provider = 'apns' AND ? = 1) OR (d.provider = 'fcm' AND ? = 1))
         ORDER BY q.next_attempt_at, q.id
         LIMIT ?
       `)
-      .all(now, limit) as QueueRow[];
+      .all(now, apnsConfigured, fcmConfigured, limit) as QueueRow[];
     let processed = 0;
     for (const row of due) {
       if (!this.deliveryAllowed()) break;
-      // Registration updates can occur while an earlier send is awaiting APNs.
-      // Resolve the destination immediately before claiming this row.
+      // Previous sends yield to registration updates. Resolve this job's
+      // destination immediately before claiming it, not from the batch snapshot.
       const destination = this.devices.get(row.device_id);
       if (!destination?.active) {
         this.cancelPermanently(row.id, "device_disabled", now);
         continue;
       }
+      if (!this.sender.isConfigured(destination.provider)) continue;
       const dateFailure = this.alertDateFailure(row.publication_date, now);
       if (dateFailure) {
         this.cancelPermanently(row.id, dateFailure, now);
@@ -164,7 +173,9 @@ export class NotificationQueue {
         .prepare("UPDATE delivery_queue SET matched_term = ?, matched_field = ? WHERE id = ?")
         .run(match.term, match.field, row.id);
       const result = await this.sender.send({
-        deviceToken: destination.deviceToken,
+        provider: destination.provider,
+        pushIdentifier: destination.pushIdentifier,
+        identifierKind: destination.identifierKind,
         environment: destination.environment,
         noticeId: notice.id,
         title: truncate(notice.title, 100),
@@ -193,20 +204,23 @@ export class NotificationQueue {
               .run(now, now, row.id);
             return;
           }
-          this.failPermanently(row.id, attempt, code, "apns", now);
+          this.failPermanently(row.id, attempt, code, destination.provider, now);
           this.database.connection
             .prepare("UPDATE delivery_queue SET status = 'permanent_failure', last_error_code = 'device_disabled', failure_kind = 'canceled', updated_at = ? WHERE device_id = ? AND status IN ('queued', 'retry')")
             .run(now, row.device_id);
         });
         disable();
       } else if (result.kind === "transient" && attempt < this.maximumAttempts) {
-        const delaySeconds = Math.min(30 * 2 ** (attempt - 1), 6 * 60 * 60);
+        const delaySeconds = Math.min(
+          Math.max(30 * 2 ** (attempt - 1), result.retryAfterSeconds ?? 0),
+          6 * 60 * 60,
+        );
         const next = new Date(Date.parse(now) + delaySeconds * 1000).toISOString();
         this.database.connection
           .prepare("UPDATE delivery_queue SET status = 'retry', attempts = ?, next_attempt_at = ?, last_error_code = ?, updated_at = ? WHERE id = ?")
           .run(attempt, next, safeErrorCode(result.code), now, row.id);
       } else {
-        this.failPermanently(row.id, attempt, safeErrorCode(result.code), "apns", now);
+        this.failPermanently(row.id, attempt, safeErrorCode(result.code), destination.provider, now);
       }
       processed += 1;
     }
@@ -222,31 +236,57 @@ export class NotificationQueue {
     const details = this.database.connection
       .prepare(`
         SELECT
-          SUM(CASE WHEN failure_kind = 'apns' AND updated_at >= ? THEN 1 ELSE 0 END) AS recent_apns_failures,
-          MAX(CASE WHEN failure_kind = 'apns' THEN updated_at END) AS last_apns_failure_at,
+          SUM(CASE WHEN failure_provider IS NOT NULL AND updated_at >= ? THEN 1 ELSE 0 END) AS recent_push_failures,
+          MAX(CASE WHEN failure_provider IS NOT NULL THEN updated_at END) AS last_push_failure_at,
+          SUM(CASE WHEN failure_provider = 'apns' AND updated_at >= ? THEN 1 ELSE 0 END) AS recent_apns_failures,
+          MAX(CASE WHEN failure_provider = 'apns' THEN updated_at END) AS last_apns_failure_at,
+          SUM(CASE WHEN failure_provider = 'fcm' AND updated_at >= ? THEN 1 ELSE 0 END) AS recent_fcm_failures,
+          MAX(CASE WHEN failure_provider = 'fcm' THEN updated_at END) AS last_fcm_failure_at,
           MAX(sent_at) AS last_sent_at,
           MIN(CASE WHEN status IN ('queued', 'retry', 'sending') THEN created_at END) AS oldest_pending_at
         FROM delivery_queue
       `)
-      .get(recentCutoff) as {
+      .get(recentCutoff, recentCutoff, recentCutoff) as {
+        recent_push_failures: number | null;
+        last_push_failure_at: string | null;
         recent_apns_failures: number | null;
         last_apns_failure_at: string | null;
+        recent_fcm_failures: number | null;
+        last_fcm_failure_at: string | null;
         last_sent_at: string | null;
         oldest_pending_at: string | null;
       };
-    const lastApnsFailure = this.database.connection
-      .prepare("SELECT last_error_code FROM delivery_queue WHERE failure_kind = 'apns' ORDER BY updated_at DESC, id DESC LIMIT 1")
-      .get() as { last_error_code: string | null } | undefined;
+    const lastFailure = (provider?: PushProvider): { last_error_code: string | null } | undefined => this.database.connection
+      .prepare(`SELECT last_error_code FROM delivery_queue WHERE failure_provider ${provider ? "= ?" : "IS NOT NULL"} ORDER BY updated_at DESC, id DESC LIMIT 1`)
+      .get(...(provider ? [provider] : [])) as { last_error_code: string | null } | undefined;
+    const lastPushFailure = lastFailure();
+    const lastApnsFailure = lastFailure("apns");
+    const lastFcmFailure = lastFailure("fcm");
+    const oldestPendingMilliseconds = details.oldest_pending_at
+      ? Date.parse(details.oldest_pending_at)
+      : Number.NaN;
+    const nowMilliseconds = Date.parse(now);
+    const oldestPendingAgeSeconds =
+      Number.isFinite(oldestPendingMilliseconds) && Number.isFinite(nowMilliseconds)
+        ? Math.max(0, Math.floor((nowMilliseconds - oldestPendingMilliseconds) / 1000))
+        : null;
     return {
       queued: count("queued"),
       retrying: count("retry"),
       sending: count("sending"),
       failed: count("permanent_failure"),
+      recentPushFailures: details.recent_push_failures ?? 0,
+      lastPushFailureAt: details.last_push_failure_at,
+      lastPushFailureCode: lastPushFailure?.last_error_code ?? null,
       recentApnsFailures: details.recent_apns_failures ?? 0,
       lastApnsFailureAt: details.last_apns_failure_at,
       lastApnsFailureCode: lastApnsFailure?.last_error_code ?? null,
+      recentFcmFailures: details.recent_fcm_failures ?? 0,
+      lastFcmFailureAt: details.last_fcm_failure_at,
+      lastFcmFailureCode: lastFcmFailure?.last_error_code ?? null,
       lastSentAt: details.last_sent_at,
       oldestPendingAt: details.oldest_pending_at,
+      oldestPendingAgeSeconds,
     };
   }
 
@@ -307,11 +347,13 @@ export class NotificationQueue {
     id: number,
     attempts: number,
     code: string,
-    failureKind: "apns" | "internal",
+    failureKind: PushProvider | "internal",
     now: string,
   ): void {
+    const legacyFailureKind = failureKind === "fcm" ? null : failureKind;
+    const provider = failureKind === "internal" ? null : failureKind;
     this.database.connection
-      .prepare("UPDATE delivery_queue SET status = 'permanent_failure', attempts = ?, last_error_code = ?, failure_kind = ?, updated_at = ? WHERE id = ?")
-      .run(attempts, code, failureKind, now, id);
+      .prepare("UPDATE delivery_queue SET status = 'permanent_failure', attempts = ?, last_error_code = ?, failure_kind = ?, failure_provider = ?, updated_at = ? WHERE id = ?")
+      .run(attempts, code, legacyFailureKind, provider, now, id);
   }
 }

@@ -1,26 +1,9 @@
 import * as http2 from "node:http2";
 import { importPKCS8, SignJWT } from "jose";
-import type { ApnsEnvironment } from "./devices.js";
+import type { DeliveryResult, ProviderPushSender, PushMessage } from "./push.js";
+import { RoutedPushSender, type PushSender } from "./push.js";
 
-export interface PushMessage {
-  deviceToken: string;
-  environment: ApnsEnvironment;
-  noticeId: string;
-  title: string;
-  body: string;
-  matchedTerm: string;
-  matchedField: string;
-}
-
-export type DeliveryResult =
-  | { kind: "success" }
-  | { kind: "transient" | "invalid" | "permanent"; code: string };
-
-export interface PushSender {
-  readonly configured: boolean;
-  send(message: PushMessage): Promise<DeliveryResult>;
-  close(): void;
-}
+export type { DeliveryResult, PushMessage, PushSender } from "./push.js";
 
 interface ApnsCredentials {
   teamId: string;
@@ -46,7 +29,8 @@ export function apnsExpirationHeader(nowMilliseconds = Date.now()): string {
   return String(Math.floor(nowMilliseconds / 1000) + APNS_EXPIRATION_SECONDS);
 }
 
-export class DisabledPushSender implements PushSender {
+export class DisabledApnsPushSender implements ProviderPushSender {
+  readonly provider = "apns" as const;
   readonly configured = false;
 
   async send(_message: PushMessage): Promise<DeliveryResult> {
@@ -56,7 +40,8 @@ export class DisabledPushSender implements PushSender {
   close(): void {}
 }
 
-export class ApnsPushSender implements PushSender {
+export class ApnsPushSender implements ProviderPushSender {
+  readonly provider = "apns" as const;
   readonly configured = true;
   private signingKey: CryptoKey | null = null;
   private providerToken: { value: string; expiresAt: number } | null = null;
@@ -64,6 +49,9 @@ export class ApnsPushSender implements PushSender {
   constructor(private readonly credentials: ApnsCredentials) {}
 
   async send(message: PushMessage): Promise<DeliveryResult> {
+    if (message.provider !== "apns" || message.environment === null) {
+      return { kind: "permanent", code: "apns_registration_invalid" };
+    }
     try {
       const token = await this.getProviderToken();
       const host =
@@ -80,7 +68,7 @@ export class ApnsPushSender implements PushSender {
         matchedTerm: message.matchedTerm,
         matchedField: message.matchedField,
       });
-      const response = await this.request(host, message.deviceToken, token, payload);
+      const response = await this.request(host, message.pushIdentifier, token, payload);
       if (response.status === 200) return { kind: "success" };
       if (response.status === 410 || INVALID_REASONS.has(response.reason)) {
         return { kind: "invalid", code: response.reason || `http_${response.status}` };
@@ -163,9 +151,14 @@ export class ApnsPushSender implements PushSender {
   }
 }
 
-export function createPushSender(credentials: Partial<ApnsCredentials>): PushSender {
+export function createApnsPushSender(credentials: Partial<ApnsCredentials>): ProviderPushSender {
   if (!credentials.teamId || !credentials.keyId || !credentials.bundleId || !credentials.privateKey) {
-    return new DisabledPushSender();
+    return new DisabledApnsPushSender();
   }
   return new ApnsPushSender(credentials as ApnsCredentials);
+}
+
+/** @deprecated Use createApnsPushSender and RoutedPushSender for multi-provider delivery. */
+export function createPushSender(credentials: Partial<ApnsCredentials>): PushSender {
+  return new RoutedPushSender([createApnsPushSender(credentials)]);
 }

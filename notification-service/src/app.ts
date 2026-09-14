@@ -1,10 +1,10 @@
 import rateLimit from "@fastify/rate-limit";
 import Fastify, { LogController, type FastifyInstance, type FastifyRequest } from "fastify";
 import type { Writable } from "node:stream";
-import type { PushSender } from "./apns.js";
 import type { AppDatabase } from "./database.js";
 import { publicNotice } from "./database.js";
-import type { ApnsEnvironment, DeviceRecord, DeviceStore } from "./devices.js";
+import type { ApnsEnvironment, DeviceRecord, DeviceRegistration, DeviceStore, PushIdentifierKind, PushProvider } from "./devices.js";
+import type { PushSender } from "./push.js";
 import type { NotificationQueue } from "./queue.js";
 
 interface AppDependencies {
@@ -22,6 +22,49 @@ interface AppDependencies {
 interface ErrorBody {
   error: { code: string; message: string };
 }
+
+interface DeviceRegistrationBody {
+  deviceToken?: string;
+  environment?: ApnsEnvironment;
+  provider?: PushProvider;
+  pushIdentifier?: string;
+  identifierKind?: PushIdentifierKind;
+}
+
+const deviceRegistrationSchema = {
+  oneOf: [
+    {
+      type: "object",
+      required: ["deviceToken", "environment"],
+      additionalProperties: false,
+      properties: {
+        deviceToken: { type: "string", pattern: "^[A-Fa-f0-9]{64,200}$" },
+        environment: { type: "string", enum: ["sandbox", "production"] },
+      },
+    },
+    {
+      type: "object",
+      required: ["provider", "pushIdentifier", "environment"],
+      additionalProperties: false,
+      properties: {
+        provider: { const: "apns" },
+        pushIdentifier: { type: "string", pattern: "^[A-Fa-f0-9]{64,200}$" },
+        identifierKind: { const: "token" },
+        environment: { type: "string", enum: ["sandbox", "production"] },
+      },
+    },
+    {
+      type: "object",
+      required: ["provider", "pushIdentifier", "identifierKind"],
+      additionalProperties: false,
+      properties: {
+        provider: { const: "fcm" },
+        pushIdentifier: { type: "string", minLength: 10, maxLength: 4096 },
+        identifierKind: { type: "string", enum: ["fid", "token"] },
+      },
+    },
+  ],
+} as const;
 
 function unauthorized(): ErrorBody {
   return { error: { code: "unauthorized", message: "A valid device bearer token is required" } };
@@ -55,9 +98,34 @@ function decodeCursor(value: string | undefined): { publicationDate: string; id:
   }
 }
 
-function deviceResponse(device: DeviceRecord): Omit<DeviceRecord, "deviceToken"> {
+function registrationFromBody(body: DeviceRegistrationBody): DeviceRegistration {
+  if (body.deviceToken !== undefined) {
+    return {
+      provider: "apns",
+      pushIdentifier: body.deviceToken,
+      environment: body.environment as ApnsEnvironment,
+    };
+  }
+  if (body.provider === "fcm") {
+    return {
+      provider: "fcm",
+      pushIdentifier: body.pushIdentifier as string,
+      identifierKind: body.identifierKind as PushIdentifierKind,
+    };
+  }
+  return {
+    provider: "apns",
+    pushIdentifier: body.pushIdentifier as string,
+    identifierKind: "token",
+    environment: body.environment as ApnsEnvironment,
+  };
+}
+
+function deviceResponse(device: DeviceRecord): Omit<DeviceRecord, "pushIdentifier"> {
   return {
     id: device.id,
+    provider: device.provider,
+    identifierKind: device.identifierKind,
     environment: device.environment,
     active: device.active,
     disabledReason: device.disabledReason,
@@ -78,6 +146,8 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
               "request.headers.authorization",
               "req.body.deviceToken",
               "request.body.deviceToken",
+              "req.body.pushIdentifier",
+              "request.body.pushIdentifier",
               "clientSecret",
             ],
             censor: "[REDACTED]",
@@ -109,7 +179,15 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
       void reply.status(400).send({ error: { code: "invalid_request", message: requestError.message } });
       return;
     }
-    if (requestError.message === "cursor is invalid or expired" || requestError.message.startsWith("A watchlist") || requestError.message.startsWith("Each watchlist") || requestError.message.startsWith("deviceToken")) {
+    if (
+      requestError.message === "cursor is invalid or expired" ||
+      requestError.message.startsWith("A watchlist") ||
+      requestError.message.startsWith("Each watchlist") ||
+      requestError.message.startsWith("deviceToken") ||
+      requestError.message.startsWith("pushIdentifier") ||
+      requestError.message.startsWith("identifierKind") ||
+      requestError.message.startsWith("provider")
+    ) {
       void reply.status(400).send({ error: { code: "invalid_request", message: requestError.message } });
       return;
     }
@@ -122,6 +200,10 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
     const checkedAt = now();
     const queue = dependencies.queue.health(checkedAt);
     const pushDisabled = !dependencies.sender.configured;
+    const pushProviders = {
+      apns: dependencies.sender.isConfigured("apns"),
+      fcm: dependencies.sender.isConfigured("fcm"),
+    };
     const lastSuccessMilliseconds = state.lastSuccessAt ? Date.parse(state.lastSuccessAt) : Number.NaN;
     const stale =
       !state.initialized ||
@@ -132,12 +214,13 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
       stale ||
       state.gapStatus !== "normal" ||
       state.consecutiveFailures > 0 ||
-      queue.recentApnsFailures > 0;
+      queue.recentPushFailures > 0;
     dependencies.database.connection.prepare("SELECT 1").get();
     return reply.status(unhealthy ? 503 : 200).send({
       status: unhealthy ? "unhealthy" : pushDisabled ? "degraded" : "ok",
       database: "ok",
       pushDisabled,
+      pushProviders,
       poll: {
         initialized: state.initialized,
         stale,
@@ -200,23 +283,16 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
     },
   );
 
-  app.post<{ Body: { deviceToken: string; environment: ApnsEnvironment } }>(
+  app.post<{ Body: DeviceRegistrationBody }>(
     "/v1/devices",
     {
       config: { rateLimit: { max: 10, timeWindow: "1 minute" } },
       schema: {
-        body: {
-          type: "object",
-          required: ["deviceToken", "environment"],
-          additionalProperties: false,
-          properties: {
-            deviceToken: { type: "string", pattern: "^[A-Fa-f0-9]{64,200}$" },
-            environment: { type: "string", enum: ["sandbox", "production"] },
-          },
-        },
+        body: deviceRegistrationSchema,
       },
     },
-    async (request, reply) => reply.status(201).send(dependencies.devices.create(request.body.deviceToken, request.body.environment, now())),
+    async (request, reply) =>
+      reply.status(201).send(dependencies.devices.create(registrationFromBody(request.body), now())),
   );
 
   const authenticate = (request: FastifyRequest): DeviceRecord | null => {
@@ -230,25 +306,17 @@ export async function buildApp(dependencies: AppDependencies): Promise<FastifyIn
     return deviceResponse(device);
   });
 
-  app.put<{ Body: { deviceToken: string; environment: ApnsEnvironment } }>(
+  app.put<{ Body: DeviceRegistrationBody }>(
     "/v1/devices/me/token",
     {
       schema: {
-        body: {
-          type: "object",
-          required: ["deviceToken", "environment"],
-          additionalProperties: false,
-          properties: {
-            deviceToken: { type: "string", pattern: "^[A-Fa-f0-9]{64,200}$" },
-            environment: { type: "string", enum: ["sandbox", "production"] },
-          },
-        },
+        body: deviceRegistrationSchema,
       },
     },
     async (request, reply) => {
       const device = authenticate(request);
       if (!device) return reply.status(401).send(unauthorized());
-      dependencies.devices.updateToken(device.id, request.body.deviceToken, request.body.environment, now());
+      dependencies.devices.updateToken(device.id, registrationFromBody(request.body), now());
       return deviceResponse(dependencies.devices.get(device.id) as DeviceRecord);
     },
   );
