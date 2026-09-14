@@ -1,14 +1,33 @@
 <p><img src="food-recall-app/public/icon-512.svg" alt="" width="72" height="72"></p>
 
-# Beanstalk
+# Beanstalk — FDA food recall search
 
-**FDA food recall announcements and historical records, with their limits made clear.**
+**Find the product, the recall, and the original source. Free to use. No account required.**
 
-Beanstalk is a free, accountless public-service project of JACOBRAKAI FOUNDATION. The iPhone app shows recent FDA-published food recall announcements, keeps saved records on the device, supports whole-word and phrase watchlists, and can deliver optional matching notifications. Historical enforcement search remains visibly separate because openFDA is an archive rather than a public-alert feed.
+Beanstalk helps people search **FDA food recall records** by product, company, or hazard, with filters for distribution state, classification, status, and dietary terms. It is a public-service project of [JACOBRAKAI FOUNDATION](https://jacobrakai.org/about/). Product details, lot codes, and links to FDA sources help readers investigate a record without treating a search result as a safety determination.
 
-[**Open the web app**](https://jacobrakaifoundation.github.io/beanstalk/) · [Read the privacy policy](https://jacobrakaifoundation.github.io/beanstalk/privacy.html) · [Get support](https://jacobrakaifoundation.github.io/beanstalk/support.html) · [Report a problem](https://github.com/jacobrakaiFoundation/beanstalk/issues)
+[**Search food recall records**](https://jacobrakaifoundation.github.io/beanstalk/) · [**Read the funding brief**](docs/FUNDING.md) · [Support the Foundation](https://jacobrakai.org/donate/) · [Report a problem](https://github.com/jacobrakaiFoundation/beanstalk/issues)
 
 > Notifications may be delayed or incomplete, and not every recall has a public announcement. A search with no result does not establish that a product is safe. Verify the original FDA notice before acting.
+
+## Available now and in development
+
+| Part of Beanstalk | What you can use or inspect |
+| --- | --- |
+| **Web app — available now** | Search the openFDA historical enforcement archive, inspect source fields, use local watchlists, and browse clearly labeled, unverified CAERS Early Signals. The web app is not a real-time safety alert service. |
+| **iPhone — implementation in this repository** | Native recall announcements, saved records, watchlists, and an optional notification service. App Store publication and production notification delivery still require the [release checks](docs/app-store/release-checklist.md). |
+
+<img src="docs/readme/app-demo-20260911.png" alt="Beanstalk web demo with product search, state and dietary filters, and recall cards showing hazards and source details." width="1280">
+
+<sub>Web app screenshot, 11 September 2026. Demo records are fictional and labeled in the app.</sub>
+
+## Why support this work
+
+Public recall information is useful only if people can find and understand the relevant record. Beanstalk is designed for people checking products and dietary concerns, and for community workers and researchers helping others navigate the same information.
+
+The next proposed funding priorities are **usability and accessibility testing**, **source reliability**, and **verification of the native release**. Each has a concrete deliverable and a proposed measure of progress in the [funding brief](docs/FUNDING.md). These are proposed work packages; a grant's scope, budget, and reporting schedule must be agreed before work is committed.
+
+[Discuss support with the Foundation](https://jacobrakai.org/about/) or [make a Foundation donation](https://jacobrakai.org/donate/). The donation link supports the Foundation; it does not establish a Beanstalk-specific grant. Donations unlock no app feature.
 
 ## iPhone app
 

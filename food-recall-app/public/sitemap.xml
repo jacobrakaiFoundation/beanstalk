@@ -5,4 +5,13 @@
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
+  <url>
+    <loc>https://jacobrakaifoundation.github.io/beanstalk/about.html</loc>
+  </url>
+  <url>
+    <loc>https://jacobrakaifoundation.github.io/beanstalk/privacy.html</loc>
+  </url>
+  <url>
+    <loc>https://jacobrakaifoundation.github.io/beanstalk/support.html</loc>
+  </url>
 </urlset>
