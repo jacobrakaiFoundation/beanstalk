@@ -5,7 +5,6 @@ import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
-import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -20,7 +19,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.jacobrakaifoundation.beanstalk.BeanstalkApplication
-import org.jacobrakaifoundation.beanstalk.MainActivity
 import org.jacobrakaifoundation.beanstalk.R
 
 // FCM 25.1.3 replaces legacy token callbacks with onRegistered(FID) when the
@@ -52,12 +50,11 @@ class BeanstalkMessagingService : FirebaseMessagingService() {
                 target.matchedField?.let { appendQueryParameter("matchedField", it) }
             }
             .build()
-        val intent = Intent(this, MainActivity::class.java).apply {
-            component = ComponentName(this@BeanstalkMessagingService, MainActivity::class.java)
-            action = Intent.ACTION_VIEW
-            data = uri
-            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-        }
+        val intent = Intent()
+        intent.setClassName(packageName, "$packageName.MainActivity")
+        intent.action = Intent.ACTION_VIEW
+        intent.data = uri
+        intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
         val pendingIntent = PendingIntent.getActivity(
             this,
             target.noticeID.hashCode(),
