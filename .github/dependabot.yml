@@ -21,6 +21,11 @@ updates:
     open-pull-requests-limit: 5
     labels:
       - dependencies
+    ignore:
+      # typescript-eslint still requires the TypeScript 6 compiler API.
+      # TypeScript 7.0 does not ship one (see typescript-eslint#12518).
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: "/"
