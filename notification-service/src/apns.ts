@@ -142,7 +142,7 @@ export class ApnsPushSender implements ProviderPushSender {
         try {
           reason = (JSON.parse(body) as { reason?: string }).reason ?? "";
         } catch {
-          reason = "";
+          // Non-JSON APNs bodies keep the empty reason.
         }
         finish(undefined, { status, reason });
       });
