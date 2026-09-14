@@ -11,9 +11,10 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       manifest: {
-        name: "Beanstalk — Food Recall Tracker",
+        name: "Beanstalk — FDA Food Recall Search",
         short_name: "beanstalk",
-        description: "Track FDA food recalls and allergen alerts for your dietary needs",
+        description:
+          "Search FDA food recall records by product, company, or hazard. Free to use, with source details and local watchlists.",
         start_url: pagesBase,
         scope: pagesBase,
         theme_color: "#1d4535",

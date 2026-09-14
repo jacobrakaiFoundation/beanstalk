@@ -735,6 +735,12 @@ export default function App() {
             </div>
           </details>
           <p>Not medical advice.</p>
+          <a
+            className="inline-flex min-h-11 items-center underline underline-offset-2"
+            href={`${import.meta.env.BASE_URL}about.html`}
+          >
+            About Beanstalk &amp; funding
+          </a>
         </div>
       </footer>
     </div>

@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <title>About &amp; Funding — Beanstalk FDA Food Recall Search</title>
+    <meta name="description" content="Help make FDA food recall records easier to use. Explore Beanstalk, a free Foundation project, and proposed funding for usability, reliability, and release testing.">
+    <link rel="canonical" href="https://jacobrakaifoundation.github.io/beanstalk/about.html">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Beanstalk">
+    <meta property="og:title" content="Help make food recall information easier to use — Beanstalk">
+    <meta property="og:description" content="A free public-service project. See what works today and what funding could make possible.">
+    <meta property="og:url" content="https://jacobrakaifoundation.github.io/beanstalk/about.html">
+    <meta property="og:image" content="https://jacobrakaifoundation.github.io/beanstalk/og-image.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Help make food recall information easier to use — Beanstalk">
+    <meta name="twitter:description" content="A free public-service project. See what works today and what funding could make possible.">
+    <meta name="twitter:image" content="https://jacobrakaifoundation.github.io/beanstalk/og-image.png">
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f8f6ee;
+        --paper: #fffdf7;
+        --text: #1b2d23;
+        --muted: #53614e;
+        --line: #c5ccbd;
+        --brand: #3d503d;
+        --focus: #047857;
+        --soft: #efeee4;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          color-scheme: dark;
+          --bg: #111e17;
+          --paper: #1b2d23;
+          --text: #f8f6ee;
+          --muted: #c5ccbd;
+          --line: #53614e;
+          --brand: #a0c3a3;
+          --focus: #6ee7b7;
+          --soft: #293c2e;
+        }
+      }
+      * { box-sizing: border-box; }
+      html { font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.65; }
+      body { margin: 0; background: var(--bg); color: var(--text); }
+      a { color: var(--brand); text-underline-offset: 0.2em; text-decoration-thickness: 0.09em; }
+      a:hover { text-decoration-thickness: 0.15em; }
+      a:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; border-radius: 0.15rem; }
+      p { max-width: 68ch; }
+      .wrap { width: min(100% - 2.5rem, 66rem); margin-inline: auto; }
+      .skip { position: absolute; top: -8rem; left: 1rem; padding: 0.65rem 1rem; background: var(--paper); z-index: 2; }
+      .skip:focus { top: 1rem; }
+      header { border-top: 4px solid var(--brand); border-bottom: 1px solid var(--line); }
+      .bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-block: 1rem; }
+      .brand { display: inline-flex; align-items: center; gap: 0.65rem; font: 700 1.5rem Georgia, serif; text-decoration: none; }
+      .brand img { width: 2.25rem; height: 2.25rem; }
+      nav { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; }
+      nav a { display: inline-flex; align-items: center; min-height: 2.75rem; }
+      .hero { padding-block: clamp(3rem, 8vw, 6rem) 3rem; }
+      .eyebrow { color: var(--muted); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+      h1, h2, h3 { font-family: Georgia, Cambria, serif; font-weight: 400; letter-spacing: -0.025em; line-height: 1.12; text-wrap: balance; }
+      h1 { max-width: 17ch; font-size: clamp(2.65rem, 6.5vw, 5.4rem); margin: 1rem 0 1.5rem; }
+      h2 { font-size: clamp(1.9rem, 4vw, 2.8rem); margin: 0 0 1.25rem; }
+      h3 { font-size: 1.55rem; margin: 0 0 0.65rem; }
+      .lede { max-width: 54ch; font-size: clamp(1.1rem, 2vw, 1.3rem); color: var(--muted); }
+      .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.8rem 1.5rem; margin-top: 1.75rem; }
+      .actions a { display: inline-flex; align-items: center; min-height: 2.75rem; }
+      .button { justify-content: center; background: var(--brand); color: var(--paper); padding: 0.7rem 1.25rem; border-radius: 0.3rem; font-weight: 650; text-decoration: none; }
+      .status { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; background: var(--soft); border-block: 1px solid var(--line); padding: 1.75rem; }
+      .status p { margin: 0.5rem 0 0; color: var(--muted); }
+      .section { padding-block: 3.5rem; border-bottom: 1px solid var(--line); }
+      .split { display: grid; grid-template-columns: 1fr 1.35fr; gap: 3rem; }
+      .split p:first-child { margin-top: 0; }
+      .priorities { list-style: none; padding: 0; margin: 2rem 0 0; counter-reset: priority; }
+      .priorities li { counter-increment: priority; display: grid; grid-template-columns: 3rem 1fr; column-gap: 1.25rem; border-top: 1px solid var(--line); padding-block: 1.75rem; }
+      .priorities li::before { content: "0" counter(priority); color: var(--brand); font-family: Georgia, serif; font-size: 1.7rem; }
+      .priorities p { margin: 0.5rem 0; }
+      .measure { color: var(--muted); font-size: 0.95rem; }
+      .evidence { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; margin-top: 1.5rem; }
+      .evidence a { min-height: 2.75rem; display: inline-flex; align-items: center; }
+      .fine { font-size: 0.9rem; color: var(--muted); }
+      footer { padding-block: 2rem 3rem; color: var(--muted); font-size: 0.9rem; }
+      footer p { margin: 0; }
+      @media (max-width: 42rem) {
+        .bar { align-items: flex-start; flex-direction: column; gap: 0.5rem; }
+        .status, .split { grid-template-columns: 1fr; gap: 1.5rem; }
+        .status { padding: 1.25rem; }
+        .section { padding-block: 2.5rem; }
+        .priorities li { grid-template-columns: 2rem 1fr; column-gap: 0.75rem; }
+      }
+      @media print {
+        :root { --bg: white; --paper: white; --text: black; --muted: #333; --brand: #222; --line: #aaa; --soft: white; }
+        header, .skip, .actions, footer { display: none; }
+        .hero, .section { padding-block: 1rem; }
+        h1 { font-size: 2.5rem; max-width: 26ch; }
+        .status, .priorities li { break-inside: avoid; }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip" href="#content">Skip to project information</a>
+    <header>
+      <div class="bar wrap">
+        <a class="brand" href="./"><img src="icon-192.svg" alt="" width="36" height="36"><span>beanstalk</span></a>
+        <nav aria-label="Page links">
+          <a href="#funding">Funding priorities</a>
+          <a href="./">Open recall search</a>
+        </nav>
+      </div>
+    </header>
+    <main id="content" class="wrap">
+      <section class="hero" aria-labelledby="project-heading">
+        <p class="eyebrow">A JACOBRAKAI FOUNDATION project</p>
+        <h1 id="project-heading">Food recall records, easier to use.</h1>
+        <p class="lede">Search FDA food recall records by product, company, or hazard. Find the details and follow the original source. Beanstalk is free to use, with no account required.</p>
+        <div class="actions">
+          <a class="button" href="./">Search recall records</a>
+          <a href="#funding">See what funding could support <span aria-hidden="true">&nbsp;↓</span></a>
+        </div>
+      </section>
+
+      <div class="status" aria-label="Project availability">
+        <div><strong>Web app · Available now</strong><p>Search the historical openFDA archive, narrow results, and inspect source fields. A separate Early Signals view labels adverse event reports as unverified.</p></div>
+        <div><strong>iPhone app · Release preparation</strong><p>The native implementation is in the repository. App Store publication and production notifications still require release verification.</p></div>
+      </div>
+
+      <section class="section split" aria-labelledby="purpose-heading">
+        <h2 id="purpose-heading">A clearer path to the original record.</h2>
+        <div>
+          <p>A recall record can include several product names, lot codes, distribution details, and dates. Beanstalk brings search, filters, and source details together so readers can investigate a record.</p>
+          <p>It is designed for people checking products or dietary concerns, and for community workers and researchers helping others navigate public information.</p>
+          <p class="fine">Beanstalk is independent of FDA. Historical records may be incomplete or outdated. No result means no match was found; it does not establish that a product is safe. Check the original notice. This is not medical advice.</p>
+        </div>
+      </section>
+
+      <section class="section" id="funding" aria-labelledby="funding-heading">
+        <p class="eyebrow">Proposed funding priorities</p>
+        <h2 id="funding-heading">Support a specific next step.</h2>
+        <p>These work packages would help us test and improve the service. A grant's scope, cost, timeline, and reporting schedule would be agreed before work is committed.</p>
+        <ol class="priorities">
+          <li><div><h3>Make recall search easier to use.</h3><p>Test search, finding a lot code, and opening the original source with intended users. Fix observed barriers on mobile, with enlarged text, and with assistive technology.</p><p class="measure"><strong>Proposed measure:</strong> task completion, time to find the source, and errors before and after improvements.</p></div></li>
+          <li><div><h3>Make source failures understandable.</h3><p>Verify how the app handles unavailable sources, saved results, and missing data. Document what each source covers and how recovery works.</p><p class="measure"><strong>Proposed measure:</strong> results from documented failure scenarios, unresolved discrepancies, and recovery time.</p></div></li>
+          <li><div><h3>Verify the first iPhone release.</h3><p>Complete signed-device testing, notification and privacy checks, and the release evidence package. Record App Review and publication separately.</p><p class="measure"><strong>Proposed measure:</strong> recorded checks for closed-app delivery, duplicate suppression, device removal, and offline relaunch.</p></div></li>
+        </ol>
+        <div class="actions">
+          <a class="button" href="https://jacobrakai.org/about/">Discuss support with the Foundation</a>
+          <a href="https://github.com/jacobrakaiFoundation/beanstalk/blob/main/docs/FUNDING.md">Read the funding brief</a>
+        </div>
+      </section>
+
+      <section class="section split" aria-labelledby="evidence-heading">
+        <h2 id="evidence-heading">Inspect the work.</h2>
+        <div>
+          <p>The public repository contains the source, automated checks, open issues, and native release checklist. The proposed evaluation begins with a baseline: can people complete a search, identify a lot code, and find the original source?</p>
+          <div class="evidence">
+            <a href="https://github.com/jacobrakaiFoundation/beanstalk">Source code</a>
+            <a href="https://github.com/jacobrakaiFoundation/beanstalk/actions/workflows/ci.yml">Automated checks</a>
+            <a href="https://github.com/jacobrakaiFoundation/beanstalk/issues">Open issues</a>
+            <a href="https://github.com/jacobrakaiFoundation/beanstalk/blob/main/docs/app-store/release-checklist.md">Release checklist</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="section split" aria-labelledby="foundation-heading">
+        <h2 id="foundation-heading">Support the Foundation.</h2>
+        <div>
+          <p>Beanstalk is a project of <a href="https://jacobrakai.org/about/">JACOBRAKAI FOUNDATION</a>, EIN 33-3382083. The Foundation's details page provides public-charity information and a contact route.</p>
+          <p>Gifts through the existing donation page support the Foundation. Contact the Foundation to discuss a Beanstalk-specific scope and budget. A donation unlocks no app feature.</p>
+          <div class="actions"><a class="button" href="https://jacobrakai.org/donate/">Donate to the Foundation</a></div>
+        </div>
+      </section>
+    </main>
+    <footer class="wrap">
+      <p>© 2026 JACOBRAKAI FOUNDATION</p>
+      <nav aria-label="More information"><a href="./">Recall search</a><a href="privacy.html">Privacy</a><a href="support.html">App support</a><a href="https://open.fda.gov/apis/food/enforcement/">FDA data and limitations</a></nav>
+    </footer>
+  </body>
+</html>
