@@ -402,6 +402,41 @@ describe("fetchRecalls — no synthetic fallback", () => {
     expect(recalls[0].recallingFirm).toBe("Acme Foods");
     expect(recalls[0].establishmentNumber).toBe("Est. 123");
   });
+
+  it("fetchFsisRecalls drops archived raw API records", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => [
+          {
+            field_title: "Old Firm Recalls Old Product",
+            field_recall_number: "099-2020",
+            field_recall_url: "http://www.fsis.usda.gov/recalls-alerts/old",
+            field_recall_type: "Closed Recall",
+            field_recall_classification: "Class II",
+            field_recall_reason: ["Misbranding"],
+            field_recall_date: "2020-01-15",
+            field_states: ["Texas"],
+            field_archive_recall: "True",
+          },
+          {
+            field_title: "Acme Foods Recalls Contaminated Widgets",
+            field_recall_number: "001-2026",
+            field_recall_url: "http://www.fsis.usda.gov/recalls-alerts/acme",
+            field_recall_type: "Active Recall",
+            field_recall_classification: "Class I",
+            field_recall_reason: ["Product Contamination"],
+            field_recall_date: "2026-01-15",
+            field_states: ["Texas"],
+            field_archive_recall: "False",
+          },
+        ],
+      }),
+    );
+    const recalls = await fetchFsisRecalls();
+    expect(recalls.map((r) => r.id)).toEqual(["FSIS-001-2026"]);
+  });
 });
 
 describe("distribution: bounded state recognition and nationwide", () => {

@@ -1,6 +1,6 @@
 import type { Recall, RecallClassification, RecallSource } from "../types/recall";
 import { buildDietaryPredicate, type DietaryConcern, matchesDietaryConcerns } from "./dietary";
-import { type FsisApiRecord, isFsisSnapshot, mapFsisRecord } from "./fsis";
+import { type FsisApiRecord, isArchived, isFsisSnapshot, mapFsisRecord } from "./fsis";
 import { mockRecalls } from "./mockData";
 import { buildReasonCategoryPredicate, categorizeReason, isReasonCategory } from "./reasonCategory";
 import { STATE_NAMES } from "./usStates";
@@ -64,7 +64,10 @@ function parseFsisPayload(data: unknown): FsisFeed {
     "productDescription" in first;
   if (looksMapped) return { recalls: data as Recall[], unavailable: false };
   return {
-    recalls: (data as FsisApiRecord[]).map(mapFsisRecord).filter((r): r is Recall => r !== null),
+    recalls: (data as FsisApiRecord[])
+      .filter((item) => !isArchived(item))
+      .map(mapFsisRecord)
+      .filter((r): r is Recall => r !== null),
     unavailable: false,
   };
 }
