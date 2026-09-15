@@ -7,8 +7,7 @@ enum class AlertSettingsAction {
 }
 
 object AlertControlPolicy {
-    const val UNAVAILABLE_MESSAGE =
-        "Alerts aren't available in this build. Watch terms stay on this device."
+    const val UNAVAILABLE_MESSAGE = "Coming soon"
 
     const val ENABLE_FAILED_MESSAGE =
         "Beanstalk couldn't turn alerts on. Watch terms stay on this device."

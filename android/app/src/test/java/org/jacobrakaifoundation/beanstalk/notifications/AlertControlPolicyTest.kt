@@ -37,10 +37,10 @@ class AlertControlPolicyTest {
     }
 
     @Test
-    fun `unavailable copy is user facing not debug jargon`() {
+    fun `unavailable copy is Coming soon not debug jargon`() {
+        assertEquals("Coming soon", AlertControlPolicy.UNAVAILABLE_MESSAGE)
         assertFalse(AlertControlPolicy.UNAVAILABLE_MESSAGE.contains("debug", ignoreCase = true))
         assertFalse(AlertControlPolicy.UNAVAILABLE_MESSAGE.contains("Firebase", ignoreCase = true))
-        assertTrue(AlertControlPolicy.UNAVAILABLE_MESSAGE.contains("aren't available", ignoreCase = true))
-        assertTrue(AlertControlPolicy.UNAVAILABLE_MESSAGE.contains("Watch terms stay on this device"))
+        assertFalse(AlertControlPolicy.UNAVAILABLE_MESSAGE.contains("configured", ignoreCase = true))
     }
 }
