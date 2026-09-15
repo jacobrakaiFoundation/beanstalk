@@ -14,14 +14,14 @@ struct RecallsView: View {
                 .pickerStyle(.segmented)
                 .padding(.horizontal)
                 .padding(.bottom, 8)
-                .accessibilityHint("Choose current FDA announcements or the historical openFDA archive")
+                .accessibilityHint("Choose recent openFDA enforcement records or the historical openFDA archive")
 
                 resultsList
             }
             .navigationTitle("Recalls")
             .searchable(
                 text: $model.query,
-                prompt: model.mode == .latest ? "Product, hazard, or company" : "Search the historical archive"
+                prompt: model.mode == .latest ? "Search recent enforcement records" : "Search the historical archive"
             )
             .toolbar {
                 if model.mode == .historical {
@@ -35,7 +35,6 @@ struct RecallsView: View {
             .sheet(isPresented: $showingFilters) {
                 EnforcementFilterView(classification: $model.classification, status: $model.status)
             }
-            .navigationDestination(for: RecallNotice.self) { NoticeDetailView(notice: $0) }
             .navigationDestination(for: EnforcementRecord.self) { EnforcementDetailView(record: $0) }
             .task(id: model.searchSignature) {
                 try? await Task.sleep(for: .milliseconds(350))
@@ -51,13 +50,13 @@ struct RecallsView: View {
             Section {
                 if model.mode == .latest {
                     InformationBanner(
-                        icon: "checkmark.seal",
-                        text: "Current items come from FDA public recall announcements. Alerts match published announcements and may not be immediate or complete."
+                        icon: "clock.arrow.circlepath",
+                        text: "Latest results are the newest openFDA food-enforcement snapshots, sorted by report date. This archive can lag fda.gov and is not a live FDA announcement feed."
                     )
                 } else {
                     InformationBanner(
                         icon: "clock.arrow.circlepath",
-                        text: "Historical enforcement records are shown as published by openFDA. This is not a live FDA recall lifecycle feed."
+                        text: "Historical results are openFDA enforcement snapshots. FDA discourages using this archive for public alerts."
                     )
                 }
                 InformationBanner(
@@ -80,43 +79,25 @@ struct RecallsView: View {
                         Button("Try Again") { Task { await model.reload() } }
                     }
                 }
-            } else if model.mode == .latest {
-                latestResults
             } else {
-                historicalResults
+                enforcementResults
             }
         }
         .listStyle(.insetGrouped)
         .refreshable { await model.reload() }
         .overlay {
-            if model.isLoading && ((model.mode == .latest && model.notices.isEmpty) || (model.mode == .historical && model.records.isEmpty)) {
+            if model.isLoading && model.records.isEmpty {
                 ProgressView("Loading recall records…")
             }
         }
     }
 
     @ViewBuilder
-    private var latestResults: some View {
-        if model.notices.isEmpty && !model.isLoading {
-            ContentUnavailableView.search(text: model.query)
-        } else {
-            Section("Published announcements") {
-                ForEach(model.notices) { notice in
-                    NavigationLink(value: notice) { NoticeRow(notice: notice) }
-                }
-                if model.nextCursor != nil {
-                    loadMoreButton
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var historicalResults: some View {
+    private var enforcementResults: some View {
         if model.records.isEmpty && !model.isLoading {
             ContentUnavailableView.search(text: model.query)
         } else {
-            Section("Historical enforcement archive") {
+            Section(model.mode == .latest ? "Recent enforcement records" : "Historical enforcement archive") {
                 ForEach(model.records) { record in
                     NavigationLink(value: record) { EnforcementRow(record: record) }
                 }
