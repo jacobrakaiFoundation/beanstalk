@@ -87,11 +87,13 @@ describe("privacy and support discovery", () => {
   it("gives privacy a canonical URL and WebPage JSON-LD", () => {
     expect(attr(privacyHtml, "link", "rel", "canonical", "href")).toBe(`${SITE}/privacy.html`);
     expect(attr(privacyHtml, "meta", "property", "og:url", "content")).toBe(`${SITE}/privacy.html`);
+    expect(attr(privacyHtml, "meta", "name", "twitter:image:alt", "content")).toMatch(/source badges/);
     expect(jsonLd(privacyHtml)["@type"]).toBe("WebPage");
   });
 
   it("gives support a canonical URL, FSIS source link, and WebPage JSON-LD", () => {
     expect(attr(supportHtml, "link", "rel", "canonical", "href")).toBe(`${SITE}/support.html`);
+    expect(attr(supportHtml, "meta", "name", "twitter:image:alt", "content")).toMatch(/source badges/);
     expect(supportHtml).toContain("https://www.fsis.usda.gov/recalls");
     expect(jsonLd(supportHtml)["@type"]).toBe("WebPage");
   });
