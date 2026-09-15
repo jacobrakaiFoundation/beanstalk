@@ -27,6 +27,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import org.jacobrakaifoundation.beanstalk.notifications.AlertControlPolicy
 import org.jacobrakaifoundation.beanstalk.ui.theme.BeanstalkTheme
 
 private enum class AppTab(
@@ -53,8 +54,11 @@ fun BeanstalkApp(viewModel: BeanstalkViewModel) {
         if (granted) viewModel.enableNotifications() else viewModel.notificationPermissionDenied()
     }
     val requestNotifications = {
-        if (Build.VERSION.SDK_INT >= 33) permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-        else viewModel.enableNotifications()
+        val alerts = state.notificationState
+        if (AlertControlPolicy.shouldOfferEnable(alerts.alertsEnabled, alerts.alertsAvailable)) {
+            if (Build.VERSION.SDK_INT >= 33) permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            else viewModel.enableNotifications()
+        }
     }
 
     LaunchedEffect(state.pendingNotificationNavigation) {
