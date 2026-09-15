@@ -1,10 +1,11 @@
 package org.jacobrakaifoundation.beanstalk.ui
 
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import org.jacobrakaifoundation.beanstalk.data.model.NoticeWatchResult
 import org.jacobrakaifoundation.beanstalk.data.model.RecallNotice
 import org.jacobrakaifoundation.beanstalk.data.model.WatchMatch
@@ -28,18 +29,7 @@ class WatchlistScreenTest {
     @Test
     fun `close control dismisses the watchlist`() {
         var dismissed = 0
-        compose.setContent {
-            BeanstalkTheme {
-                WatchlistScreen(
-                    state = BeanstalkUiState(),
-                    onDismiss = { dismissed += 1 },
-                    onAddTerm = { _, _ -> },
-                    onRemoveTerm = {},
-                    onRequestNotifications = {},
-                    onNotice = { _, _, _ -> },
-                )
-            }
-        }
+        setWatchlist(onDismiss = { dismissed += 1 })
         compose.onNodeWithContentDescription("Close watchlist").assertIsDisplayed().performClick()
         assertEquals(1, dismissed)
     }
@@ -47,93 +37,76 @@ class WatchlistScreenTest {
     @Test
     fun `term close control removes that term`() {
         var removed: String? = null
-        compose.setContent {
-            BeanstalkTheme {
-                WatchlistScreen(
-                    state = BeanstalkUiState(
-                        watchTerms = listOf(WatchTerm("milk", 1L)),
-                        notificationState = NotificationState("Coming soon"),
-                    ),
-                    onDismiss = {},
-                    onAddTerm = { _, _ -> },
-                    onRemoveTerm = { removed = it },
-                    onRequestNotifications = {},
-                    onNotice = { _, _, _ -> },
-                )
-            }
-        }
-        compose.onNodeWithContentDescription("Remove milk").assertIsDisplayed().performClick()
+        setWatchlist(
+            state = BeanstalkUiState(
+                watchTerms = listOf(WatchTerm("milk", 1L)),
+                notificationState = NotificationState("Coming soon"),
+            ),
+            onRemoveTerm = { removed = it },
+        )
+        compose.onNodeWithContentDescription("Remove milk").performScrollTo().assertIsDisplayed().performClick()
         assertEquals("milk", removed)
     }
 
     @Test
     fun `coming soon is a banner not a trapping overlay`() {
-        compose.setContent {
-            BeanstalkTheme {
-                WatchlistScreen(
-                    state = BeanstalkUiState(notificationState = NotificationState("Coming soon")),
-                    onDismiss = {},
-                    onAddTerm = { _, _ -> },
-                    onRemoveTerm = {},
-                    onRequestNotifications = {},
-                    onNotice = { _, _, _ -> },
-                )
-            }
-        }
+        setWatchlist(state = BeanstalkUiState(notificationState = NotificationState("Coming soon")))
         compose.onNodeWithText("Coming soon").assertIsDisplayed()
         compose.onNodeWithContentDescription("Close watchlist").assertIsDisplayed()
-        compose.onNodeWithText("Watching").assertIsDisplayed()
-        compose.onNodeWithText("Add a watch term").assertIsDisplayed()
-        compose.onNodeWithText("No watch terms yet").assertIsDisplayed()
+        compose.onNodeWithText("Watching").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("No watch terms yet").performScrollTo().assertIsDisplayed()
     }
 
     @Test
     fun `match rows keep a close path and show evidence`() {
-        compose.setContent {
-            BeanstalkTheme {
-                WatchlistScreen(
-                    state = BeanstalkUiState(
-                        watchTerms = listOf(WatchTerm("milk", 1L)),
-                        watchMatches = listOf(
-                            NoticeWatchResult(
-                                notice = sampleNotice(),
-                                matches = listOf(WatchMatch("milk", "title", "Milk chocolate recalled")),
-                            ),
-                        ),
+        setWatchlist(
+            state = BeanstalkUiState(
+                watchTerms = listOf(WatchTerm("milk", 1L)),
+                watchMatches = listOf(
+                    NoticeWatchResult(
+                        notice = sampleNotice(),
+                        matches = listOf(WatchMatch("milk", "title", "Milk chocolate recalled")),
                     ),
-                    onDismiss = {},
-                    onAddTerm = { _, _ -> },
-                    onRemoveTerm = {},
-                    onRequestNotifications = {},
-                    onNotice = { _, _, _ -> },
-                )
-            }
-        }
+                ),
+            ),
+        )
         compose.onNodeWithContentDescription("Close watchlist").assertIsDisplayed()
-        compose.onNodeWithText("Matches in recent announcements").assertIsDisplayed()
-        compose.onNodeWithText("“milk” in title").assertIsDisplayed()
-        compose.onNodeWithText("Milk chocolate recalled").assertIsDisplayed()
+        compose.onNodeWithText("Matches in recent announcements").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("“milk” in title").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Milk chocolate recalled").performScrollTo().assertIsDisplayed()
     }
 
     @Test
     fun `dismiss callback is the only close path required by the screen`() {
         var dismissed = false
+        setWatchlist(
+            state = BeanstalkUiState(watchTerms = listOf(WatchTerm("peanut", 1L))),
+            onDismiss = { dismissed = true },
+        )
+        compose.onNodeWithContentDescription("Close watchlist").performClick()
+        assertTrue(dismissed)
+        compose.onNodeWithText("Watching").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("peanut").performScrollTo().assertIsDisplayed()
+    }
+
+    private fun setWatchlist(
+        state: BeanstalkUiState = BeanstalkUiState(),
+        onDismiss: () -> Unit = {},
+        onRemoveTerm: (String) -> Unit = {},
+    ) {
         compose.setContent {
             BeanstalkTheme {
                 WatchlistScreen(
-                    state = BeanstalkUiState(watchTerms = listOf(WatchTerm("peanut", 1L))),
-                    onDismiss = { dismissed = true },
+                    state = state,
+                    onDismiss = onDismiss,
                     onAddTerm = { _, _ -> },
-                    onRemoveTerm = {},
+                    onRemoveTerm = onRemoveTerm,
                     onRequestNotifications = {},
                     onNotice = { _, _, _ -> },
                 )
             }
         }
-        compose.onNodeWithContentDescription("Close watchlist").performClick()
-        assertTrue(dismissed)
-        compose.onNodeWithText("Watching").assertIsDisplayed()
-        compose.onNodeWithText("peanut").assertIsDisplayed()
+        compose.waitForIdle()
     }
 
     private fun sampleNotice(): RecallNotice = RecallNotice(

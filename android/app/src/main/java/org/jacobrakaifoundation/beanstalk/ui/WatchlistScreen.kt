@@ -8,10 +8,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.NotificationsNone
@@ -88,71 +88,60 @@ fun WatchlistScreen(
             )
         },
     ) { padding ->
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .imePadding(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+                .imePadding()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            item {
-                InformationBanner(
-                    "Matches use case-insensitive whole words or exact phrases and show where each match occurred. A match does not determine dietary safety.",
-                )
-            }
-            item { Text("Alert status", style = MaterialTheme.typography.titleMedium) }
-            item { InformationBanner(state.notificationState.message) }
-            item { Text("Add a watch term", style = MaterialTheme.typography.titleMedium) }
-            item {
-                OutlinedTextField(
-                    value = draft,
-                    onValueChange = { draft = it },
-                    label = { Text("Example: peanut butter") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = { submitDraft() }),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-            item {
-                Button(
-                    onClick = submitDraft,
-                    enabled = draft.isNotBlank(),
-                    modifier = Modifier.fillMaxWidth(),
-                ) { Text("Add term") }
-            }
-            item {
-                Text("2–80 characters per term · up to 20 terms", style = MaterialTheme.typography.bodySmall)
-            }
-            state.watchValidation?.let { item { InformationBanner(it, warning = true) } }
-            item { Text("Watching", style = MaterialTheme.typography.titleMedium) }
+            InformationBanner(
+                "Matches use case-insensitive whole words or exact phrases and show where each match occurred. A match does not determine dietary safety.",
+            )
+            Text("Alert status", style = MaterialTheme.typography.titleMedium)
+            InformationBanner(state.notificationState.message)
+            Text("Add a watch term", style = MaterialTheme.typography.titleMedium)
+            OutlinedTextField(
+                value = draft,
+                onValueChange = { draft = it },
+                label = { Text("Example: peanut butter") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { submitDraft() }),
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Button(
+                onClick = submitDraft,
+                enabled = draft.isNotBlank(),
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Add term") }
+            Text("2–80 characters per term · up to 20 terms", style = MaterialTheme.typography.bodySmall)
+            state.watchValidation?.let { InformationBanner(it, warning = true) }
+            Text("Watching", style = MaterialTheme.typography.titleMedium)
             if (state.watchTerms.isEmpty()) {
-                item {
-                    EmptyState(
-                        "No watch terms yet",
-                        "Add a word or exact phrase to check recent announcements.",
-                        Icons.Outlined.NotificationsNone,
-                    )
-                }
+                EmptyState(
+                    "No watch terms yet",
+                    "Add a word or exact phrase to check recent announcements.",
+                    Icons.Outlined.NotificationsNone,
+                )
             } else {
-                items(state.watchTerms, key = { it.normalizedTerm }) { term ->
+                state.watchTerms.forEach { term ->
                     WatchTermRow(term, onRemoveTerm)
                 }
             }
             if (state.watchTerms.isNotEmpty()) {
-                item { Text("Matches in recent announcements", style = MaterialTheme.typography.titleMedium) }
-                state.watchMessage?.let { item { InformationBanner(it, warning = true) } }
+                Text("Matches in recent announcements", style = MaterialTheme.typography.titleMedium)
+                state.watchMessage?.let { InformationBanner(it, warning = true) }
                 if (state.watchMatches.isEmpty()) {
-                    item {
-                        EmptyState(
-                            "No recent loaded announcement matches these terms.",
-                            "This does not mean a product is safe or that every FDA announcement has been received.",
-                            Icons.Outlined.NotificationsNone,
-                        )
-                    }
+                    EmptyState(
+                        "No recent loaded announcement matches these terms.",
+                        "This does not mean a product is safe or that every FDA announcement has been received.",
+                        Icons.Outlined.NotificationsNone,
+                    )
                 } else {
-                    items(state.watchMatches, key = { it.notice.id }) { match ->
+                    state.watchMatches.forEach { match ->
                         WatchMatchRow(match, onNotice)
                     }
                 }
