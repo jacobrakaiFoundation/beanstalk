@@ -49,7 +49,7 @@ class NotificationCoordinator(
     suspend fun enableAlerts() {
         mutableState.value = NotificationState("Turning alerts on…", isWorking = true)
         try {
-            val token = firebaseInstallationId()
+            val token = firebaseCloudMessagingToken()
             repository.registerPushIdentifier(token)
             mutableState.value = NotificationState("Alerts are on for this device.", alertsEnabled = true)
         } catch (error: Exception) {
@@ -72,7 +72,7 @@ class NotificationCoordinator(
         }
     }
 
-    private suspend fun firebaseInstallationId(): String {
+    private suspend fun firebaseCloudMessagingToken(): String {
         if (FirebaseApp.getApps(context).isEmpty()) {
             error("Push delivery is not configured on this debug build. Watch terms stay on this device.")
         }

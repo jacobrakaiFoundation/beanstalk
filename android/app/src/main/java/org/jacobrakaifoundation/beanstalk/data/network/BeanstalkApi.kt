@@ -2,6 +2,9 @@ package org.jacobrakaifoundation.beanstalk.data.network
 
 import java.io.IOException
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
@@ -33,14 +36,17 @@ class BeanstalkApi(
         .readTimeout(15, TimeUnit.SECONDS)
         .build(),
     private val clock: () -> Long = System::currentTimeMillis,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val openFdaEnforcementUrl: String = "https://api.fda.gov/food/enforcement.json",
 ) {
     private val jsonMedia = "application/json; charset=utf-8".toMediaType()
 
     suspend fun notices(query: String, cursor: String?, limit: Int): RecallNoticePage {
+        val sanitized = sanitizeQuery(query).take(NOTICE_QUERY_MAX)
         val url = serviceUrl("v1/notices").newBuilder()
-            .addQueryParameter("limit", limit.toString())
+            .addQueryParameter("limit", limit.coerceIn(1, 100).toString())
             .apply {
-                if (query.isNotBlank()) addQueryParameter("query", query)
+                if (sanitized.isNotBlank()) addQueryParameter("query", sanitized)
                 if (!cursor.isNullOrBlank()) addQueryParameter("cursor", cursor)
             }
             .build()
@@ -50,18 +56,25 @@ class BeanstalkApi(
     suspend fun notice(id: String): RecallNotice = get(serviceUrl("v1/notices/$id").toString())
 
     suspend fun enforcement(search: EnforcementSearch): EnforcementRecordPage {
+        val query = sanitizeQuery(search.query)
+        val classification = sanitizeQuery(search.classification)
+        val status = sanitizeQuery(search.status)
         val predicates = buildList {
-            if (search.classification.isNotBlank()) add("classification:\"${search.classification}\"")
-            if (search.status.isNotBlank()) add("status:\"${search.status}\"")
-            if (search.query.isNotBlank()) {
+            if (classification.isNotBlank()) add("classification:\"$classification\"")
+            if (status.isNotBlank()) add("status:\"$status\"")
+            if (query.isNotBlank()) {
                 add(
-                    "(product_description:\"${search.query}\" OR reason_for_recall:\"${search.query}\" OR recalling_firm:\"${search.query}\")",
+                    "(product_description:\"$query\" OR reason_for_recall:\"$query\" OR recalling_firm:\"$query\")",
                 )
             }
         }
-        val skip = search.page * search.limit
-        val url = "https://api.fda.gov/food/enforcement.json".toHttpUrl().newBuilder()
-            .addQueryParameter("limit", search.limit.toString())
+        val boundedLimit = search.limit.coerceIn(1, 100)
+        val skip = maxOf(0, search.page) * boundedLimit
+        if (skip > OPENFDA_SKIP_MAX) {
+            throw ApiException(400, "offset beyond openFDA limit")
+        }
+        val url = openFdaEnforcementUrl.toHttpUrl().newBuilder()
+            .addQueryParameter("limit", boundedLimit.toString())
             .addQueryParameter("skip", skip.toString())
             .addQueryParameter("sort", "report_date:desc")
             .apply {
@@ -105,9 +118,9 @@ class BeanstalkApi(
 
     suspend fun updatePushIdentifier(credentials: DeviceCredentials, pushIdentifier: String) {
         val body = json.encodeToString(FcmRegistrationBody(pushIdentifier = pushIdentifier))
-        execute<DeviceRegistrationResponse>(
+        execute<DeviceMeResponse>(
             Request.Builder()
-                .url(serviceUrl("v1/devices/me"))
+                .url(serviceUrl("v1/devices/me/token"))
                 .put(body.toRequestBody(jsonMedia))
                 .header("Authorization", bearer(credentials))
                 .build(),
@@ -132,20 +145,30 @@ class BeanstalkApi(
     private fun bearer(credentials: DeviceCredentials) =
         "Bearer ${credentials.deviceId}.${credentials.clientSecret}"
 
-    private inline fun <reified T> get(url: String): T = execute(Request.Builder().url(url).get().build())
+    private suspend inline fun <reified T> get(url: String): T =
+        execute(Request.Builder().url(url).get().build())
 
-    private inline fun <reified T> execute(request: Request, allowEmpty: Boolean = false): T {
-        client.newCall(request).execute().use { response ->
-            val payload = response.body?.string().orEmpty()
-            if (!response.isSuccessful) {
-                throw ApiException(response.code, payload.ifBlank { "HTTP ${response.code}" })
+    private suspend inline fun <reified T> execute(request: Request, allowEmpty: Boolean = false): T =
+        withContext(ioDispatcher) {
+            client.newCall(request).execute().use { response ->
+                val payload = response.body?.string().orEmpty()
+                if (!response.isSuccessful) {
+                    throw ApiException(response.code, payload.ifBlank { "HTTP ${response.code}" })
+                }
+                if (allowEmpty && payload.isBlank()) {
+                    @Suppress("UNCHECKED_CAST")
+                    return@withContext Unit as T
+                }
+                json.decodeFromString(payload)
             }
-            if (allowEmpty && payload.isBlank()) {
-                @Suppress("UNCHECKED_CAST")
-                return Unit as T
-            }
-            return json.decodeFromString(payload)
         }
+
+    companion object {
+        internal const val NOTICE_QUERY_MAX = 120
+        internal const val OPENFDA_SKIP_MAX = 25_000
+
+        internal fun sanitizeQuery(value: String): String =
+            value.replace("\"", "").replace("\\", "").trim()
     }
 }
 
@@ -156,10 +179,15 @@ data class DeviceRegistrationResponse(
 )
 
 @Serializable
+private data class DeviceMeResponse(
+    val id: String = "",
+)
+
+@Serializable
 private data class FcmRegistrationBody(
     val provider: String = "fcm",
     val pushIdentifier: String,
-    val identifierKind: String = "fid",
+    val identifierKind: String = "token",
 )
 
 @Serializable

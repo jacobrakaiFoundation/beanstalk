@@ -242,6 +242,15 @@ jobs:
         working-directory: android
         run: ./gradlew :app:assembleDebug --no-daemon
 
+      - name: Native JVM unit tests
+        working-directory: android
+        run: >-
+          ./gradlew :app:testDebugUnitTest --no-daemon
+          --tests org.jacobrakaifoundation.beanstalk.data.WatchlistSyncEngineTest
+          --tests org.jacobrakaifoundation.beanstalk.data.network.BeanstalkApiTest
+          --tests org.jacobrakaifoundation.beanstalk.ui.BrowseRequestTest
+          --tests org.jacobrakaifoundation.beanstalk.ui.NotificationDetailStateReducerTest
+
       - name: Upload native debug APK
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:

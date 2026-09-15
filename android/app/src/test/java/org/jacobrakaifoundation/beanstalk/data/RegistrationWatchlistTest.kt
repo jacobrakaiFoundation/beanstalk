@@ -2,6 +2,7 @@ package org.jacobrakaifoundation.beanstalk.data
 
 import android.app.Application
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -58,7 +59,11 @@ class RegistrationWatchlistTest {
         server.start()
         try {
             local.addWatchTerm(WatchTerm("milk", 1))
-            val repository = BeanstalkRepository(local, BeanstalkApi(server.url("/").toString()), credentials)
+            val repository = BeanstalkRepository(
+                local,
+                BeanstalkApi(server.url("/").toString(), ioDispatcher = Dispatchers.Unconfined),
+                credentials,
+            )
             val registration = async { repository.registerPushIdentifier("installation") }
             withTimeout(10_000) { started.await() }
             local.removeWatchTerm("milk")
