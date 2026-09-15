@@ -2,10 +2,16 @@ package org.jacobrakaifoundation.beanstalk
 
 import android.app.Application
 import android.content.pm.PackageManager
-import android.os.Looper
 import com.google.firebase.FirebaseApp
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.yield
 import kotlinx.serialization.json.Json
 import okhttp3.mockwebserver.MockWebServer
 import org.jacobrakaifoundation.beanstalk.data.BeanstalkRepository
@@ -23,7 +29,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
-import org.robolectric.Shadows
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
@@ -78,6 +83,7 @@ class ColdStartResilienceTest {
 
 }
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 @Config(application = Application::class, sdk = [35])
 class ApplicationGraphColdStartTest {
@@ -107,35 +113,49 @@ class ApplicationGraphColdStartTest {
     }
 
     @Test
-    fun `dead backend leaves the process alive with browse error UI`() {
-        val context = RuntimeEnvironment.getApplication()
-        context.deleteDatabase("beanstalk.sqlite")
-        val json = Json {
-            ignoreUnknownKeys = true
-            encodeDefaults = true
-            explicitNulls = false
+    fun `dead backend leaves the process alive with browse error UI`() = runBlocking {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
+        try {
+            val context = RuntimeEnvironment.getApplication()
+            context.deleteDatabase("beanstalk.sqlite")
+            val json = Json {
+                ignoreUnknownKeys = true
+                encodeDefaults = true
+                explicitNulls = false
+            }
+            val server = MockWebServer()
+            server.start()
+            val baseUrl = server.url("/").toString()
+            val enforcementUrl = server.url("/food/enforcement.json").toString()
+            server.shutdown()
+            val repository = BeanstalkRepository(
+                LocalStore(BeanstalkDatabase(context)),
+                BeanstalkApi(
+                    baseUrl,
+                    json,
+                    ioDispatcher = Dispatchers.Unconfined,
+                    openFdaEnforcementUrl = enforcementUrl,
+                ),
+                SecureCredentialStore(context, json),
+            )
+            val coordinator = NotificationCoordinator(
+                context,
+                repository,
+                isPushConfigured = { false },
+            )
+            val viewModel = BeanstalkViewModel(repository, coordinator)
+            withTimeout(10_000) {
+                while (viewModel.state.value.errorMessage == null) {
+                    yield()
+                    delay(10)
+                }
+            }
+            val state = viewModel.state.value
+            assertFalse("browse still loading: $state", state.isLoading)
+            assertNotNull(state.errorMessage)
+            assertFalse(state.notificationState.alertsEnabled)
+        } finally {
+            Dispatchers.resetMain()
         }
-        val server = MockWebServer()
-        server.start()
-        val baseUrl = server.url("/").toString()
-        server.shutdown()
-        val repository = BeanstalkRepository(
-            LocalStore(BeanstalkDatabase(context)),
-            BeanstalkApi(baseUrl, json, ioDispatcher = Dispatchers.IO),
-            SecureCredentialStore(context, json),
-        )
-        val coordinator = NotificationCoordinator(context, repository)
-        val viewModel = BeanstalkViewModel(repository, coordinator)
-        val deadline = System.currentTimeMillis() + 15_000
-        var state = viewModel.state.value
-        while (System.currentTimeMillis() < deadline) {
-            Shadows.shadowOf(Looper.getMainLooper()).idle()
-            state = viewModel.state.value
-            if (!state.isLoading && state.errorMessage != null) break
-            Thread.sleep(25)
-        }
-        assertFalse("browse still loading: $state", state.isLoading)
-        assertNotNull("expected error UI, state=$state", state.errorMessage)
-        assertFalse(state.notificationState.alertsEnabled)
     }
 }
