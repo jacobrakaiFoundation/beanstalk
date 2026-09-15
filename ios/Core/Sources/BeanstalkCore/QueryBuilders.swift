@@ -73,6 +73,7 @@ public enum OpenFDARequestBuilder {
         }
         queryItems.append(URLQueryItem(name: "limit", value: String(max(1, min(request.limit, 100)))))
         queryItems.append(URLQueryItem(name: "skip", value: String(request.skip)))
+        queryItems.append(URLQueryItem(name: "sort", value: "report_date:desc"))
         components.queryItems = queryItems
         guard let url = components.url else { throw QueryBuilderError.invalidBaseURL }
         return url
