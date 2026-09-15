@@ -58,6 +58,7 @@ fun RecallsScreen(
     onRecord: (EnforcementRecord) -> Unit,
 ) {
     Scaffold(
+        contentWindowInsets = tabScaffoldInsets(),
         topBar = {
             TopAppBar(
                 title = { Text("Recalls") },

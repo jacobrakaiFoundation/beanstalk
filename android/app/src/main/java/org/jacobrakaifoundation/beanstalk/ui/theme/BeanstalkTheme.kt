@@ -18,6 +18,10 @@ private val LightColors = lightColorScheme(
     onBackground = Ink,
     surface = Paper,
     onSurface = Ink,
+    surfaceVariant = Color(0xFFE8E4D4),
+    onSurfaceVariant = Ink,
+    errorContainer = Color(0xFFF4D6D6),
+    onErrorContainer = Color(0xFF4A1515),
 )
 
 private val DarkColors = darkColorScheme(
@@ -27,6 +31,10 @@ private val DarkColors = darkColorScheme(
     onBackground = Paper,
     surface = Color(0xFF18261E),
     onSurface = Paper,
+    surfaceVariant = Color(0xFF24352C),
+    onSurfaceVariant = Paper,
+    errorContainer = Color(0xFF5A2A2A),
+    onErrorContainer = Color(0xFFF4D6D6),
 )
 
 @Composable
