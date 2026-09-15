@@ -55,14 +55,14 @@ class WatchlistSyncEngineTest {
                 "replacement" to "new-secret"
             },
             update = { credentials, terms ->
-                if (credentials.deviceID == "expired") throw ApiException(401, "expired")
-                uploaded += credentials.deviceID to terms
+                if (credentials.deviceId == "expired") throw ApiException(401, "expired")
+                uploaded += credentials.deviceId to terms
             },
         )
 
         assertTrue(engine.syncIfNeeded())
         assertFalse(pending)
-        assertEquals("replacement", current.deviceID)
+        assertEquals("replacement", current.deviceId)
         assertEquals(listOf("replacement" to emptyList<String>()), uploaded)
     }
     @Test

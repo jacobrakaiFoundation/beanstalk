@@ -240,7 +240,7 @@ jobs:
 
       - name: Assemble native debug APK
         working-directory: android
-        run: ./gradlew :app:assembleDebug --no-daemon
+        run: ./gradlew :app:assembleDebug :app:testDebugUnitTest --no-daemon
 
       - name: Upload native debug APK
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
