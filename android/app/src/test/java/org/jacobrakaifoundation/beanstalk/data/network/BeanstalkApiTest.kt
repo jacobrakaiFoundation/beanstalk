@@ -83,6 +83,50 @@ class BeanstalkApiTest {
     }
 
     @Test
+    fun `enforcement latest page uses report_date sort and never calls notices`() = runTest(timeout = 10.seconds) {
+        withApi { api, server ->
+            server.enqueue(
+                MockResponse().setBody(
+                    """{"results":[{"recall_number":"F-001-2026","product_description":"Milk","reason_for_recall":"Listeria","recalling_firm":"Acme","report_date":"20260915"}],"meta":{"results":{"skip":0,"limit":25,"total":1}}}""",
+                ),
+            )
+            val page = api.enforcement(EnforcementSearch(limit = 25, page = 0))
+            assertEquals(1, server.requestCount)
+            val recorded = server.takeRequest()
+            assertEquals("/food/enforcement.json", recorded.requestUrl!!.encodedPath)
+            assertEquals("25", recorded.requestUrl!!.queryParameter("limit"))
+            assertEquals("0", recorded.requestUrl!!.queryParameter("skip"))
+            assertEquals("report_date:desc", recorded.requestUrl!!.queryParameter("sort"))
+            assertNull(recorded.requestUrl!!.queryParameter("search"))
+            assertEquals(1, page.items.size)
+            assertEquals("F-001-2026", page.items.single().id)
+        }
+    }
+
+    @Test
+    fun `enforcement still reaches openFDA when the Beanstalk backend host is dead`() = runTest(timeout = 10.seconds) {
+        val server = MockWebServer()
+        server.start()
+        try {
+            server.enqueue(
+                MockResponse().setBody(
+                    """{"results":[{"recall_number":"F-009-2026","product_description":"Cheese"}],"meta":{"results":{"skip":0,"limit":25,"total":1}}}""",
+                ),
+            )
+            val api = BeanstalkApi(
+                "https://api.beanstalk.jacobrakai.org/",
+                ioDispatcher = Dispatchers.Unconfined,
+                openFdaEnforcementUrl = server.url("/food/enforcement.json").toString(),
+            )
+            val page = api.enforcement(EnforcementSearch(limit = 25, page = 0))
+            assertEquals("F-009-2026", page.items.single().id)
+            assertEquals("/food/enforcement.json", server.takeRequest().requestUrl!!.encodedPath)
+        } finally {
+            server.shutdown()
+        }
+    }
+
+    @Test
     fun `enforcement interpolates a sanitized query`() = runTest(timeout = 10.seconds) {
         withApi { api, server ->
             server.enqueue(MockResponse().setBody("""{"results":[],"meta":{"results":{"skip":0,"limit":20,"total":0}}}"""))

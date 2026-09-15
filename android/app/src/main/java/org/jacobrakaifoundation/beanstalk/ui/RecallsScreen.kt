@@ -44,7 +44,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import org.jacobrakaifoundation.beanstalk.data.model.EnforcementRecord
-import org.jacobrakaifoundation.beanstalk.data.model.RecallNotice
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,7 +55,6 @@ fun RecallsScreen(
     onStatusChange: (String) -> Unit,
     onSearch: () -> Unit,
     onLoadMore: () -> Unit,
-    onNotice: (RecallNotice) -> Unit,
     onRecord: (EnforcementRecord) -> Unit,
 ) {
     Scaffold(
@@ -98,7 +96,7 @@ fun RecallsScreen(
             item {
                 InformationBanner(
                     text = if (state.mode == BrowseMode.LATEST) {
-                        "Latest results are FDA public recall announcements. Notification matches come only from these published announcements."
+                        "Latest results are the newest openFDA food-enforcement snapshots, sorted by report date. This archive can lag fda.gov and is not a live FDA announcement feed."
                     } else {
                         "Historical results are openFDA enforcement snapshots. FDA discourages using this archive for public alerts."
                     },
@@ -109,7 +107,7 @@ fun RecallsScreen(
                 OutlinedTextField(
                     value = state.query,
                     onValueChange = onQueryChange,
-                    label = { Text(if (state.mode == BrowseMode.LATEST) "Search published announcements" else "Search historical records") },
+                    label = { Text(if (state.mode == BrowseMode.LATEST) "Search recent enforcement records" else "Search historical records") },
                     placeholder = { Text("Product, hazard, or company") },
                     leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
                     trailingIcon = {
@@ -157,31 +155,17 @@ fun RecallsScreen(
                     }
                 }
             }
-            if (state.mode == BrowseMode.LATEST) {
-                if (!state.isLoading && state.errorMessage == null && state.notices.isEmpty()) {
-                    item {
-                        EmptyState(
-                            "No matching announcements",
-                            "No match means only that no matching published announcement was found. It does not mean a product is safe.",
-                            Icons.Outlined.Search,
-                        )
-                    }
+            if (!state.isLoading && state.errorMessage == null && state.records.isEmpty()) {
+                item {
+                    EmptyState(
+                        if (state.mode == BrowseMode.LATEST) "No matching recent records" else "No matching historical records",
+                        "No match means only that openFDA returned no matching enforcement snapshot. It does not mean a product is safe.",
+                        Icons.Outlined.Search,
+                    )
                 }
-                items(state.notices, key = { it.id }) { notice -> RecallRow(notice, { onNotice(notice) }) }
-                if (state.nextCursor != null) item { LoadMoreButton(state.isLoading, onLoadMore) }
-            } else {
-                if (!state.isLoading && state.errorMessage == null && state.records.isEmpty()) {
-                    item {
-                        EmptyState(
-                            "No matching historical records",
-                            "No match means only that openFDA returned no matching enforcement snapshot. It does not mean a product is safe.",
-                            Icons.Outlined.Search,
-                        )
-                    }
-                }
-                items(state.records, key = { it.id }) { record -> EnforcementRow(record, { onRecord(record) }) }
-                if (state.archiveHasMore) item { LoadMoreButton(state.isLoading, onLoadMore) }
             }
+            items(state.records, key = { it.id }) { record -> EnforcementRow(record, { onRecord(record) }) }
+            if (state.archiveHasMore) item { LoadMoreButton(state.isLoading, onLoadMore) }
             if (state.isLoading && state.notices.isEmpty() && state.records.isEmpty()) {
                 item {
                     Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {

@@ -35,7 +35,7 @@ fun EnforcementDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Historical record") },
+                title = { Text("Enforcement record") },
                 navigationIcon = {
                     IconButton(onClick = { onBack() }) {
                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
@@ -52,7 +52,7 @@ fun EnforcementDetailScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            InformationBanner("Historical results are openFDA enforcement snapshots, not a live FDA alert feed.")
+            InformationBanner("These results are openFDA enforcement snapshots, not a live FDA alert feed.")
             if (record != null) {
                 val saved = "enforcement:${record.id}" in state.savedIDs
                 Text(

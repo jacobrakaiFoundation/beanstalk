@@ -12,7 +12,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.jacobrakaifoundation.beanstalk.data.BeanstalkRepository
 import org.jacobrakaifoundation.beanstalk.data.model.EnforcementRecord
-import org.jacobrakaifoundation.beanstalk.data.model.EnforcementSearch
 import org.jacobrakaifoundation.beanstalk.data.model.NoticeWatchResult
 import org.jacobrakaifoundation.beanstalk.data.model.NotificationTarget
 import org.jacobrakaifoundation.beanstalk.data.model.RecallNotice
@@ -110,9 +109,7 @@ class BeanstalkViewModel(
 
     fun loadMore() {
         val snapshot = mutableState.value
-        if (snapshot.isLoading) return
-        if (snapshot.mode == BrowseMode.LATEST && snapshot.nextCursor == null) return
-        if (snapshot.mode == BrowseMode.HISTORICAL && !snapshot.archiveHasMore) return
+        if (snapshot.isLoading || !snapshot.archiveHasMore) return
         load(replacing = false)
     }
 
@@ -125,36 +122,16 @@ class BeanstalkViewModel(
         val generation = ++requestGeneration
         loadJob = viewModelScope.launch {
             try {
-                if (captured.mode == BrowseMode.LATEST) {
-                    val loaded = repository.notices(request.query, request.cursor)
-                    if (!accepts(generation, signature)) return@launch
-                    mutableState.update { current ->
-                        current.copy(
-                            notices = if (replacing) loaded.value.items else (current.notices + loaded.value.items).distinctBy { it.id },
-                            nextCursor = loaded.value.nextCursor,
-                            isLoading = false,
-                            offlineMessage = offlineMessage(loaded.isOfflineCopy, loaded.cachedAtEpochMillis),
-                        )
-                    }
-                } else {
-                    val loaded = repository.enforcement(
-                        EnforcementSearch(
-                            query = request.query,
-                            classification = captured.classification,
-                            status = captured.status,
-                            page = request.page,
-                        ),
+                val loaded = repository.enforcement(BrowseRequest.enforcementSearch(captured, request))
+                if (!accepts(generation, signature)) return@launch
+                mutableState.update { current ->
+                    BrowseRequest.applyEnforcement(
+                        current,
+                        replacing,
+                        loaded.value,
+                        request,
+                        offlineMessage(loaded.isOfflineCopy, loaded.cachedAtEpochMillis),
                     )
-                    if (!accepts(generation, signature)) return@launch
-                    mutableState.update { current ->
-                        current.copy(
-                            records = if (replacing) loaded.value.items else (current.records + loaded.value.items).distinctBy { it.id },
-                            archivePage = request.page,
-                            archiveHasMore = loaded.value.hasMore,
-                            isLoading = false,
-                            offlineMessage = offlineMessage(loaded.isOfflineCopy, loaded.cachedAtEpochMillis),
-                        )
-                    }
                 }
             } catch (error: Exception) {
                 if (!accepts(generation, signature)) return@launch

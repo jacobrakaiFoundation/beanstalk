@@ -107,10 +107,6 @@ fun BeanstalkApp(viewModel: BeanstalkViewModel) {
                             onStatusChange = viewModel::setStatus,
                             onSearch = viewModel::reload,
                             onLoadMore = viewModel::loadMore,
-                            onNotice = {
-                                viewModel.openNotice(it)
-                                navigation.navigate(NOTICE_DETAIL)
-                            },
                             onRecord = {
                                 viewModel.openRecord(it)
                                 navigation.navigate(ENFORCEMENT_DETAIL)
