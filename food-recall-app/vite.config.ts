@@ -50,6 +50,11 @@ export default defineConfig({
           });
         },
       },
+      "/api/fsis-recalls": {
+        target: "https://www.fsis.usda.gov",
+        changeOrigin: true,
+        rewrite: () => "/fsis/api/recall/v/1",
+      },
     },
   },
   test: {

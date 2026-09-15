@@ -38,6 +38,9 @@ final class QueryBuilderTests: XCTestCase {
         XCTAssertTrue(search.contains("status:\"Ongoing\""))
         XCTAssertEqual(values["limit"], "20")
         XCTAssertEqual(values["skip"], "60")
+        XCTAssertEqual(values["sort"], "report_date:desc")
+        XCTAssertEqual(url.host, "api.fda.gov")
+        XCTAssertFalse(url.absoluteString.contains("api.beanstalk.jacobrakai.org"))
     }
 
     func testOpenFDARejectsPaginationPastAPIWindow() {

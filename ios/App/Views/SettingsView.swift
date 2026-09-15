@@ -29,16 +29,19 @@ struct SettingsView: View {
                         UIApplication.shared.open(url)
                     }
                     .accessibilityHint("Opens iOS Settings")
-                    if alertSettingsAction == .turnOn {
+                    switch alertSettingsAction {
+                    case .turnOn:
                         Button("Turn on alerts for this watchlist") {
                             Task { await notifications.requestAfterFirstWatchTerm(terms: watchTerms.map(\.normalizedTerm)) }
                         }
-                    }
-                    if alertSettingsAction == .turnOff {
+                    case .turnOff:
                         Button("Remove this device from Beanstalk alerts", role: .destructive) {
                             confirmingServerDeletion = true
                         }
-                    } else if notifications.hasStoredRegistration {
+                    case .none:
+                        EmptyView()
+                    }
+                    if alertSettingsAction != .turnOff, notifications.hasStoredRegistration {
                         Button("Retry Removing This Device", role: .destructive) {
                             confirmingServerDeletion = true
                         }
@@ -75,7 +78,7 @@ struct SettingsView: View {
                 }
 
                 Section("Data sources") {
-                    Text("Latest recalls use FDA public recall announcements. Historical search uses openFDA enforcement snapshots as published.")
+                    Text("Latest and Historical both use openFDA food-enforcement snapshots as published. The archive can lag fda.gov and is not a live FDA announcement feed.")
                     InformationBanner(
                         icon: "exclamationmark.shield",
                         text: "Beanstalk is not medical advice. No result means only that no matching record was found; it never means a product is safe.",
@@ -119,7 +122,7 @@ struct SettingsView: View {
     private var alertSettingsAction: AlertSettingsAction {
         AlertControlPolicy.settingsAction(
             alertsEnabled: notifications.alertsEnabled,
-            hasBackendRegistration: notifications.hasStoredRegistration,
+            alertsAvailable: notifications.alertsAvailable,
             watchTermCount: watchTerms.count
         )
     }

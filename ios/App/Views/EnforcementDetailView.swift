@@ -7,7 +7,7 @@ struct EnforcementDetailView: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 20) {
-                Label("Historical enforcement archive", systemImage: "clock.arrow.circlepath")
+                Label("Enforcement record", systemImage: "clock.arrow.circlepath")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Color.accentColor)
 
@@ -17,7 +17,7 @@ struct EnforcementDetailView: View {
 
                 InformationBanner(
                     icon: "info.circle",
-                    text: "As published by openFDA. This snapshot is not a live FDA recall lifecycle feed; statuses may remain Ongoing after a recall ends."
+                    text: "These results are openFDA enforcement snapshots, not a live FDA alert feed."
                 )
 
                 Divider()
@@ -70,7 +70,7 @@ struct EnforcementDetailView: View {
             }
             .padding()
         }
-        .navigationTitle("Historical record")
+        .navigationTitle("Enforcement record")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {

@@ -15,6 +15,8 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import org.jacobrakaifoundation.beanstalk.notifications.AlertControlPolicy
+import org.jacobrakaifoundation.beanstalk.notifications.AlertSettingsAction
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -24,7 +26,10 @@ fun SettingsScreen(
     onDisableNotifications: () -> Unit,
     onClearLocalData: () -> Unit,
 ) {
-    Scaffold(topBar = { TopAppBar(title = { Text("Settings") }) }) { padding ->
+    Scaffold(
+        contentWindowInsets = tabScaffoldInsets(),
+        topBar = { TopAppBar(title = { Text("Settings") }) },
+    ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
@@ -32,18 +37,21 @@ fun SettingsScreen(
         ) {
             item { Text("Notifications", style = MaterialTheme.typography.titleMedium) }
             item { InformationBanner(state.notificationState.message) }
-            item {
-                if (state.notificationState.alertsEnabled) {
+            val alerts = state.notificationState
+            when (AlertControlPolicy.settingsAction(alerts.alertsEnabled, alerts.alertsAvailable)) {
+                AlertSettingsAction.TURN_OFF -> item {
                     OutlinedButton(onClick = onDisableNotifications, modifier = Modifier.fillMaxWidth()) {
                         Text("Turn alerts off")
                     }
-                } else {
+                }
+                AlertSettingsAction.TURN_ON -> item {
                     Button(
                         onClick = onRequestNotifications,
-                        enabled = !state.notificationState.isWorking,
+                        enabled = !alerts.isWorking,
                         modifier = Modifier.fillMaxWidth(),
                     ) { Text("Enable alerts") }
                 }
+                AlertSettingsAction.NONE -> Unit
             }
             item { Text("This device", style = MaterialTheme.typography.titleMedium) }
             item {

@@ -6,7 +6,7 @@
     <meta name="color-scheme" content="light dark">
     <meta name="theme-color" content="#f8f6ee" media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#111e17" media="(prefers-color-scheme: dark)">
-    <meta name="description" content="How Beanstalk for iPhone handles saved recalls, watchlists, notifications, and deletion.">
+    <meta name="description" content="How Beanstalk for iPhone and Android handles saved recalls, watchlists, notifications, and deletion.">
     <title>Privacy — Beanstalk</title>
     <style>
       :root {
@@ -87,14 +87,25 @@
 
     <main id="content">
       <h1>Privacy, in plain language.</h1>
-      <p class="lede">No account. No ads. No tracking. Saved recalls stay on your iPhone. Alert data goes to the Foundation only when you choose to enable watchlist notifications.</p>
-      <span class="meta">Effective September 13, 2026</span>
+      <p class="lede">No account. No ads. No tracking. On Android, Beanstalk sends nothing to the Foundation. On iPhone, alert data goes to the Foundation only when you choose to enable watchlist notifications.</p>
+      <span class="meta">Effective September 15, 2026</span>
+
+      <section class="card" id="android" aria-labelledby="android-heading">
+        <h2 id="android-heading">Beanstalk for Android</h2>
+        <p>The Android app is a packaged version of the Beanstalk web app. It has no accounts, push notification service, analytics, advertising, or any service operated by the Foundation.</p>
+        <ul>
+          <li><strong>On your device only:</strong> your watchlist terms, display and notification preferences, and a short cache of recent results are stored in the app's local storage on your phone. The Foundation does not receive them. Clearing the app's storage or uninstalling the app deletes them.</li>
+          <li><strong>Searches:</strong> when you search or browse, your phone sends the request directly to FDA's openFDA service to return results. FDA receives normal web-request information under its website policies. The Foundation does not receive, store, or log these requests.</li>
+          <li><strong>Links you open:</strong> original FDA and USDA sources open outside the app, and those sites have their own policies.</li>
+        </ul>
+        <p>The sections below describe the iPhone app's saved recalls and optional alerts. They do not apply to the Android app.</p>
+      </section>
 
       <section class="card" aria-labelledby="summary-heading">
-        <h2 id="summary-heading">What stays on your iPhone</h2>
+        <h2 id="summary-heading">iPhone: what stays on your device</h2>
         <p>Recalls you save are stored locally on your device. Beanstalk does not upload your saved-recall list. You can remove individual records from the Saved tab.</p>
 
-        <h2>What alerts send</h2>
+        <h2>iPhone: what alerts send</h2>
         <p>If you create a watchlist and enable notifications, Beanstalk sends the following to a service operated by JACOBRAKAI FOUNDATION:</p>
         <ul>
           <li>the words and phrases on your watchlist;</li>
@@ -103,7 +114,7 @@
         </ul>
         <p>The random credential is not based on your name, email address, Apple Account, or advertising identifier. It is stored in the iOS Keychain. The service uses this data only to match FDA-published food recall announcements and deliver the alerts you requested.</p>
 
-        <h2>How long alert data remains</h2>
+        <h2>iPhone: how long alert data remains</h2>
         <p>Your active watch terms, push token, random registration ID, and credential-verification hash remain until you use Remove this device from Beanstalk alerts in Settings. The full client secret stays in iOS Keychain. A registration that is replaced or rejected by Apple becomes inactive and is deleted with its watch terms within 30 days. Every notification delivery record, including a queued or retrying record, is also deleted within 30 days for reliability, security, and troubleshooting.</p>
         <p>Encrypted rotating backups may retain a deleted server record for up to 14 additional days. Access is limited to authorized service operators. If a backup is restored, every restored alert registration is disabled and its pending notifications are canceled; alerts resume only after an iPhone with valid credentials refreshes its current Apple notification token. The application service records route names instead of full request URLs and does not retain search terms or client IP addresses. The same logging restriction applies to the production HTTPS gateway.</p>
       </section>
@@ -131,7 +142,7 @@
         <p>Beanstalk has no advertising SDK and does not sell or rent app data, show targeted ads, share app data with data brokers, or combine it with third-party data to track you across apps or websites.</p>
 
         <h2>Safety and scope</h2>
-        <p>Beanstalk uses reasonable safeguards, including an app-specific credential stored in Keychain and encrypted HTTPS connections. No system is risk-free. This policy covers the Beanstalk iPhone app; websites you choose to open have their own policies.</p>
+        <p>Beanstalk uses reasonable safeguards, including encrypted HTTPS connections and, on iPhone, an app-specific credential stored in Keychain. No system is risk-free. This policy covers the Beanstalk iPhone and Android apps; websites you choose to open have their own policies.</p>
         <p>Beanstalk is an independent project of JACOBRAKAI FOUNDATION. It is not affiliated with or endorsed by FDA. Recall information is not medical advice, and a search with no results does not establish that a product is safe.</p>
 
         <h2>Questions</h2>

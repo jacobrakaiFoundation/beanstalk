@@ -25,6 +25,7 @@ export const mockRecalls: Recall[] = [
     initialFirmNotification: "Letter",
     productQuantity: "2,400 bags",
     terminationDate: "",
+    source: "FDA",
   },
   {
     id: "F-1002-2026",
@@ -51,6 +52,7 @@ export const mockRecalls: Recall[] = [
     initialFirmNotification: "Press Release",
     productQuantity: "500 bags",
     terminationDate: "",
+    source: "FDA",
   },
   {
     id: "F-0988-2025",
@@ -77,6 +79,7 @@ export const mockRecalls: Recall[] = [
     initialFirmNotification: "Telephone",
     productQuantity: "8,000 units",
     terminationDate: "20250901",
+    source: "FDA",
   },
   {
     id: "F-1100-2026",
@@ -103,6 +106,7 @@ export const mockRecalls: Recall[] = [
     initialFirmNotification: "Letter",
     productQuantity: "1,200 bars",
     terminationDate: "",
+    source: "FDA",
   },
   {
     id: "F-1101-2026",
@@ -129,6 +133,7 @@ export const mockRecalls: Recall[] = [
     initialFirmNotification: "Letter",
     productQuantity: "3,600 jars",
     terminationDate: "",
+    source: "FDA",
   },
   {
     id: "F-1102-2026",
@@ -155,6 +160,7 @@ export const mockRecalls: Recall[] = [
     initialFirmNotification: "Press Release",
     productQuantity: "15,000 boxes",
     terminationDate: "20260415",
+    source: "FDA",
   },
   {
     id: "F-1103-2026",
@@ -181,6 +187,7 @@ export const mockRecalls: Recall[] = [
     initialFirmNotification: "Letter",
     productQuantity: "800 pouches",
     terminationDate: "",
+    source: "FDA",
   },
   {
     id: "F-1104-2026",
@@ -208,5 +215,6 @@ export const mockRecalls: Recall[] = [
     initialFirmNotification: "Press Release",
     productQuantity: "4,200 pouches",
     terminationDate: "",
+    source: "FDA",
   },
 ];
