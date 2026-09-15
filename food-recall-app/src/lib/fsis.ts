@@ -40,32 +40,48 @@ function asStringArray(value: unknown): string[] {
   return s ? [s] : [];
 }
 
-/** Decode a small, fixed set of HTML entities once. `&amp;` is last so nothing is double-unescaped. */
-function decodeHtmlEntities(html: string): string {
-  return html
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&quot;/gi, '"')
-    .replace(/&#0*39;|&apos;|&#x27;/gi, "'")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/&amp;/gi, "&");
+const BLOCK_TAGS = new Set(["p", "div", "li", "ul", "ol", "br"]);
+
+function htmlTagName(html: string, openIndex: number): string {
+  let i = openIndex + 1;
+  if (html[i] === "/") i += 1;
+  let name = "";
+  while (i < html.length) {
+    const code = html.charCodeAt(i);
+    const isLetter = (code >= 65 && code <= 90) || (code >= 97 && code <= 122);
+    if (!isLetter) break;
+    name += html[i].toLowerCase();
+    i += 1;
+  }
+  return name;
 }
 
 /**
- * Strip HTML for the summary excerpt. Decode entities first, then remove tags
- * (including leftover incomplete tags) so markup cannot be reconstituted.
+ * Strip HTML for the summary excerpt without regex tag sanitization.
+ * Walks the string so leftover `<script` cannot survive, and never unescapes
+ * `&lt;` / `&gt;` (those stay inert text).
  */
 function stripHtml(html: string): string {
-  const decoded = decodeHtmlEntities(html);
-  const withBreaks = decoded.replace(/<br\s*\/?>/gi, "\n").replace(/<\/?(?:p|div|li|ul|ol)\b[^>]*>?/gi, "\n");
-  let stripped = withBreaks;
-  let previous = "";
-  while (stripped !== previous) {
-    previous = stripped;
-    stripped = stripped.replace(/<[a-zA-Z][^>]*>/g, "");
+  const decoded = html
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#0*39;|&apos;|&#x27;/gi, "'")
+    .replace(/&amp;/gi, "&");
+
+  let out = "";
+  let i = 0;
+  while (i < decoded.length) {
+    if (decoded[i] === "<") {
+      const name = htmlTagName(decoded, i);
+      const close = decoded.indexOf(">", i + 1);
+      i = close === -1 ? decoded.length : close + 1;
+      if (BLOCK_TAGS.has(name)) out += "\n";
+      continue;
+    }
+    out += decoded[i];
+    i += 1;
   }
-  stripped = stripped.replace(/<[^>]*>?/g, "");
-  return stripped
+  return out
     .replace(/[ \t]+/g, " ")
     .replace(/\n\s*\n/g, "\n")
     .trim();
