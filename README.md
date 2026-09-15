@@ -15,7 +15,7 @@ Beanstalk helps people search **FDA food recall records** by product, company, o
 | Part of Beanstalk | What you can use or inspect |
 | --- | --- |
 | **Web app — available now** | Search the openFDA historical enforcement archive, inspect source fields, use local watchlists, and browse clearly labeled, unverified CAERS Early Signals. The web app is not a real-time safety alert service. |
-| **Android sideload APK — available now** | Debug-signed Capacitor wrap of the web app. Download the `beanstalk-debug-apk` artifact from the `android sideload apk` CI job. Play Store signing is not configured. See [`android-apk/README.md`](android-apk/README.md). |
+| **Android sideload APK — available now** | Debug-signed Capacitor wrap of the web app. Download the `beanstalk-debug-apk` artifact from the `android sideload apk` CI job. The native Compose project in `android/` also `assembleDebug`s; CI uploads it as `beanstalk-native-debug-apk`. Play Store signing is not configured. See [`android-apk/README.md`](android-apk/README.md). |
 | **iPhone — implementation in this repository** | Native recall announcements, saved records, watchlists, and an optional notification service. App Store publication and production notification delivery still require the [release checks](docs/app-store/release-checklist.md). |
 
 <img src="docs/readme/app-demo-20260911.png" alt="Beanstalk web demo with product search, state and dietary filters, and recall cards showing hazards and source details." width="1280">
@@ -113,8 +113,8 @@ For changes, run `npm run check`, `npm run build`, and `npm run test:coverage`. 
 
 ```text
 ios/                       Native SwiftUI app and portable core tests
-android/                   Incomplete native Compose sources (not the sideload APK)
-android-apk/               Capacitor Android project that packages the web app
+android/                   Native Compose app (`./gradlew :app:assembleDebug`)
+android-apk/               Capacitor wrap of the web app (CI sideload artifact)
 notification-service/      FDA notice ingestion, device API, SQLite queue, APNs
 food-recall-app/            Existing React/PWA historical browser and public pages
 docs/app-store/             Enrollment, privacy, metadata, review, and release package
