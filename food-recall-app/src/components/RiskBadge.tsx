@@ -26,7 +26,7 @@ export default function RiskBadge({ classification, showClass }: Props) {
           <span aria-hidden="true" className="font-normal opacity-70">
             ·
           </span>
-          <span className="font-normal opacity-90">{classification}</span>
+          <span className="font-normal">{classification}</span>
         </>
       )}
     </span>

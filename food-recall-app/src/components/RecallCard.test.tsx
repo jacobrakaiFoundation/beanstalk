@@ -154,6 +154,13 @@ describe("RecallCard", () => {
     expect(screen.getByText("Nationwide", { selector: "dd" })).toBeTruthy();
   });
 
+  it("uses dark-mode tokens that meet WCAG 2.1 AA on card labels and the Class I suffix", () => {
+    render(<RecallCard recall={makeRecall()} onSelect={() => {}} isNew={false} watchlist={[]} />);
+    expect(screen.getByText("Firm").className).toContain("dark:text-zinc-400");
+    expect(screen.getByText("Sold in").className).toContain("dark:text-zinc-400");
+    expect(screen.getByText("Class I").className).not.toContain("opacity-");
+  });
+
   it("handles empty distribution pattern gracefully", () => {
     render(
       <RecallCard recall={makeRecall({ distributionPattern: "" })} onSelect={() => {}} isNew={false} watchlist={[]} />,
