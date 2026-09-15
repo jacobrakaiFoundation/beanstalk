@@ -54,8 +54,10 @@ npm run test   # vitest (unit + component)
 ## Deploy
 Any static host (Vercel, Netlify, Cloudflare Pages, GitHub Pages):
 ```bash
-npm run build  # outputs dist/
+npm run build  # outputs dist/ with base /beanstalk/ for GitHub Pages
 ```
+
+The Android sideload APK uses `npm run build:android` (`VITE_BASE=/` plus `npx cap sync android`) so the WebView can load assets at the origin root. That path does not change the Pages deploy. See [`../android-apk/README.md`](../android-apk/README.md).
 
 ## Environment Variables
 | Variable | Required | Description |

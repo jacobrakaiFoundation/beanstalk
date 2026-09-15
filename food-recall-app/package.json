@@ -13,7 +13,8 @@
     "lint": "biome lint .",
     "lint:fix": "biome check --write .",
     "check": "biome check .",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "build:android": "VITE_BASE=/ npm run build && npx cap sync android"
   },
   "dependencies": {
     "react": "^19.2.8",
@@ -21,6 +22,9 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.12",
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/cli": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
     "@tailwindcss/postcss": "^4.3.3",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",

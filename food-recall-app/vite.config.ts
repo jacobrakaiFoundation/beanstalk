@@ -2,7 +2,9 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 
-const pagesBase = "/beanstalk/";
+// GitHub Pages is served at /beanstalk/. The Android APK copies dist/ into a
+// WebView at the origin root, so that build sets VITE_BASE=/.
+const pagesBase = process.env.VITE_BASE ?? "/beanstalk/";
 
 export default defineConfig({
   base: pagesBase,
