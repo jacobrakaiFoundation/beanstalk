@@ -2,12 +2,12 @@ package org.jacobrakaifoundation.beanstalk
 
 import android.app.Application
 import android.content.pm.PackageManager
+import android.os.Looper
 import com.google.firebase.FirebaseApp
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeout
-import kotlinx.coroutines.yield
+import kotlinx.serialization.json.Json
+import okhttp3.mockwebserver.MockWebServer
 import org.jacobrakaifoundation.beanstalk.data.BeanstalkRepository
 import org.jacobrakaifoundation.beanstalk.data.local.BeanstalkDatabase
 import org.jacobrakaifoundation.beanstalk.data.local.LocalStore
@@ -23,8 +23,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
+import org.robolectric.Shadows
 import org.robolectric.annotation.Config
-import kotlinx.serialization.json.Json
 
 @RunWith(RobolectricTestRunner::class)
 @Config(application = BeanstalkApplication::class, sdk = [35])
@@ -63,13 +63,16 @@ class ColdStartResilienceTest {
 
         val packageInfo = packageManager.getPackageInfo(
             app.packageName,
-            PackageManager.GET_PROVIDERS or PackageManager.GET_SERVICES,
+            PackageManager.GET_PROVIDERS or PackageManager.GET_SERVICES or PackageManager.GET_RECEIVERS,
         )
         assertTrue(
             packageInfo.providers.orEmpty().none { it.name.contains("FirebaseInitProvider") },
         )
         assertTrue(
             packageInfo.services.orEmpty().none { it.name.contains("FirebaseMessagingService") },
+        )
+        assertTrue(
+            packageInfo.receivers.orEmpty().none { it.name.contains("FirebaseInstanceIdReceiver") },
         )
     }
 
@@ -104,7 +107,7 @@ class ApplicationGraphColdStartTest {
     }
 
     @Test
-    fun `dead backend leaves the process alive with browse error UI`() = runBlocking {
+    fun `dead backend leaves the process alive with browse error UI`() {
         val context = RuntimeEnvironment.getApplication()
         context.deleteDatabase("beanstalk.sqlite")
         val json = Json {
@@ -112,21 +115,27 @@ class ApplicationGraphColdStartTest {
             encodeDefaults = true
             explicitNulls = false
         }
+        val server = MockWebServer()
+        server.start()
+        val baseUrl = server.url("/").toString()
+        server.shutdown()
         val repository = BeanstalkRepository(
             LocalStore(BeanstalkDatabase(context)),
-            BeanstalkApi("http://127.0.0.1:1", json, ioDispatcher = Dispatchers.IO),
+            BeanstalkApi(baseUrl, json, ioDispatcher = Dispatchers.IO),
             SecureCredentialStore(context, json),
         )
         val coordinator = NotificationCoordinator(context, repository)
         val viewModel = BeanstalkViewModel(repository, coordinator)
-        withTimeout(15_000) {
-            while (viewModel.state.value.isLoading) {
-                yield()
-                delay(25)
-            }
+        val deadline = System.currentTimeMillis() + 15_000
+        var state = viewModel.state.value
+        while (System.currentTimeMillis() < deadline) {
+            Shadows.shadowOf(Looper.getMainLooper()).idle()
+            state = viewModel.state.value
+            if (!state.isLoading && state.errorMessage != null) break
+            Thread.sleep(25)
         }
-        assertFalse(viewModel.state.value.isLoading)
-        assertNotNull(viewModel.state.value.errorMessage)
-        assertFalse(viewModel.state.value.notificationState.alertsEnabled)
+        assertFalse("browse still loading: $state", state.isLoading)
+        assertNotNull("expected error UI, state=$state", state.errorMessage)
+        assertFalse(state.notificationState.alertsEnabled)
     }
 }
