@@ -1,0 +1,12 @@
+{
+  "appId": "org.jacobrakaifoundation.beanstalk",
+  "appName": "Beanstalk",
+  "webDir": "dist",
+  "backgroundColor": "#f8f6ee",
+  "android": {
+    "path": "../android-apk"
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}

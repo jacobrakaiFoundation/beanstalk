@@ -1,0 +1,4 @@
+-keepattributes *Annotation*, InnerClasses
+-dontwarn org.jacobrakaifoundation.beanstalk.**
+-keep class org.jacobrakaifoundation.beanstalk.** { *; }
+-keepclassmembers class org.jacobrakaifoundation.beanstalk.** { *; }

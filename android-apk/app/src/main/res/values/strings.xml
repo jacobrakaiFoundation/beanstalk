@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Beanstalk</string>
+    <string name="title_activity_main">Beanstalk</string>
+    <string name="package_name">org.jacobrakaifoundation.beanstalk</string>
+    <string name="custom_url_scheme">org.jacobrakaifoundation.beanstalk</string>
+</resources>

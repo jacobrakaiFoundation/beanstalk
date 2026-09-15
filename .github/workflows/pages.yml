@@ -54,9 +54,9 @@ jobs:
       - name: Install
         run: npm ci
 
-      # `npm run build` is `tsc --noEmit && vite build`; vite.config.ts sets
-      # base "/beanstalk/" so asset URLs and the service-worker scope match the
-      # project-site path.
+      # `npm run build` is `tsc --noEmit && vite build`. Default Vite base is
+      # "/beanstalk/" so Pages asset URLs and the service-worker scope match
+      # the project-site path. Android APK builds pass VITE_BASE=/ instead.
       - name: Build
         run: npm run build
 
