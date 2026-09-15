@@ -4,20 +4,29 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="light dark">
-    <title>About &amp; Funding — Beanstalk FDA Food Recall Search</title>
-    <meta name="description" content="Help make FDA food recall records easier to use. Explore Beanstalk, a free Foundation project, and proposed funding for usability, reliability, and release testing.">
+    <title>About &amp; Funding — Beanstalk FDA and USDA FSIS Food Recall Search</title>
+    <meta name="description" content="Help make FDA and USDA FSIS food recall records easier to use. Explore Beanstalk, a free Foundation project, and proposed funding for usability, reliability, and release testing.">
+    <meta name="keywords" content="FDA food recall, USDA FSIS, openFDA, food safety, meat poultry egg recall, food recall search, public health, JACOBRAKAI FOUNDATION">
+    <meta name="robots" content="index, follow">
+    <meta name="author" content="JACOBRAKAI FOUNDATION">
     <link rel="canonical" href="https://jacobrakaifoundation.github.io/beanstalk/about.html">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Beanstalk">
-    <meta property="og:title" content="Help make food recall information easier to use — Beanstalk">
-    <meta property="og:description" content="A free public-service project. See what works today and what funding could make possible.">
+    <meta property="og:locale" content="en_US">
+    <meta property="og:title" content="Help make FDA and USDA FSIS food recall information easier to use — Beanstalk">
+    <meta property="og:description" content="A free public-service project. Search FDA openFDA and USDA FSIS records, and see what funding could make possible.">
     <meta property="og:url" content="https://jacobrakaifoundation.github.io/beanstalk/about.html">
     <meta property="og:image" content="https://jacobrakaifoundation.github.io/beanstalk/og-image.png">
+    <meta property="og:image:alt" content="Beanstalk food recall search with product filters and source badges">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Help make food recall information easier to use — Beanstalk">
-    <meta name="twitter:description" content="A free public-service project. See what works today and what funding could make possible.">
+    <meta name="twitter:title" content="Help make FDA and USDA FSIS food recall information easier to use — Beanstalk">
+    <meta name="twitter:description" content="A free public-service project. Search FDA openFDA and USDA FSIS records, and see what funding could make possible.">
     <meta name="twitter:image" content="https://jacobrakaifoundation.github.io/beanstalk/og-image.png">
+    <meta name="twitter:image:alt" content="Beanstalk food recall search with product filters and source badges">
+    <script type="application/ld+json">
+    {"@context":"https://schema.org","@type":"AboutPage","name":"About Beanstalk","url":"https://jacobrakaifoundation.github.io/beanstalk/about.html","description":"Help make FDA and USDA FSIS food recall records easier to use.","keywords":["FDA","USDA FSIS","openFDA","food recall","food safety","public health"],"isPartOf":{"@type":"WebApplication","name":"Beanstalk","url":"https://jacobrakaifoundation.github.io/beanstalk/"},"publisher":{"@type":"Organization","name":"JACOBRAKAI FOUNDATION","url":"https://jacobrakai.org/about/","taxID":"33-3382083"}}
+    </script>
     <style>
       :root {
         color-scheme: light;
@@ -67,6 +76,8 @@
       h2 { font-size: clamp(1.9rem, 4vw, 2.8rem); margin: 0 0 1.25rem; }
       h3 { font-size: 1.55rem; margin: 0 0 0.65rem; }
       .lede { max-width: 54ch; font-size: clamp(1.1rem, 2vw, 1.3rem); color: var(--muted); }
+      .topics { display: flex; flex-wrap: wrap; gap: 0.5rem; list-style: none; padding: 0; margin: 1.5rem 0 0; max-width: 54ch; }
+      .topics li { display: inline-flex; align-items: center; min-height: 2.25rem; padding: 0.2rem 0.75rem; border: 1px solid var(--line); border-radius: 999px; background: var(--soft); color: var(--text); font-size: 0.82rem; font-weight: 650; }
       .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.8rem 1.5rem; margin-top: 1.75rem; }
       .actions a { display: inline-flex; align-items: center; min-height: 2.75rem; }
       .button { justify-content: center; background: var(--brand); color: var(--paper); padding: 0.7rem 1.25rem; border-radius: 0.3rem; font-weight: 650; text-decoration: none; }
@@ -116,7 +127,15 @@
       <section class="hero" aria-labelledby="project-heading">
         <p class="eyebrow">A JACOBRAKAI FOUNDATION project</p>
         <h1 id="project-heading">Food recall records, easier to use.</h1>
-        <p class="lede">Search FDA food recall records by product, company, or hazard. Find the details and follow the original source. Beanstalk is free to use, with no account required.</p>
+        <p class="lede">Search FDA openFDA and USDA FSIS food recall records by product, company, or hazard. Find the details and follow the original source. Beanstalk is free to use, with no account required.</p>
+        <ul class="topics" aria-label="Topics">
+          <li>FDA food recalls</li>
+          <li>USDA FSIS</li>
+          <li>openFDA</li>
+          <li>food safety</li>
+          <li>meat poultry egg recall</li>
+          <li>public health</li>
+        </ul>
         <div class="actions">
           <a class="button" href="./">Search recall records</a>
           <a href="#funding">See what funding could support <span aria-hidden="true">&nbsp;↓</span></a>
@@ -124,16 +143,16 @@
       </section>
 
       <section class="status" aria-label="Project availability">
-        <div><strong>Web app · Available now</strong><p>Search the historical openFDA archive, narrow results, and inspect source fields. A separate Early Signals view labels adverse event reports as unverified.</p></div>
+        <div><strong>Web app · Available now</strong><p>Search the historical openFDA archive and USDA FSIS recall snapshot, narrow results, and inspect source fields. A separate Early Signals view labels adverse event reports as unverified.</p></div>
         <div><strong>iPhone app · Release preparation</strong><p>The native implementation is in the repository. App Store publication and production notifications still require release verification.</p></div>
       </section>
 
       <section class="section split" aria-labelledby="purpose-heading">
         <h2 id="purpose-heading">A clearer path to the original record.</h2>
         <div>
-          <p>A recall record can include several product names, lot codes, distribution details, and dates. Beanstalk brings search, filters, and source details together so readers can investigate a record.</p>
+          <p>A recall record can include several product names, lot codes, distribution details, and dates. Beanstalk brings search, filters, and source details from FDA and USDA FSIS together so readers can investigate a record.</p>
           <p>It is designed for people checking products or dietary concerns, and for community workers and researchers helping others navigate public information.</p>
-          <p class="fine">Beanstalk is independent of FDA. Historical records may be incomplete or outdated. No result means no match was found; it does not establish that a product is safe. Check the original notice. This is not medical advice.</p>
+          <p class="fine">Beanstalk is independent of FDA and USDA FSIS. Historical records may be incomplete or outdated. No result means no match was found; it does not establish that a product is safe. Check the original notice. This is not medical advice.</p>
         </div>
       </section>
 
@@ -176,7 +195,7 @@
     </main>
     <footer class="wrap">
       <p>© 2026 JACOBRAKAI FOUNDATION</p>
-      <nav aria-label="More information"><a href="./">Recall search</a><a href="privacy.html">Privacy</a><a href="support.html">App support</a><a href="https://open.fda.gov/apis/food/enforcement/">FDA data and limitations</a></nav>
+      <nav aria-label="More information"><a href="./">Recall search</a><a href="privacy.html">Privacy</a><a href="support.html">App support</a><a href="https://open.fda.gov/apis/food/enforcement/">FDA data and limitations</a><a href="https://www.fsis.usda.gov/recalls">USDA FSIS recalls</a></nav>
     </footer>
   </body>
 </html>
