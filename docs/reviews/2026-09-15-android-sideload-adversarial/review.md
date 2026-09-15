@@ -1,5 +1,7 @@
 # Beanstalk Android sideload APK adversarial review
 
+> **Status (2026-09-15):** Findings below describe the **pre-remediation** state at review time, not necessarily `main` today. [PR #166](https://github.com/jacobrakaiFoundation/beanstalk/pull/166) merged fixes for the P1 and P2 items listed in this document. Re-verify current `main` before treating any finding as an open defect.
+
 **Recommendation: request changes before treating the native APK as a working client.** Two P1 findings and four P2 findings follow. The Capacitor artifact remains the only sideload path that can search. This is a local review of already-merged [PR #163](https://github.com/jacobrakaiFoundation/beanstalk/pull/163); no GitHub review was submitted, and this document makes no application changes.
 
 Reviewed on September 15, 2026 against squash `2291efc` (`feat(android): shippable sideload APK (#163)`). Current `main` is `4e95c2e`. Later commits are Dependabot-only and do not touch the cited Android glue. PR discussion had no reviews, review threads, or BugBot comments.
