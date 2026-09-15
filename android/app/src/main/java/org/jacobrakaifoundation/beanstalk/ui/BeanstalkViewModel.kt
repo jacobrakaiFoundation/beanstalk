@@ -76,10 +76,29 @@ class BeanstalkViewModel(
             }
         }
         viewModelScope.launch {
-            refreshLocal()
+            try {
+                refreshLocal()
+            } catch (error: Exception) {
+                if (error is CancellationException) throw error
+                mutableState.update {
+                    it.copy(localDataMessage = error.message ?: "Saved data on this device couldn't be opened.")
+                }
+            }
             reload()
             refreshWatchMatches()
-            notifications.synchronize()
+            try {
+                notifications.synchronize()
+            } catch (error: Exception) {
+                if (error is CancellationException) throw error
+                mutableState.update {
+                    it.copy(
+                        notificationState = NotificationState(
+                            "Watch terms stay on this device.",
+                            isWorking = false,
+                        ),
+                    )
+                }
+            }
         }
     }
 

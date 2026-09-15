@@ -246,6 +246,8 @@ jobs:
         working-directory: android
         run: >-
           ./gradlew :app:testDebugUnitTest --no-daemon
+          --tests org.jacobrakaifoundation.beanstalk.ColdStartResilienceTest
+          --tests org.jacobrakaifoundation.beanstalk.ApplicationGraphColdStartTest
           --tests org.jacobrakaifoundation.beanstalk.data.WatchlistSyncEngineTest
           --tests org.jacobrakaifoundation.beanstalk.data.network.BeanstalkApiTest
           --tests org.jacobrakaifoundation.beanstalk.notifications.AlertControlPolicyTest
