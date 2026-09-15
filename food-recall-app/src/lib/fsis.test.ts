@@ -24,10 +24,13 @@ describe("mapFsisRecord", () => {
     expect(r!.recallNumber).toBe("FSIS-021-2026");
     expect(r!.source).toBe("USDA-FSIS");
     expect(r!.classification).toBe("Class I");
-    expect(r!.status).toBe("Ongoing");
+    expect(r!.status).toBe("Active Recall");
+    expect(r!.country).toBe("");
+    expect(r!.voluntaryMandated).toBe("");
+    expect(r!.initialFirmNotification).toBe("");
     expect(r!.recallingFirm).toBe("El Eden Import Distributor Corp");
     expect(r!.distributionPattern).toBe("New Jersey, Utah");
-    expect(r!.recallInitiationDate).toBe("2026-09-09");
+    expect(r!.recallInitiationDate).toBe("20260909");
     expect(r!.reasonForRecall).toBe("Import Violation");
     expect(r!.hazard).toBe("Import Violation");
     expect(r!.productQuantity).toBe("3,204 pounds");
@@ -36,19 +39,30 @@ describe("mapFsisRecord", () => {
     expect(r!.moreCodeInfo).not.toContain("<p>");
   });
 
-  it("maps Public Health Alert to Ongoing with Unknown classification", () => {
+  it("keeps Public Health Alert as the FSIS status and Unknown classification", () => {
     const r = mapFsisRecord({
       ...activeRecord,
       field_recall_type: "Public Health Alert",
       field_recall_classification: "Public Health Alert",
     });
-    expect(r!.status).toBe("Ongoing");
+    expect(r!.status).toBe("Public Health Alert");
     expect(r!.classification).toBe("Unknown");
   });
 
-  it("maps Closed Recall to Completed", () => {
+  it("keeps Closed Recall as the FSIS status instead of inventing Completed", () => {
     const r = mapFsisRecord({ ...activeRecord, field_recall_type: "Closed Recall" });
-    expect(r!.status).toBe("Completed");
+    expect(r!.status).toBe("Closed Recall");
+  });
+
+  it("strips entity-encoded tags so summaries cannot reconstitute markup", () => {
+    const r = mapFsisRecord({
+      ...activeRecord,
+      field_summary: "&lt;script&gt;alert(1)&lt;/script&gt;<p>Safe excerpt</p>",
+    });
+    expect(r!.moreCodeInfo).toContain("alert(1)");
+    expect(r!.moreCodeInfo).toContain("Safe excerpt");
+    expect(r!.moreCodeInfo).not.toMatch(/<script/i);
+    expect(r!.moreCodeInfo).not.toContain("<p>");
   });
 
   it("joins multiple reasons and falls back to a stable id without a recall number", () => {

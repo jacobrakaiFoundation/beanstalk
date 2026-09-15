@@ -3,6 +3,8 @@ export type RecallSource = "FDA" | "USDA-FSIS";
 
 /** Records are an openFDA snapshot, not a live FDA recall-lifecycle feed. */
 export const OPENFDA_AS_PUBLISHED = "As published by openFDA — not a live FDA recall lifecycle.";
+/** FSIS rows are a snapshot of the official Recall API, not a live USDA lifecycle. */
+export const FSIS_AS_PUBLISHED = "As published by USDA FSIS — not a live recall lifecycle.";
 export interface Recall {
   id: string;
   recallNumber: string;

@@ -1,4 +1,25 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+function urlHostname(url: unknown): string {
+  try {
+    return new URL(String(url), "https://placeholder.invalid").hostname;
+  } catch {
+    return "";
+  }
+}
+
+function isFdaApiUrl(url: unknown): boolean {
+  return urlHostname(url) === "api.fda.gov";
+}
+
+function isFsisProxyUrl(url: unknown): boolean {
+  try {
+    return new URL(String(url), "https://placeholder.invalid").pathname.includes("/api/fsis-recalls");
+  } catch {
+    return false;
+  }
+}
+
 import {
   buildCacheKey,
   buildGroupedSearchClause,
@@ -313,7 +334,7 @@ describe("fetchRecalls — no synthetic fallback", () => {
     let fdaCallCount = 0;
     const fetchMock = vi.fn((url: unknown) => {
       // FSIS side-fetch resolves to an empty API response; FDA calls keep their queued order
-      if (String(url).includes("/api/fsis-recalls")) return Promise.resolve(fsisEmpty);
+      if (isFsisProxyUrl(url)) return Promise.resolve(fsisEmpty);
       fdaCallCount += 1;
       return fdaCallCount === 1 ? firstPromise : secondPromise;
     });
@@ -344,7 +365,7 @@ describe("fetchRecalls — no synthetic fallback", () => {
     expect(r1.recalls[0].productDescription).toBe("First");
     expect(r2.recalls[0].productDescription).toBe("Second");
     // Verify FDA fetch called twice with different search params (excluding FSIS side-fetch)
-    const fdaUrls = fetchMock.mock.calls.map((call) => String(call[0])).filter((u) => !u.includes("/api/fsis-recalls"));
+    const fdaUrls = fetchMock.mock.calls.map((call) => String(call[0])).filter((u) => !isFsisProxyUrl(u));
     expect(fdaUrls).toHaveLength(2);
     expect(fdaUrls[0]).toContain("first");
     expect(fdaUrls[1]).toContain("second");
@@ -489,7 +510,7 @@ describe("fetchRecalls — source filter", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn((url: unknown) => {
-        if (String(url).includes("/api/fsis-recalls")) {
+        if (isFsisProxyUrl(url)) {
           return Promise.resolve({ ok: true, json: async () => fsisData });
         }
         return Promise.resolve({
@@ -531,7 +552,7 @@ describe("fetchRecalls — source filter", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn((url: unknown) => {
-        if (String(url).includes("/api/fsis-recalls")) {
+        if (isFsisProxyUrl(url)) {
           return Promise.resolve({ ok: true, json: async () => fsisData });
         }
         return Promise.resolve({
@@ -543,6 +564,106 @@ describe("fetchRecalls — source filter", () => {
     const result = await fetchRecalls({ limit: 20, skip: 0, source: "USDA-FSIS" });
     expect(result.error).toBeNull();
     expect(result.recalls.every((r) => r.source === "USDA-FSIS")).toBe(true);
+  });
+
+  it("paginates FSIS-only results instead of emptying later pages", async () => {
+    const fsisData = [1, 2, 3].map((n) => ({
+      field_title: `FSIS Firm Recalls Product ${n}`,
+      field_recall_number: `00${n}-2026`,
+      field_recall_url: `http://www.fsis.usda.gov/test-${n}`,
+      field_recall_type: "Active Recall",
+      field_recall_classification: "Class I",
+      field_recall_reason: ["Product Contamination"],
+      field_recall_date: `2026-01-0${n}`,
+      field_states: ["Texas"],
+      field_archive_recall: "False",
+    }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: unknown) => {
+        if (isFsisProxyUrl(url)) return Promise.resolve({ ok: true, json: async () => fsisData });
+        throw new Error(`unexpected FDA fetch: ${String(url)}`);
+      }),
+    );
+    const page1 = await fetchRecalls({ limit: 2, skip: 0, source: "USDA-FSIS" });
+    const page2 = await fetchRecalls({ limit: 2, skip: 2, source: "USDA-FSIS" });
+    expect(page1.recalls).toHaveLength(2);
+    expect(page1.total).toBe(3);
+    expect(page2.recalls).toHaveLength(1);
+    expect(page2.total).toBe(3);
+  });
+
+  it("does not hide an openFDA error behind FSIS rows", async () => {
+    const fsisData = [
+      {
+        field_title: "FSIS Firm Recalls Product",
+        field_recall_number: "001-2026",
+        field_recall_url: "http://www.fsis.usda.gov/test",
+        field_recall_type: "Active Recall",
+        field_recall_classification: "Class I",
+        field_recall_reason: ["Product Contamination"],
+        field_recall_date: "2026-01-15",
+        field_states: ["Texas"],
+        field_archive_recall: "False",
+      },
+    ];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: unknown) => {
+        if (isFsisProxyUrl(url)) return Promise.resolve({ ok: true, json: async () => fsisData });
+        return Promise.resolve({
+          ok: false,
+          status: 500,
+          json: async () => ({ error: { message: "FDA down" } }),
+        });
+      }),
+    );
+    const result = await fetchRecalls({ limit: 20, skip: 0 });
+    expect(result.error?.code).toBe("SERVER");
+    expect(result.recalls).toHaveLength(0);
+  });
+
+  it("prefixes FSIS on page 0 without inflating the FDA total", async () => {
+    const fdaResults = [
+      {
+        recall_number: "F-FDA-1",
+        product_description: "FDA Product",
+        reason_for_recall: "Hazard",
+        classification: "Class I",
+        status: "Ongoing",
+        recalling_firm: "FDA Firm",
+        distribution_pattern: "CA",
+        recall_initiation_date: "20260101",
+      },
+    ];
+    const fsisData = [
+      {
+        field_title: "FSIS Firm Recalls Product",
+        field_recall_number: "001-2026",
+        field_recall_url: "http://www.fsis.usda.gov/test",
+        field_recall_type: "Active Recall",
+        field_recall_classification: "Class I",
+        field_recall_reason: ["Product Contamination"],
+        field_recall_date: "2026-01-15",
+        field_states: ["Texas"],
+        field_archive_recall: "False",
+      },
+    ];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: unknown) => {
+        if (isFsisProxyUrl(url)) return Promise.resolve({ ok: true, json: async () => fsisData });
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ results: fdaResults, meta: { results: { total: 40 } } }),
+        });
+      }),
+    );
+    const result = await fetchRecalls({ limit: 1, skip: 0 });
+    expect(result.error).toBeNull();
+    expect(result.total).toBe(40);
+    expect(result.recalls.some((r) => r.source === "USDA-FSIS")).toBe(true);
+    expect(result.recalls.some((r) => r.source === "FDA")).toBe(true);
   });
 });
 
@@ -676,10 +797,9 @@ describe("SPA static host fallback (#90)", () => {
     };
     const fsisEmpty = { ok: true, json: async () => [] };
     const fetchMock = vi.fn((url: unknown) => {
-      const u = String(url);
-      if (u.includes("/api/fsis-recalls")) return Promise.resolve(fsisEmpty); // FSIS side-fetch: empty API response
-      if (u.includes("api.fda.gov")) return Promise.resolve(goodJsonResponse); // direct FDA returns JSON
-      return Promise.resolve(htmlResponse); // proxy returns SPA shell HTML
+      if (isFsisProxyUrl(url)) return Promise.resolve(fsisEmpty);
+      if (isFdaApiUrl(url)) return Promise.resolve(goodJsonResponse);
+      return Promise.resolve(htmlResponse);
     });
     vi.stubGlobal("fetch", fetchMock);
 
@@ -690,8 +810,10 @@ describe("SPA static host fallback (#90)", () => {
     // Verify fallback: FSIS side-fetch + proxy (HTML) + direct FDA
     const urls = fetchMock.mock.calls.map((call) => String(call[0]));
     expect(urls).toHaveLength(3);
-    expect(urls.filter((u) => u.includes("/api/food/enforcement.json"))).toHaveLength(1);
-    expect(urls.filter((u) => u.includes("api.fda.gov/food/enforcement.json"))).toHaveLength(1);
+    expect(
+      urls.filter((u) => new URL(u, "https://placeholder.invalid").pathname.includes("/api/food/enforcement.json")),
+    ).toHaveLength(1);
+    expect(urls.filter((u) => isFdaApiUrl(u))).toHaveLength(1);
   });
 
   it("JSON parse failure returns MALFORMED, not NETWORK", async () => {

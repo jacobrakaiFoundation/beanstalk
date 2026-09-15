@@ -222,7 +222,7 @@ describe("App search and pagination", () => {
 
   it("renders BeanstalkMark and sprouting lowercase wordmark in the header", async () => {
     render(<App />);
-    const heading = await screen.findByRole("heading", { name: /beanstalk fda food recall explorer/i });
+    const heading = await screen.findByRole("heading", { name: /beanstalk fda and usda fsis food recall explorer/i });
     expect(heading.querySelectorAll("svg").length).toBeGreaterThanOrEqual(2);
     expect(heading.textContent).toMatch(/beanstalk/i);
     expect(heading.querySelector(".sprouting-b")).toBeTruthy();

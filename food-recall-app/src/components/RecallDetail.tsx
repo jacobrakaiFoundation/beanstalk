@@ -3,7 +3,7 @@ import { riskLevel } from "../lib/classification";
 import { formatRecallDate, toISODate } from "../lib/formatDate";
 import { categorizeReason, hazardLabel } from "../lib/reasonCategory";
 import type { AdverseEvent } from "../types/event";
-import { OPENFDA_AS_PUBLISHED, type Recall } from "../types/recall";
+import { FSIS_AS_PUBLISHED, OPENFDA_AS_PUBLISHED, type Recall } from "../types/recall";
 import RelatedEvents from "./RelatedEvents";
 import RiskBadge from "./RiskBadge";
 
@@ -193,7 +193,7 @@ export default function RecallDetail({ recall, onClose, onSelectEvent }: Props) 
                 {firmLocation && ` · ${firmLocation}`}
               </Fact>
               {hasAddress && <Fact term="Firm Address">{address}</Fact>}
-              <Fact term="Voluntary/Mandated">{recall.voluntaryMandated || "Not stated"}</Fact>
+              {!isFsis && <Fact term="Voluntary/Mandated">{recall.voluntaryMandated || "Not stated"}</Fact>}
               {recall.initialFirmNotification && <Fact term="Firm Notification">{recall.initialFirmNotification}</Fact>}
             </dl>
           </Section>
@@ -224,10 +224,10 @@ export default function RecallDetail({ recall, onClose, onSelectEvent }: Props) 
               </Fact>
               <Fact term="Status">
                 <span className="block">
-                  {recall.status}
+                  {recall.status || (isFsis ? "Not provided by FSIS" : "Not stated")}
                   {statusNote}
                 </span>
-                <span className="hint block">{OPENFDA_AS_PUBLISHED}</span>
+                <span className="hint block">{isFsis ? FSIS_AS_PUBLISHED : OPENFDA_AS_PUBLISHED}</span>
               </Fact>
             </dl>
             {fsisLink ? (

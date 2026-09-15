@@ -22,6 +22,12 @@ export interface FsisApiRecord {
   field_archive_recall?: unknown;
 }
 
+export interface FsisSnapshot {
+  recalls: Recall[];
+  error: string | null;
+  fetchedAt: string | null;
+}
+
 /** Coerce an API scalar to string. */
 function asString(value: unknown): string {
   return typeof value === "string" ? value : "";
@@ -34,18 +40,32 @@ function asStringArray(value: unknown): string[] {
   return s ? [s] : [];
 }
 
-/** Strip HTML tags and collapse whitespace. */
-function stripHtml(html: string): string {
+/** Decode a small, fixed set of HTML entities once. `&amp;` is last so nothing is double-unescaped. */
+function decodeHtmlEntities(html: string): string {
   return html
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/?(p|div|li|ul|ol)[^>]*>/gi, "\n")
-    .replace(/<[^>]+>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#0*39;|&apos;|&#x27;/gi, "'")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&amp;/gi, "&");
+}
+
+/**
+ * Strip HTML for the summary excerpt. Decode entities first, then remove tags
+ * (including leftover incomplete tags) so markup cannot be reconstituted.
+ */
+function stripHtml(html: string): string {
+  const decoded = decodeHtmlEntities(html);
+  const withBreaks = decoded.replace(/<br\s*\/?>/gi, "\n").replace(/<\/?(?:p|div|li|ul|ol)\b[^>]*>?/gi, "\n");
+  let stripped = withBreaks;
+  let previous = "";
+  while (stripped !== previous) {
+    previous = stripped;
+    stripped = stripped.replace(/<[a-zA-Z][^>]*>/g, "");
+  }
+  stripped = stripped.replace(/<[^>]*>?/g, "");
+  return stripped
     .replace(/[ \t]+/g, " ")
     .replace(/\n\s*\n/g, "\n")
     .trim();
@@ -57,12 +77,6 @@ function mapClassification(value: string): RecallClassification {
   if (value === "Class II") return "Class II";
   if (value === "Class III") return "Class III";
   return "Unknown";
-}
-
-/** Map the API recall type to an FDA-style status. */
-function mapStatus(recallType: string): Recall["status"] {
-  if (recallType === "Closed Recall") return "Completed";
-  return "Ongoing";
 }
 
 /** Extract the firm from titles following the "Company Recalls Product" pattern. */
@@ -91,14 +105,19 @@ function fallbackId(title: string, link: string): string {
   return `FSIS-${Math.abs(hash).toString(36)}`;
 }
 
-/** Keep API ISO dates (YYYY-MM-DD); reject anything else. */
+/** Normalize FSIS ISO dates to the app's YYYYMMDD; reject anything else. */
 function normalizeDate(value: string): string {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : "";
+  const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (iso) return `${iso[1]}${iso[2]}${iso[3]}`;
+  if (/^\d{8}$/.test(value)) return value;
+  return "";
 }
 
 /**
  * Normalize one FSIS API record to the app's Recall shape.
  * Returns null when the record has no title (unusable).
+ * FDA-only vocabulary (status Ongoing/Completed, country, voluntary/mandated,
+ * firm notification) is left empty — FSIS type stays in `rawStatus`.
  */
 export function mapFsisRecord(record: FsisApiRecord): Recall | null {
   const title = asString(record.field_title).trim();
@@ -112,6 +131,7 @@ export function mapFsisRecord(record: FsisApiRecord): Recall | null {
   const states = asStringArray(record.field_states);
   const summary = stripHtml(asString(record.field_summary));
   const productItems = asString(record.field_product_items);
+  const recallType = asString(record.field_recall_type).trim();
 
   return {
     id,
@@ -121,22 +141,23 @@ export function mapFsisRecord(record: FsisApiRecord): Recall | null {
     productDescription: title,
     reasonForRecall: reasonText,
     classification: mapClassification(asString(record.field_recall_classification)),
-    status: mapStatus(asString(record.field_recall_type)),
+    status: recallType,
+    rawStatus: recallType || undefined,
     distributionPattern: states.join(", "),
     recallingFirm: extractFirm(title),
     city: "",
     state: "",
-    country: "USA",
+    country: "",
     recallInitiationDate: normalizeDate(asString(record.field_recall_date)),
     productType: "Meat/Poultry/Egg",
     codeInfo: "",
     moreCodeInfo: summary.slice(0, 500),
-    voluntaryMandated: "Voluntary",
+    voluntaryMandated: "",
     address1: "",
     address2: "",
     postalCode: "",
     centerClassificationDate: "",
-    initialFirmNotification: "Press Release",
+    initialFirmNotification: "",
     productQuantity: extractQuantity(productItems),
     terminationDate: "",
     establishmentNumber: asStringArray(record.field_establishment).join("; "),
@@ -149,4 +170,8 @@ export function mapFsisRecord(record: FsisApiRecord): Recall | null {
 export function isArchived(record: FsisApiRecord): boolean {
   const v = record.field_archive_recall;
   return v === true || v === "True";
+}
+
+export function isFsisSnapshot(value: unknown): value is FsisSnapshot {
+  return Boolean(value) && typeof value === "object" && Array.isArray((value as { recalls?: unknown }).recalls);
 }

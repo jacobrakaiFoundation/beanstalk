@@ -25,7 +25,13 @@ import { type DateSortDirection, sortRecallsByDate } from "./lib/sortRecalls";
 import { matchesWatchlist } from "./lib/watchlist";
 import type { AdverseEvent } from "./types/event";
 import { FDA_EVENT_DISCLAIMER } from "./types/event";
-import { OPENFDA_AS_PUBLISHED, type Recall, type RecallClassification, type RecallSource } from "./types/recall";
+import {
+  FSIS_AS_PUBLISHED,
+  OPENFDA_AS_PUBLISHED,
+  type Recall,
+  type RecallClassification,
+  type RecallSource,
+} from "./types/recall";
 
 type AppTab = "recalls" | "events";
 
@@ -35,6 +41,21 @@ const MAX_PAGE = Math.floor(FDA_MAX_SKIP / PAGE_SIZE);
 
 function formatRetrieved(iso: string | null): string {
   return iso ? new Date(iso).toLocaleString() : "unknown";
+}
+
+function recallsSourceCaption(source: RecallSource | ""): string {
+  switch (source) {
+    case "USDA-FSIS":
+      return FSIS_AS_PUBLISHED;
+    case "FDA":
+      return `${OPENFDA_AS_PUBLISHED} Enforcement archive, 2004 to present; not a public safety alert feed.`;
+    case "":
+      return `${OPENFDA_AS_PUBLISHED} ${FSIS_AS_PUBLISHED}`;
+    default: {
+      const _exhaustive: never = source;
+      return _exhaustive;
+    }
+  }
 }
 
 function tabClass(active: boolean, ring: string): string {
@@ -60,6 +81,7 @@ export default function App() {
   const [state, setState] = useState("");
   const [dietary, setDietary] = useState<DietaryConcern[]>([]);
   const [source, setSource] = useState<RecallSource | "">("");
+  const [fsisUnavailable, setFsisUnavailable] = useState(false);
   const [selected, setSelected] = useState<Recall | null>(null);
   const [page, setPage] = useState(0);
   const [dateSort, setDateSort] = useState<DateSortDirection>("newest");
@@ -178,7 +200,7 @@ export default function App() {
       source,
       signal: controller.signal,
     })
-      .then(({ recalls: data, total: t, error: err, isStale: stale, isDemo: demo }) => {
+      .then(({ recalls: data, total: t, error: err, isStale: stale, isDemo: demo, fsisUnavailable: fsisDown }) => {
         if (requestId !== requestIdRef.current) return;
         if (controller.signal.aborted) return;
         setRecalls(data);
@@ -186,6 +208,7 @@ export default function App() {
         setError(err);
         setIsStale(stale);
         setIsDemo(demo);
+        setFsisUnavailable(Boolean(fsisDown));
         setLastSynced(getLastSynced());
         setLoading(false);
         const newRecalls = data.filter((r) => !seenIdsRef.current.has(r.id));
@@ -346,7 +369,10 @@ export default function App() {
 
       <header className="site-header">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-6 gap-y-3 px-4 pt-3 sm:px-6">
-          <h1 className="flex max-w-full flex-wrap items-center gap-3" aria-label="beanstalk FDA food recall explorer">
+          <h1
+            className="flex max-w-full flex-wrap items-center gap-3"
+            aria-label="beanstalk FDA and USDA FSIS food recall explorer"
+          >
             <BeanstalkMark className="h-9 w-9 shrink-0 text-zinc-700 dark:text-zinc-200" />
             <span className="brand-name">
               <span className="sprouting-b">
@@ -355,11 +381,13 @@ export default function App() {
               </span>
               eanstalk
             </span>
-            <span className="pt-2 text-sm font-normal text-zinc-500 dark:text-zinc-400">FDA food recall explorer</span>
+            <span className="pt-2 text-sm font-normal text-zinc-500 dark:text-zinc-400">
+              FDA + USDA FSIS food recall explorer
+            </span>
           </h1>
           <div className="flex flex-wrap items-center gap-2">
             <DataStatus
-              sourceLabel={tab === "recalls" ? "FDA data" : "CAERS data"}
+              sourceLabel={tab === "recalls" ? "FDA + USDA FSIS data" : "CAERS data"}
               isDemo={showDemo}
               isStale={showStale}
               error={showError}
@@ -522,9 +550,12 @@ export default function App() {
                   </div>
                 )}
               </div>
-              <p className="hint mb-4">
-                {OPENFDA_AS_PUBLISHED} Enforcement archive, 2004 to present; not a public safety alert feed.
-              </p>
+              <p className="hint mb-4">{recallsSourceCaption(source)}</p>
+              {fsisUnavailable && source !== "FDA" && (
+                <p className="hint mb-4" role="status">
+                  USDA FSIS feed unavailable
+                </p>
+              )}
 
               {loading && <SkeletonGrid />}
 
@@ -736,7 +767,8 @@ export default function App() {
                 >
                   USDA FSIS
                 </a>{" "}
-                and are not in this dataset.
+                and appear alongside openFDA when the FSIS snapshot is available. Each source is as published by its
+                agency, not a live lifecycle.
               </p>
             </div>
           </details>

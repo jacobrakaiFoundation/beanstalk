@@ -9,19 +9,34 @@
  * Pass --recalls-only to exclude Public Health Alerts and keep
  * only recall records.
  *
+ * Fetch failure is non-fatal: the script writes an empty snapshot
+ * with an error field so `npm run build` stays offline/CI-safe.
+ * Never write seed or placeholder recall rows.
+ *
  * Run: tsx scripts/fetch-fsis-recalls.ts [--recalls-only]
  */
 
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { type FsisApiRecord, isArchived, mapFsisRecord } from "../src/lib/fsis.ts";
+import { type FsisApiRecord, type FsisSnapshot, isArchived, mapFsisRecord } from "../src/lib/fsis.ts";
 import type { Recall } from "../src/types/recall";
 
 const FSIS_API_URL = "https://www.fsis.usda.gov/fsis/api/recall/v/1";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const OUT_PATH = resolve(__dirname, "..", "public", "fsis-recalls.json");
+
+function writeSnapshot(recalls: Recall[], error: string | null): void {
+  const snapshot: FsisSnapshot = {
+    recalls,
+    error,
+    fetchedAt: error ? null : new Date().toISOString(),
+  };
+  mkdirSync(dirname(OUT_PATH), { recursive: true });
+  writeFileSync(OUT_PATH, JSON.stringify(snapshot, null, 2), "utf-8");
+  console.log(`Wrote ${OUT_PATH} (${recalls.length} recalls${error ? `; error: ${error}` : ""})`);
+}
 
 async function main() {
   console.log(`Fetching FSIS recalls from ${FSIS_API_URL}...`);
@@ -30,11 +45,18 @@ async function main() {
     signal: AbortSignal.timeout(60_000),
   });
   if (!res.ok) {
-    throw new Error(`FSIS API fetch failed: ${res.status} ${res.statusText}`);
+    writeSnapshot([], `FSIS API fetch failed: ${res.status} ${res.statusText}`);
+    return;
+  }
+  const contentType = res.headers.get("content-type") ?? "";
+  if (contentType && !contentType.includes("application/json")) {
+    writeSnapshot([], `FSIS API returned non-JSON content-type: ${contentType}`);
+    return;
   }
   const data: unknown = await res.json();
   if (!Array.isArray(data)) {
-    throw new Error("FSIS API returned a non-array payload");
+    writeSnapshot([], "FSIS API returned a non-array payload");
+    return;
   }
   console.log(`Received ${(data as unknown[]).length} API records.`);
 
@@ -43,19 +65,22 @@ async function main() {
   let archived = 0;
   let alertsSkipped = 0;
   for (const item of data as FsisApiRecord[]) {
-    if (isArchived(item)) {
-      archived += 1;
-      continue;
+    try {
+      if (isArchived(item)) {
+        archived += 1;
+        continue;
+      }
+      if (recallsOnly && String((item as Record<string, unknown>).field_recall_type) === "Public Health Alert") {
+        alertsSkipped += 1;
+        continue;
+      }
+      const mapped = mapFsisRecord(item);
+      if (mapped) recalls.push(mapped);
+    } catch {
+      // One malformed record must not abort the snapshot.
     }
-    if (recallsOnly && String((item as Record<string, unknown>).field_recall_type) === "Public Health Alert") {
-      alertsSkipped += 1;
-      continue;
-    }
-    const mapped = mapFsisRecord(item);
-    if (mapped) recalls.push(mapped);
   }
 
-  // Deduplicate by id, newest first for a deterministic file
   const seen = new Set<string>();
   const deduped: Recall[] = [];
   for (const r of recalls) {
@@ -74,12 +99,10 @@ async function main() {
     console.log(`Kept ${deduped.length} active FSIS recalls (skipped ${archived} archived).`);
   }
 
-  mkdirSync(dirname(OUT_PATH), { recursive: true });
-  writeFileSync(OUT_PATH, JSON.stringify(deduped, null, 2), "utf-8");
-  console.log(`Wrote ${OUT_PATH}`);
+  writeSnapshot(deduped, null);
 }
 
 main().catch((err) => {
   console.error("FSIS fetch failed:", err);
-  process.exit(1);
+  writeSnapshot([], err instanceof Error ? err.message : String(err));
 });

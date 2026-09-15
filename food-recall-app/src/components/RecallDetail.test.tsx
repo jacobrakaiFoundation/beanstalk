@@ -246,6 +246,9 @@ describe("RecallDetail", () => {
     expect(screen.getByText(/View on FSIS/).getAttribute("href")).toBe("http://www.fsis.usda.gov/recalls-alerts/test");
     expect(screen.queryByText(/View on FDA/)).toBeNull();
     expect(screen.queryByText("raw openFDA JSON")).toBeNull();
+    expect(screen.queryByText(/as published by openFDA/i)).toBeNull();
+    expect(screen.getByText(/as published by USDA FSIS/i)).toBeTruthy();
+    expect(screen.queryByText("Voluntary/Mandated")).toBeNull();
   });
 
   it("focuses the close button on mount", () => {

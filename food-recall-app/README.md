@@ -7,6 +7,7 @@ Vite + React 19 + TypeScript + Tailwind CSS v4 + PWA (Workbox)
 
 ## Data
 - **Primary recalls**: [openFDA Food Enforcement API](https://api.fda.gov/food/enforcement.json) — 29,000+ records **as published by openFDA** (not live FDA lifecycle), paginated
+- **USDA FSIS recalls**: official [FSIS Recall API](https://www.fsis.usda.gov/fsis/api/recall/v/1) snapshot (`npm run fetch:fsis` during build). Merge on page 0 with a Source filter (All / FDA / USDA-FSIS). Fetch failure writes `{ recalls: [], error }` — no seed rows. `search_after` is not used.
 - **Early Signals (CAERS)**: [openFDA Food Adverse Event API](https://api.fda.gov/food/event.json) — same proxy/auth/rate limits as enforcement
 - **Publish lag**: Dataset typically refreshes mid-week (Wednesday). Status fields are as published, not a current lifecycle.
 - **Empty search**: openFDA returns HTTP 404 + “No matches found” — the app shows an empty list, not an error.

@@ -1,5 +1,5 @@
 import type { DietaryConcern } from "../lib/dietary";
-import { OPENFDA_AS_PUBLISHED, type RecallClassification, type RecallSource } from "../types/recall";
+import { FSIS_AS_PUBLISHED, OPENFDA_AS_PUBLISHED, type RecallClassification, type RecallSource } from "../types/recall";
 import DietaryFilter from "./DietaryFilter";
 import StateFilter from "./StateFilter";
 
@@ -96,6 +96,7 @@ export default function FilterPanel({
             <option value="FDA">FDA</option>
             <option value="USDA-FSIS">USDA-FSIS</option>
           </select>
+          <p className="hint mt-1">{FSIS_AS_PUBLISHED}</p>
         </div>
         <StateFilter selected={state} onChange={onState} />
       </div>
