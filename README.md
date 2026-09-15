@@ -14,7 +14,7 @@ Beanstalk helps people search **FDA food recall records** by product, company, o
 
 | Part of Beanstalk | What you can use or inspect |
 | --- | --- |
-| **Web app — available now** | Search the openFDA historical enforcement archive, inspect source fields, use local watchlists, and browse clearly labeled, unverified CAERS Early Signals. A USDA FSIS recall snapshot is merged on the first results page with a Source filter (All / FDA / USDA-FSIS). The web app is not a real-time safety alert service. |
+| **Web app — available now** | Search the [openFDA](https://open.fda.gov/apis/food/enforcement/) weekly enforcement archive (no live FDA feed), inspect source fields, use local watchlists, and browse clearly labeled, unverified CAERS Early Signals. A USDA FSIS recall snapshot is merged on the first results page with a Source filter (All / FDA / USDA-FSIS). The web app is not a real-time safety alert service. |
 | **Android sideload APK — available now** | Debug-signed Capacitor wrap of the web app. Download the `beanstalk-debug-apk` artifact from the `android sideload apk` CI job. The native Compose project in `android/` also `assembleDebug`s; CI uploads it as `beanstalk-native-debug-apk`. Play Store signing is not configured. See [`android-apk/README.md`](android-apk/README.md). |
 | **iPhone — implementation in this repository** | Native recall announcements, saved records, watchlists, and an optional notification service. App Store publication and production notification delivery still require the [release checks](docs/app-store/release-checklist.md). |
 
