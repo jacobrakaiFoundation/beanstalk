@@ -4,6 +4,7 @@ import android.Manifest
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BookmarkBorder
@@ -23,6 +24,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -43,6 +45,14 @@ private enum class AppTab(
 
 private const val NOTICE_DETAIL = "notice-detail"
 private const val ENFORCEMENT_DETAIL = "enforcement-detail"
+
+private fun NavHostController.openTab(route: String) {
+    navigate(route) {
+        popUpTo(graph.findStartDestination().id) { saveState = true }
+        launchSingleTop = true
+        restoreState = true
+    }
+}
 
 @Composable
 fun BeanstalkApp(viewModel: BeanstalkViewModel) {
@@ -72,19 +82,14 @@ fun BeanstalkApp(viewModel: BeanstalkViewModel) {
     BeanstalkTheme {
         Surface(color = MaterialTheme.colorScheme.background) {
             Scaffold(
+                contentWindowInsets = WindowInsets(0),
                 bottomBar = {
                     if (AppTab.entries.any { it.route == currentRoute }) {
                         NavigationBar {
                             AppTab.entries.forEach { tab ->
                                 NavigationBarItem(
                                     selected = currentRoute == tab.route,
-                                    onClick = {
-                                        navigation.navigate(tab.route) {
-                                            popUpTo(navigation.graph.findStartDestination().id) { saveState = true }
-                                            launchSingleTop = true
-                                            restoreState = true
-                                        }
-                                    },
+                                    onClick = { navigation.openTab(tab.route) },
                                     icon = { Icon(tab.icon, contentDescription = null) },
                                     label = { Text(tab.label) },
                                 )
@@ -133,6 +138,7 @@ fun BeanstalkApp(viewModel: BeanstalkViewModel) {
                     composable(AppTab.WATCHLIST.route) {
                         WatchlistScreen(
                             state = state,
+                            onDismiss = { navigation.openTab(AppTab.RECALLS.route) },
                             onAddTerm = viewModel::addWatchTerm,
                             onRemoveTerm = viewModel::removeWatchTerm,
                             onRequestNotifications = requestNotifications,

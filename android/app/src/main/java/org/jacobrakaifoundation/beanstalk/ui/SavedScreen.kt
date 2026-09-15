@@ -28,7 +28,10 @@ fun SavedScreen(
     onOpen: (SavedRecall) -> Unit,
     onRemove: (SavedRecall) -> Unit,
 ) {
-    Scaffold(topBar = { TopAppBar(title = { Text("Saved") }) }) { padding ->
+    Scaffold(
+        contentWindowInsets = tabScaffoldInsets(),
+        topBar = { TopAppBar(title = { Text("Saved") }) },
+    ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
