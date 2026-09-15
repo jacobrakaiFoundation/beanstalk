@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -12,6 +13,33 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Beanstalk">
+        <!--
+            google-services.json is absent by design. firebase-messaging still merges
+            FirebaseInitProvider + FirebaseMessagingService, which auto-init on process
+            start and can kill the app after the system splash when no default FirebaseApp
+            exists. Disable collection and strip those components until a Play build
+            ships google-services.json (drop the tools:node removes then).
+        -->
+        <meta-data
+            android:name="firebase_messaging_auto_init_enabled"
+            android:value="false"
+            tools:replace="android:value" />
+        <meta-data
+            android:name="firebase_analytics_collection_enabled"
+            android:value="false"
+            tools:replace="android:value" />
+        <meta-data
+            android:name="firebase_data_collection_default_enabled"
+            android:value="false"
+            tools:replace="android:value" />
+        <provider
+            android:name="com.google.firebase.provider.FirebaseInitProvider"
+            android:authorities="${applicationId}.firebaseinitprovider"
+            tools:node="remove" />
+        <service
+            android:name="com.google.firebase.messaging.FirebaseMessagingService"
+            tools:node="remove" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

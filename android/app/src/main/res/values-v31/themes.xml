@@ -1,0 +1,10 @@
+<resources>
+    <style name="Theme.Beanstalk" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@color/beanstalk_green</item>
+        <item name="android:navigationBarColor">@color/beanstalk_paper</item>
+        <item name="android:windowBackground">@color/beanstalk_paper</item>
+        <item name="android:windowSplashScreenBackground">@color/beanstalk_paper</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@color/beanstalk_paper</item>
+    </style>
+</resources>

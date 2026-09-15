@@ -26,6 +26,8 @@ class BeanstalkApplication : Application() {
             encodeDefaults = true
             explicitNulls = false
         }
+        // Constructing the API client must not resolve DNS. Network happens later
+        // on Dispatchers.IO; a missing api.beanstalk host must not kill launch.
         val local = LocalStore(BeanstalkDatabase(this))
         val credentials = SecureCredentialStore(this, json)
         val api = BeanstalkApi(BuildConfig.BACKEND_BASE_URL, json)
