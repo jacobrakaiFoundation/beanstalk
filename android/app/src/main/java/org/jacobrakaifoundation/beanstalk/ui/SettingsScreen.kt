@@ -26,7 +26,10 @@ fun SettingsScreen(
     onDisableNotifications: () -> Unit,
     onClearLocalData: () -> Unit,
 ) {
-    Scaffold(topBar = { TopAppBar(title = { Text("Settings") }) }) { padding ->
+    Scaffold(
+        contentWindowInsets = tabScaffoldInsets(),
+        topBar = { TopAppBar(title = { Text("Settings") }) },
+    ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
