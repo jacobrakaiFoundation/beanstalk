@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 # Usage: gh auth login && ./.github/setup-labels.sh [repo]
-REPO="${1:-jacobyoby/ponder}"
+REPO="${1:-jacobrakaiFoundation/beanstalk}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 LABELS_FILE="$SCRIPT_DIR/labels.yml"
 if ! command -v gh >/dev/null; then echo "gh CLI not found" >&2; exit 1; fi
