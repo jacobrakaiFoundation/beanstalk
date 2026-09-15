@@ -65,7 +65,7 @@ export default function EventCard({ event, onSelect, isNew, watchlist }: Props) 
       <dl className="mt-auto space-y-1 text-xs text-zinc-600 dark:text-zinc-400">
         {topOutcomes.length > 0 && (
           <div className="flex gap-2">
-            <dt className="w-16 shrink-0 text-zinc-500">Outcomes</dt>
+            <dt className="w-16 shrink-0 text-zinc-500 dark:text-zinc-400">Outcomes</dt>
             <dd className="truncate">
               {topOutcomes.join(", ")}
               {event.outcomes.length > 2 ? "…" : ""}
@@ -73,7 +73,7 @@ export default function EventCard({ event, onSelect, isNew, watchlist }: Props) 
           </div>
         )}
         <div className="flex gap-2">
-          <dt className="w-16 shrink-0 text-zinc-500">Report</dt>
+          <dt className="w-16 shrink-0 text-zinc-500 dark:text-zinc-400">Report</dt>
           <dd className="truncate">{event.reportNumber || "—"}</dd>
         </div>
       </dl>
