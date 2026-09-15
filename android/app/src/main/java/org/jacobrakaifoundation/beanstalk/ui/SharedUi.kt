@@ -93,6 +93,6 @@ fun EnforcementRow(record: EnforcementRecord, onClick: () -> Unit) {
             record.recallingFirm.ifBlank { "Recalling firm not provided" },
             style = MaterialTheme.typography.bodyMedium,
         )
-        Text("Historical · as published by openFDA", style = MaterialTheme.typography.bodySmall)
+        Text("As published by openFDA", style = MaterialTheme.typography.bodySmall)
     }
 }
