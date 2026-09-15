@@ -3,4 +3,5 @@ dist/
 .DS_Store
 .env*
 coverage/
+public/fsis-recalls.json
 .vite/

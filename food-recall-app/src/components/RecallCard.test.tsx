@@ -28,6 +28,7 @@ const makeRecall = (overrides: Partial<Recall> = {}): Recall => ({
   initialFirmNotification: "",
   productQuantity: "",
   terminationDate: "",
+  source: "FDA",
   ...overrides,
 });
 
@@ -69,6 +70,18 @@ describe("RecallCard", () => {
   it("renders status badge", () => {
     render(<RecallCard recall={makeRecall()} onSelect={() => {}} isNew={false} watchlist={[]} />);
     expect(screen.getByText("Ongoing")).toBeTruthy();
+  });
+
+  it("renders source badge", () => {
+    render(<RecallCard recall={makeRecall()} onSelect={() => {}} isNew={false} watchlist={[]} />);
+    expect(screen.getByText("FDA")).toBeTruthy();
+  });
+
+  it("renders USDA-FSIS source badge for FSIS recalls", () => {
+    render(
+      <RecallCard recall={makeRecall({ source: "USDA-FSIS" })} onSelect={() => {}} isNew={false} watchlist={[]} />,
+    );
+    expect(screen.getByText("USDA-FSIS")).toBeTruthy();
   });
 
   it("renders firm location with the firm name when present", () => {

@@ -71,6 +71,14 @@ describe("FilterPanel", () => {
     render(<FilterPanel {...defaultProps} />);
     expect(screen.getByLabelText("Classification")).toBeTruthy();
     expect(screen.getByLabelText("Status")).toBeTruthy();
+    expect(screen.getByLabelText("Source")).toBeTruthy();
     expect(screen.getByLabelText("Distribution State")).toBeTruthy();
+  });
+
+  it("calls onSource when the source filter changes", () => {
+    const onSource = vi.fn();
+    render(<FilterPanel {...defaultProps} onSource={onSource} />);
+    fireEvent.change(screen.getByLabelText("Source"), { target: { value: "USDA-FSIS" } });
+    expect(onSource).toHaveBeenCalledWith("USDA-FSIS");
   });
 });
