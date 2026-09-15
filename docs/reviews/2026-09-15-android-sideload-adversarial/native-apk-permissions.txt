@@ -1,0 +1,8 @@
+package: org.jacobrakaifoundation.beanstalk
+uses-permission: name='android.permission.INTERNET'
+uses-permission: name='android.permission.POST_NOTIFICATIONS'
+uses-permission: name='android.permission.ACCESS_NETWORK_STATE'
+uses-permission: name='android.permission.WAKE_LOCK'
+uses-permission: name='com.google.android.c2dm.permission.RECEIVE'
+permission: org.jacobrakaifoundation.beanstalk.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+uses-permission: name='org.jacobrakaifoundation.beanstalk.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION'
