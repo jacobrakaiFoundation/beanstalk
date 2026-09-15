@@ -12,7 +12,7 @@ Vite + React 19 + TypeScript + Tailwind CSS v4 + PWA (Workbox)
 - **Publish lag**: Dataset typically refreshes mid-week (Wednesday). Status fields are as published, not a current lifecycle.
 - **Empty search**: openFDA returns HTTP 404 + “No matches found” — the app shows an empty list, not an error.
 - **Pagination**: `skip` is capped at 25,000. `search_after` is not implemented; narrow filters to page further.
-- **Related Events**: parenthesized OR of product tokens ([#102](https://github.com/jacobyoby/beanstalk/pull/102)).
+- **Related Events**: parenthesized OR of product tokens ([#102](https://github.com/jacobrakaiFoundation/beanstalk/pull/102)).
 - **API Key**: Optional via `VITE_OPENFDA_KEY` env var (increases rate limit from 40 to 240 req/min)
 - **Cache**: 6-hour localStorage cache with LRU eviction for offline/stale serving
 - **Demo Mode**: Add `?demo=1` to URL for fictional mock data (`src/lib/mockData.ts`, `src/lib/mockEvents.ts`)
@@ -21,7 +21,7 @@ Vite + React 19 + TypeScript + Tailwind CSS v4 + PWA (Workbox)
 ## Run
 ```bash
 cd food-recall-app
-npm install
+npm ci
 npm run dev    # http://localhost:5173
 npm run build  # output: dist/
 npm run test   # vitest (unit + component)

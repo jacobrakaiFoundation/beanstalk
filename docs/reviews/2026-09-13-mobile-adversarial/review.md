@@ -1,5 +1,7 @@
 # Beanstalk mobile adversarial review
 
+> **Status (2026-09-13):** Historical pre-release adversarial review, not a current release gate without re-verification. P1/P2 findings below remain **open** unless separately confirmed fixed in `main` (this docs pass did not re-audit the cited code paths).
+
 **Recommendation: request changes before release.** Four P1 findings and seven P2 findings follow. This is a local review; no GitHub review, merge, deployment, or store submission was performed.
 
 Reviewed on September 13, 2026 (America/Los_Angeles): iOS [PR #142](https://github.com/jacobrakaiFoundation/beanstalk/pull/142) at `e4c590e86717de181e049c348925e6024a8fa3a4`, and Android [PR #144](https://github.com/jacobrakaiFoundation/beanstalk/pull/144) at `f22a0032aec14a1f8d1ca5b5e1a75c38de7991d3`. Android is stacked on the iOS branch. Shared backend defects must be fixed in the base and carried into Android.
