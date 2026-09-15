@@ -1,0 +1,4 @@
+16:      A: android:name(0x01010003)="android.permission.POST_NOTIFICATIONS" (Raw: "android.permission.POST_NOTIFICATIONS")
+34:      A: android:allowBackup(0x01010280)=(type 0x12)0xffffffff
+74:        A: android:name(0x01010003)="com.google.firebase.messaging.FirebaseMessagingService" (Raw: "com.google.firebase.messaging.FirebaseMessagingService")
+108:        A: android:name(0x01010003)="com.google.firebase.provider.FirebaseInitProvider" (Raw: "com.google.firebase.provider.FirebaseInitProvider")
