@@ -15,66 +15,103 @@ data class NotificationState(
     val message: String,
     val isWorking: Boolean = false,
     val alertsEnabled: Boolean = false,
+    val alertsAvailable: Boolean = false,
 )
 
 class NotificationCoordinator(
     private val context: Context,
     private val repository: BeanstalkRepository,
+    private val isPushConfigured: () -> Boolean = { FirebaseApp.getApps(context).isNotEmpty() },
+    private val requestPushToken: (suspend () -> String)? = null,
 ) {
     private val mutableState = MutableStateFlow(NotificationState("Checking alert status…", isWorking = true))
     val state: StateFlow<NotificationState> = mutableState.asStateFlow()
 
     fun permissionDenied() {
-        mutableState.value = NotificationState(
-            "Notification permission was denied. Watch terms stay on this device.",
-            alertsEnabled = false,
-        )
+        mutableState.value = if (isPushConfigured()) {
+            NotificationState(
+                "Notification permission was denied. Watch terms stay on this device.",
+                alertsAvailable = true,
+            )
+        } else {
+            unavailableState()
+        }
     }
 
     suspend fun synchronize() {
+        if (!isPushConfigured()) {
+            mutableState.value = unavailableState()
+            return
+        }
         if (!repository.hasDeviceRegistration()) {
             mutableState.value = NotificationState(
                 "Alerts are off. Watch terms stay on this device until you enable notifications.",
+                alertsAvailable = true,
             )
             return
         }
         val ok = repository.syncWatchlistIfRegistered()
         mutableState.value = if (ok) {
-            NotificationState("Alerts are on for this device.", alertsEnabled = true)
+            NotificationState("Alerts are on for this device.", alertsEnabled = true, alertsAvailable = true)
         } else {
-            NotificationState("Watch terms are saved locally. Beanstalk could not reach the alert service.")
+            NotificationState(
+                "Watch terms are saved locally. Beanstalk could not reach the alert service.",
+                alertsAvailable = true,
+            )
         }
     }
 
     suspend fun enableAlerts() {
-        mutableState.value = NotificationState("Turning alerts on…", isWorking = true)
+        if (!isPushConfigured()) {
+            mutableState.value = unavailableState()
+            return
+        }
+        mutableState.value = NotificationState("Turning alerts on…", isWorking = true, alertsAvailable = true)
         try {
-            val token = firebaseCloudMessagingToken()
+            val token = pushToken()
             repository.registerPushIdentifier(token)
-            mutableState.value = NotificationState("Alerts are on for this device.", alertsEnabled = true)
-        } catch (error: Exception) {
             mutableState.value = NotificationState(
-                error.message
-                    ?: "Push delivery is not configured on this debug build. Watch terms stay on this device.",
+                "Alerts are on for this device.",
+                alertsEnabled = true,
+                alertsAvailable = true,
+            )
+        } catch (_: Exception) {
+            mutableState.value = NotificationState(
+                AlertControlPolicy.ENABLE_FAILED_MESSAGE,
+                alertsAvailable = true,
             )
         }
     }
 
     suspend fun disableAlerts() {
-        mutableState.value = NotificationState("Turning alerts off…", isWorking = true)
+        val available = isPushConfigured()
+        mutableState.value = NotificationState(
+            "Turning alerts off…",
+            isWorking = true,
+            alertsAvailable = available,
+        )
         try {
             repository.deleteDeviceRegistration()
-            mutableState.value = NotificationState("Alerts are off. Watch terms remain on this device.")
+            mutableState.value = if (available) {
+                NotificationState("Alerts are off. Watch terms remain on this device.", alertsAvailable = true)
+            } else {
+                unavailableState()
+            }
         } catch (error: Exception) {
             mutableState.value = NotificationState(
                 error.message ?: "Beanstalk couldn't turn alerts off. Try again.",
+                alertsAvailable = available,
             )
         }
     }
 
+    private fun unavailableState() = NotificationState(AlertControlPolicy.UNAVAILABLE_MESSAGE)
+
+    private suspend fun pushToken(): String = requestPushToken?.invoke() ?: firebaseCloudMessagingToken()
+
     private suspend fun firebaseCloudMessagingToken(): String {
         if (FirebaseApp.getApps(context).isEmpty()) {
-            error("Push delivery is not configured on this debug build. Watch terms stay on this device.")
+            error(AlertControlPolicy.UNAVAILABLE_MESSAGE)
         }
         return suspendCancellableCoroutine { continuation ->
             FirebaseMessaging.getInstance().token

@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import org.jacobrakaifoundation.beanstalk.data.model.RecallNotice
+import org.jacobrakaifoundation.beanstalk.notifications.AlertControlPolicy
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,6 +38,16 @@ fun WatchlistScreen(
     onNotice: (RecallNotice, String, String) -> Unit,
 ) {
     var draft by remember { mutableStateOf("") }
+    val requestAlertsIfAvailable = {
+        if (
+            AlertControlPolicy.shouldOfferEnable(
+                state.notificationState.alertsEnabled,
+                state.notificationState.alertsAvailable,
+            )
+        ) {
+            onRequestNotifications()
+        }
+    }
     Scaffold(topBar = { TopAppBar(title = { Text("Watchlist") }) }) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
@@ -54,7 +65,7 @@ fun WatchlistScreen(
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = {
-                        onAddTerm(draft) { onRequestNotifications() }
+                        onAddTerm(draft, requestAlertsIfAvailable)
                         draft = ""
                     }),
                     modifier = Modifier.fillMaxWidth(),
@@ -63,7 +74,7 @@ fun WatchlistScreen(
             item {
                 Button(
                     onClick = {
-                        onAddTerm(draft) { onRequestNotifications() }
+                        onAddTerm(draft, requestAlertsIfAvailable)
                         draft = ""
                     },
                     enabled = draft.isNotBlank(),

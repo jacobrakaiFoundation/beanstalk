@@ -248,6 +248,8 @@ jobs:
           ./gradlew :app:testDebugUnitTest --no-daemon
           --tests org.jacobrakaifoundation.beanstalk.data.WatchlistSyncEngineTest
           --tests org.jacobrakaifoundation.beanstalk.data.network.BeanstalkApiTest
+          --tests org.jacobrakaifoundation.beanstalk.notifications.AlertControlPolicyTest
+          --tests org.jacobrakaifoundation.beanstalk.notifications.NotificationCoordinatorTest
           --tests org.jacobrakaifoundation.beanstalk.ui.BrowseRequestTest
           --tests org.jacobrakaifoundation.beanstalk.ui.NotificationDetailStateReducerTest
 
