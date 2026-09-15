@@ -2,6 +2,7 @@ package org.jacobrakaifoundation.beanstalk.data.network
 
 import java.io.IOException
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
@@ -35,6 +36,8 @@ class BeanstalkApi(
         .readTimeout(15, TimeUnit.SECONDS)
         .build(),
     private val clock: () -> Long = System::currentTimeMillis,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val openFdaEnforcementUrl: String = "https://api.fda.gov/food/enforcement.json",
 ) {
     private val jsonMedia = "application/json; charset=utf-8".toMediaType()
 
@@ -70,7 +73,7 @@ class BeanstalkApi(
         if (skip > OPENFDA_SKIP_MAX) {
             throw ApiException(400, "offset beyond openFDA limit")
         }
-        val url = "https://api.fda.gov/food/enforcement.json".toHttpUrl().newBuilder()
+        val url = openFdaEnforcementUrl.toHttpUrl().newBuilder()
             .addQueryParameter("limit", boundedLimit.toString())
             .addQueryParameter("skip", skip.toString())
             .addQueryParameter("sort", "report_date:desc")
@@ -146,7 +149,7 @@ class BeanstalkApi(
         execute(Request.Builder().url(url).get().build())
 
     private suspend inline fun <reified T> execute(request: Request, allowEmpty: Boolean = false): T =
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             client.newCall(request).execute().use { response ->
                 val payload = response.body?.string().orEmpty()
                 if (!response.isSuccessful) {

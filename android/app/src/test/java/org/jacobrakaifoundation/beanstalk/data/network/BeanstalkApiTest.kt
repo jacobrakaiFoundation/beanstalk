@@ -1,5 +1,7 @@
 package org.jacobrakaifoundation.beanstalk.data.network
 
+import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -19,7 +21,7 @@ class BeanstalkApiTest {
     }
 
     @Test
-    fun `registerDevice sends an FCM token identifier kind`() = runTest {
+    fun `registerDevice sends an FCM token identifier kind`() = runTest(timeout = 10.seconds) {
         withApi { api, server ->
             server.enqueue(MockResponse().setBody("""{"deviceId":"device","clientSecret":"secret"}"""))
             api.registerDevice("dXyZ:APA91b-registration-token")
@@ -35,7 +37,7 @@ class BeanstalkApiTest {
     }
 
     @Test
-    fun `updatePushIdentifier rotates at me token and accepts a status payload`() = runTest {
+    fun `updatePushIdentifier rotates at me token and accepts a status payload`() = runTest(timeout = 10.seconds) {
         withApi { api, server ->
             server.enqueue(
                 MockResponse().setBody(
@@ -57,7 +59,7 @@ class BeanstalkApiTest {
     }
 
     @Test
-    fun `notices sanitizes and caps the query at 120 characters`() = runTest {
+    fun `notices sanitizes and caps the query at 120 characters`() = runTest(timeout = 10.seconds) {
         withApi { api, server ->
             server.enqueue(MockResponse().setBody("""{"items":[]}"""))
             api.notices("peanut\"butter\\" + "x".repeat(200), null, 30)
@@ -71,7 +73,7 @@ class BeanstalkApiTest {
     }
 
     @Test
-    fun `notices omits a quotes-only query`() = runTest {
+    fun `notices omits a quotes-only query`() = runTest(timeout = 10.seconds) {
         withApi { api, server ->
             server.enqueue(MockResponse().setBody("""{"items":[]}"""))
             api.notices("\"\"", null, 30)
@@ -81,7 +83,7 @@ class BeanstalkApiTest {
     }
 
     @Test
-    fun `enforcement interpolates a sanitized query`() = runTest {
+    fun `enforcement interpolates a sanitized query`() = runTest(timeout = 10.seconds) {
         withApi { api, server ->
             server.enqueue(MockResponse().setBody("""{"results":[],"meta":{"results":{"skip":0,"limit":20,"total":0}}}"""))
             api.enforcement(EnforcementSearch(query = "peanut\"butter", limit = 20, page = 0))
@@ -93,7 +95,7 @@ class BeanstalkApiTest {
     }
 
     @Test
-    fun `enforcement rejects an openFDA skip beyond 25000`() = runTest {
+    fun `enforcement rejects an openFDA skip beyond 25000`() = runTest(timeout = 10.seconds) {
         withApi { api, _ ->
             try {
                 api.enforcement(EnforcementSearch(page = 251, limit = 100))
@@ -108,7 +110,14 @@ class BeanstalkApiTest {
         val server = MockWebServer()
         server.start()
         try {
-            block(BeanstalkApi(server.url("/").toString()), server)
+            block(
+                BeanstalkApi(
+                    server.url("/").toString(),
+                    ioDispatcher = Dispatchers.Unconfined,
+                    openFdaEnforcementUrl = server.url("/food/enforcement.json").toString(),
+                ),
+                server,
+            )
         } finally {
             server.shutdown()
         }
