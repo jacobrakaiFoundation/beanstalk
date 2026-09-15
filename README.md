@@ -14,7 +14,7 @@ Beanstalk helps people search **FDA food recall records** by product, company, o
 
 | Part of Beanstalk | What you can use or inspect |
 | --- | --- |
-| **Web app — available now** | Search the openFDA historical enforcement archive, inspect source fields, use local watchlists, and browse clearly labeled, unverified CAERS Early Signals. The web app is not a real-time safety alert service. |
+| **Web app — available now** | Search the openFDA historical enforcement archive, inspect source fields, use local watchlists, and browse clearly labeled, unverified CAERS Early Signals. A USDA FSIS recall snapshot is merged on the first results page with a Source filter (All / FDA / USDA-FSIS). The web app is not a real-time safety alert service. |
 | **Android sideload APK — available now** | Debug-signed Capacitor wrap of the web app. Download the `beanstalk-debug-apk` artifact from the `android sideload apk` CI job. The native Compose project in `android/` also `assembleDebug`s; CI uploads it as `beanstalk-native-debug-apk`. Play Store signing is not configured. See [`android-apk/README.md`](android-apk/README.md). |
 | **iPhone — implementation in this repository** | Native recall announcements, saved records, watchlists, and an optional notification service. App Store publication and production notification delivery still require the [release checks](docs/app-store/release-checklist.md). |
 
@@ -66,9 +66,18 @@ cd ../android-apk
 
 Install with `adb install -r app/build/outputs/apk/debug/app-debug.apk`, or download the CI artifact. Step-by-step USB and Files-app instructions are in [`android-apk/README.md`](android-apk/README.md). The APK is debug-signed; there is no Play upload keystore in this repository.
 
+## Run the native Android app
+
+The Compose client in `android/` is separate from the Capacitor sideload wrap. See [`android/README.md`](android/README.md).
+
+```bash
+cd android
+./gradlew :app:assembleDebug
+```
+
 ## Run the iPhone project
 
-Install the current App Store-supported Xcode and iOS SDK, then open `ios/Beanstalk.xcodeproj`. The project can be regenerated with [XcodeGen](https://github.com/yonaskolb/XcodeGen):
+See [`ios/README.md`](ios/README.md). Install the current App Store-supported Xcode and iOS SDK, then open `ios/Beanstalk.xcodeproj`. The project can be regenerated with [XcodeGen](https://github.com/yonaskolb/XcodeGen):
 
 ```bash
 cd ios
@@ -86,7 +95,7 @@ Full simulator, signing, notification, and physical-device checks require Xcode,
 
 ## Run the notification service
 
-The Node 22 service uses Fastify, SQLite, and a persistent delivery queue. APNs is deliberately degraded until all four credentials are supplied outside the repository.
+The Node 22 service uses Fastify, SQLite, and a persistent delivery queue. Push delivery supports **APNs** (iPhone) and **FCM** (Android). Until each provider's credentials are configured outside the repository, `/healthz` reports **`status: "degraded"`** with `pushDisabled: true` for that side; production monitors can require a provider with `REQUIRE_APNS=1` or `REQUIRE_FCM=1` (or `REQUIRE_PUSH=1` for either).
 
 ```bash
 cd notification-service
@@ -97,7 +106,7 @@ npm run migrate
 npm run dev
 ```
 
-Its production container binds to `127.0.0.1:8787` for an existing HTTPS proxy or tunnel. See [`notification-service/README.md`](notification-service/README.md) for deployment, backup, recovery, health monitoring, and APNs configuration.
+Its production container binds to `127.0.0.1:8787` for an existing HTTPS proxy or tunnel. See [`notification-service/README.md`](notification-service/README.md) for deployment, backup, recovery, health monitoring, and APNs/FCM configuration.
 
 ## Run the web app
 
