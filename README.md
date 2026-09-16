@@ -1,10 +1,10 @@
 <p><img src="food-recall-app/public/icon-512.svg" alt="" width="72" height="72"></p>
 
-# Beanstalk — FDA food recall search
+# Beanstalk — FDA and USDA FSIS food recall search
 
 **Find the product, the recall, and the original source. Free to use. No account required.**
 
-Beanstalk helps people search **FDA food recall records** by product, company, or hazard, with filters for distribution state, classification, status, and dietary terms. It is a public-service project of [JACOBRAKAI FOUNDATION](https://jacobrakai.org/about/). Product details, lot codes, and links to FDA sources help readers investigate a record without treating a search result as a safety determination.
+Beanstalk helps people search **FDA openFDA and USDA FSIS food recall records** by product, company, or hazard, with filters for distribution state, classification, status, source (All / FDA / USDA-FSIS), and dietary terms. It is a public-service project of [JACOBRAKAI FOUNDATION](https://jacobrakai.org/about/). Product details, lot codes, and links to original agency sources help readers investigate a record without treating a search result as a safety determination.
 
 [**Search food recall records**](https://jacobrakaifoundation.github.io/beanstalk/) · [**Read the funding brief**](docs/FUNDING.md) · [Support the Foundation](https://jacobrakai.org/donate/) · [Report a problem](https://github.com/jacobrakaiFoundation/beanstalk/issues)
 

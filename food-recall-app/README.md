@@ -51,6 +51,7 @@ npm run test   # vitest (unit + component)
 - `notifications.test.ts` — Permission flow, send/create
 - `SearchBar.test.tsx` — Label, value, onChange (includes reaction placeholder)
 - `FilterPanel.test.tsx` — Select options, onChange, clear
+- `landingPages.test.ts` — Discovery tags, JSON-LD, sitemap, and social meta on public HTML pages
 
 ## Deploy
 Any static host (Vercel, Netlify, Cloudflare Pages, GitHub Pages):
