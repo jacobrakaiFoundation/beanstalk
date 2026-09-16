@@ -87,6 +87,13 @@ final class AlertControlPolicyTests: XCTestCase {
         )
     }
 
+    func testUserFacingFailureMessagesAvoidSystemDiagnostics() {
+        XCTAssertFalse(AlertControlPolicy.disableLocallyFailedMessage.contains("Error"))
+        XCTAssertFalse(AlertControlPolicy.watchlistSyncFailedMessage.contains("NSURLError"))
+        XCTAssertFalse(AlertControlPolicy.serverDeletionFailedMessage.contains("{"))
+        XCTAssertFalse(AlertControlPolicy.pushRegistrationFailedMessage.contains("{"))
+    }
+
     func testUnavailableCopyIsComingSoonNotDebugJargon() {
         XCTAssertEqual(AlertControlPolicy.unavailableMessage, "Coming soon")
         XCTAssertFalse(AlertControlPolicy.unavailableMessage.localizedCaseInsensitiveContains("debug"))

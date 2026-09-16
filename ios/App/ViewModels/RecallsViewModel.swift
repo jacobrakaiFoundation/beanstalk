@@ -94,7 +94,7 @@ final class RecallsViewModel: ObservableObject {
             return
         } catch {
             guard responseGate.accepts(ticket, currentSignature: searchSignature) else { return }
-            errorMessage = error.localizedDescription
+            errorMessage = UserFacingError.network(error, fallback: "Recall records couldn't be loaded.")
         }
     }
 

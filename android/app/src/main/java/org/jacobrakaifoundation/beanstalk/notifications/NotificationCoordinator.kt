@@ -97,9 +97,9 @@ class NotificationCoordinator(
             } else {
                 unavailableState()
             }
-        } catch (error: Exception) {
+        } catch (_: Exception) {
             mutableState.value = NotificationState(
-                error.message ?: "Beanstalk couldn't turn alerts off. Try again.",
+                AlertControlPolicy.DISABLE_FAILED_MESSAGE,
                 alertsAvailable = available,
             )
         }

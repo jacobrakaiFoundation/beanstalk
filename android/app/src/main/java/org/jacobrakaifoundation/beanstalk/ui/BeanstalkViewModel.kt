@@ -22,6 +22,7 @@ import org.jacobrakaifoundation.beanstalk.domain.SourceDates
 import org.jacobrakaifoundation.beanstalk.domain.WatchMatcher
 import org.jacobrakaifoundation.beanstalk.notifications.NotificationCoordinator
 import org.jacobrakaifoundation.beanstalk.notifications.NotificationState
+import org.jacobrakaifoundation.beanstalk.util.UserFacingError
 
 enum class BrowseMode(val label: String) { LATEST("Latest"), HISTORICAL("Historical") }
 
@@ -81,7 +82,12 @@ class BeanstalkViewModel(
             } catch (error: Exception) {
                 if (error is CancellationException) throw error
                 mutableState.update {
-                    it.copy(localDataMessage = error.message ?: "Saved data on this device couldn't be opened.")
+                    it.copy(
+                        localDataMessage = UserFacingError.message(
+                            error,
+                            "Saved data on this device couldn't be opened.",
+                        ),
+                    )
                 }
             }
             reload()
@@ -157,7 +163,10 @@ class BeanstalkViewModel(
                 mutableState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = error.message ?: "Recall records couldn't be loaded.",
+                        errorMessage = UserFacingError.network(
+                            error,
+                            "Recall records couldn't be loaded.",
+                        ),
                     )
                 }
             }
@@ -225,7 +234,10 @@ class BeanstalkViewModel(
                     NotificationDetailStateReducer.failure(
                         current,
                         generation,
-                        error.message ?: "This recall announcement is unavailable.",
+                        UserFacingError.network(
+                            error,
+                            "This recall announcement is unavailable.",
+                        ),
                     )
                 }
             }

@@ -11,7 +11,7 @@ struct BeanstalkApp: App {
         do {
             return try ModelContainer(for: SavedRecallItem.self, WatchTermEntity.self)
         } catch {
-            fatalError("Unable to create Beanstalk data store: \(error.localizedDescription)")
+            fatalError("Unable to create Beanstalk data store.")
         }
     }()
 
