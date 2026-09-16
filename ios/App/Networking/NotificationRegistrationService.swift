@@ -145,7 +145,7 @@ final class NotificationRegistrationService: ObservableObject {
         } catch {
             alertsEnabled = await deviceAPI.alertsEnabled()
             hasStoredRegistration = await deviceAPI.hasStoredRegistration()
-            statusMessage = "Could not save the alert opt-out on this iPhone: \(error.localizedDescription)"
+            statusMessage = AlertControlPolicy.disableLocallyFailedMessage
             return
         }
 
@@ -297,7 +297,7 @@ final class NotificationRegistrationService: ObservableObject {
         } catch {
             guard termsRevision == watchlistRevision,
                   intentRevision == notificationIntentRevision else { return }
-            statusMessage = "Watchlist saved locally; alert sync failed: \(error.localizedDescription)"
+            statusMessage = AlertControlPolicy.watchlistSyncFailedMessage
         }
     }
 
@@ -313,7 +313,7 @@ final class NotificationRegistrationService: ObservableObject {
                 statusMessage = "The saved server credentials had expired. Local alert registration was cleared."
             }
         } catch {
-            statusMessage = "The server registration was not removed and may still receive alerts. Retry deletion: \(error.localizedDescription)"
+            statusMessage = AlertControlPolicy.serverDeletionFailedMessage
         }
         alertsEnabled = await deviceAPI.alertsEnabled()
         hasStoredRegistration = await deviceAPI.hasStoredRegistration()

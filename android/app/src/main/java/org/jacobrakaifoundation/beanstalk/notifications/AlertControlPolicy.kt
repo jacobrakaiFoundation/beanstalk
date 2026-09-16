@@ -12,6 +12,9 @@ object AlertControlPolicy {
     const val ENABLE_FAILED_MESSAGE =
         "Beanstalk couldn't turn alerts on. Watch terms stay on this device."
 
+    const val DISABLE_FAILED_MESSAGE =
+        "Beanstalk couldn't turn alerts off. Try again."
+
     fun settingsAction(alertsEnabled: Boolean, alertsAvailable: Boolean): AlertSettingsAction {
         if (alertsEnabled) return AlertSettingsAction.TURN_OFF
         if (alertsAvailable) return AlertSettingsAction.TURN_ON

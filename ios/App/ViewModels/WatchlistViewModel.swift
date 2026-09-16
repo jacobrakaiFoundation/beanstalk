@@ -51,7 +51,10 @@ final class WatchlistViewModel: ObservableObject {
         } catch {
             guard responseGate.accepts(ticket, currentSignature: currentTermSignature) else { return }
             results = []
-            message = error.localizedDescription
+            message = UserFacingError.network(
+                error,
+                fallback: "Recent announcements couldn't be checked. Your saved watch terms remain on this device."
+            )
         }
     }
 }

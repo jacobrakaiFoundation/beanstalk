@@ -27,7 +27,7 @@ final class BeanstalkAppDelegate: NSObject, UIApplicationDelegate, UNUserNotific
         NotificationCenter.default.post(
             name: .remoteNotificationRegistrationFailed,
             object: nil,
-            userInfo: ["message": "This iPhone could not register for alerts: \(error.localizedDescription)"]
+            userInfo: ["message": AlertControlPolicy.pushRegistrationFailedMessage]
         )
     }
 
