@@ -12,6 +12,18 @@ public enum AlertControlPolicy {
     public static let enableFailedMessage =
         "Beanstalk couldn't turn alerts on. Watch terms stay on this device."
 
+    public static let disableLocallyFailedMessage =
+        "Could not save the alert opt-out on this iPhone. Try again in Settings."
+
+    public static let watchlistSyncFailedMessage =
+        "Watchlist saved locally; alert sync failed. Try again later."
+
+    public static let serverDeletionFailedMessage =
+        "The server registration was not removed and may still receive alerts. Retry deletion from Settings."
+
+    public static let pushRegistrationFailedMessage =
+        "This iPhone could not register for alerts. Try again later."
+
     /// Local user intent controls the Settings action. A pending or failed
     /// backend registration must never hide the ability to turn alerts off.
     /// Unavailable push hides Enable and never claims alerts are on.

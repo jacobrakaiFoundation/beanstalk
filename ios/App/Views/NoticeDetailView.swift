@@ -134,7 +134,9 @@ struct RemoteNoticeDetailView: View {
                 offlineCopyMessage = nil
             }
         }
-        catch { errorMessage = error.localizedDescription }
+        catch {
+            errorMessage = UserFacingError.network(error, fallback: "This recall announcement is unavailable.")
+        }
     }
 }
 
