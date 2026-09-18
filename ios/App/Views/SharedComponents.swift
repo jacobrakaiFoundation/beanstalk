@@ -116,13 +116,13 @@ struct EnforcementRow: View {
             Text(record.recallingFirm.isEmpty ? "Recalling firm not provided" : record.recallingFirm)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
-            Text("Historical · as published by openFDA")
+            Text("As published by openFDA")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
         .padding(.vertical, 5)
         .accessibilityElement(children: .combine)
-        .accessibilityHint("Opens historical enforcement record details")
+        .accessibilityHint("Opens the enforcement record details")
     }
 }
 

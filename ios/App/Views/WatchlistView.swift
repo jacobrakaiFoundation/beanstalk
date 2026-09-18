@@ -131,8 +131,15 @@ struct WatchlistView: View {
         termFieldFocused = false
         let updated = existingValues + [normalized]
         Task {
-            if wasEmpty { await notifications.requestAfterFirstWatchTerm(terms: updated) }
-            else { await notifications.syncWatchlist(terms: updated) }
+            if wasEmpty, AlertControlPolicy.shouldOfferEnable(
+                alertsEnabled: notifications.alertsEnabled,
+                alertsAvailable: notifications.alertsAvailable,
+                watchTermCount: updated.count
+            ) {
+                await notifications.requestAfterFirstWatchTerm(terms: updated)
+            } else {
+                await notifications.syncWatchlist(terms: updated)
+            }
         }
     }
 

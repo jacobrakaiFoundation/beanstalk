@@ -1,10 +1,10 @@
 <p><img src="food-recall-app/public/icon-512.svg" alt="" width="72" height="72"></p>
 
-# Beanstalk — FDA food recall search
+# Beanstalk — FDA and USDA FSIS food recall search
 
 **Find the product, the recall, and the original source. Free to use. No account required.**
 
-Beanstalk helps people search **FDA food recall records** by product, company, or hazard, with filters for distribution state, classification, status, and dietary terms. It is a public-service project of [JACOBRAKAI FOUNDATION](https://jacobrakai.org/about/). Product details, lot codes, and links to FDA sources help readers investigate a record without treating a search result as a safety determination.
+Beanstalk helps people search **FDA openFDA and USDA FSIS food recall records** by product, company, or hazard, with filters for distribution state, classification, status, source (All / FDA / USDA-FSIS), and dietary terms. It is a public-service project of [JACOBRAKAI FOUNDATION](https://jacobrakai.org/about/). Product details, lot codes, and links to original agency sources help readers investigate a record without treating a search result as a safety determination.
 
 [**Search food recall records**](https://jacobrakaifoundation.github.io/beanstalk/) · [**Read the funding brief**](docs/FUNDING.md) · [Support the Foundation](https://jacobrakai.org/donate/) · [Report a problem](https://github.com/jacobrakaiFoundation/beanstalk/issues)
 
@@ -14,7 +14,8 @@ Beanstalk helps people search **FDA food recall records** by product, company, o
 
 | Part of Beanstalk | What you can use or inspect |
 | --- | --- |
-| **Web app — available now** | Search the openFDA historical enforcement archive, inspect source fields, use local watchlists, and browse clearly labeled, unverified CAERS Early Signals. The web app is not a real-time safety alert service. |
+| **Web app — available now** | Search the [openFDA](https://open.fda.gov/apis/food/enforcement/) weekly enforcement archive (no live FDA feed), inspect source fields, use local watchlists, and browse clearly labeled, unverified CAERS Early Signals. A USDA FSIS recall snapshot is merged on the first results page with a Source filter (All / FDA / USDA-FSIS). The web app is not a real-time safety alert service. |
+| **Android sideload APK — available now** | Debug-signed Capacitor wrap of the web app. Download the `beanstalk-debug-apk` artifact from the `android sideload apk` CI job. The native Compose project in `android/` also `assembleDebug`s; CI uploads it as `beanstalk-native-debug-apk`. Play Store signing is not configured. See [`android-apk/README.md`](android-apk/README.md). |
 | **iPhone — implementation in this repository** | Native recall announcements, saved records, watchlists, and an optional notification service. App Store publication and production notification delivery still require the [release checks](docs/app-store/release-checklist.md). |
 
 <img src="docs/readme/app-demo-20260911.png" alt="Beanstalk web demo with product search, state and dietary filters, and recall cards showing hazards and source details." width="1280">
@@ -51,9 +52,32 @@ The app stores saved records and watch terms locally. If the user enables alerts
 
 Beanstalk is independent and is not affiliated with or endorsed by FDA. It is not medical advice. For meat, poultry, and processed egg products, also check [USDA FSIS recalls](https://www.fsis.usda.gov/recalls).
 
+## Run the Android sideload APK
+
+The shippable APK wraps the existing Vite/PWA. It lives in `android-apk/` so it does not overwrite the incomplete native Compose sources in `android/`.
+
+```bash
+cd food-recall-app
+npm ci
+npm run build:android
+cd ../android-apk
+./gradlew assembleDebug
+```
+
+Install with `adb install -r app/build/outputs/apk/debug/app-debug.apk`, or download the CI artifact. Step-by-step USB and Files-app instructions are in [`android-apk/README.md`](android-apk/README.md). The APK is debug-signed; there is no Play upload keystore in this repository.
+
+## Run the native Android app
+
+The Compose client in `android/` is separate from the Capacitor sideload wrap. See [`android/README.md`](android/README.md).
+
+```bash
+cd android
+./gradlew :app:assembleDebug
+```
+
 ## Run the iPhone project
 
-Install the current App Store-supported Xcode and iOS SDK, then open `ios/Beanstalk.xcodeproj`. The project can be regenerated with [XcodeGen](https://github.com/yonaskolb/XcodeGen):
+See [`ios/README.md`](ios/README.md). Install the current App Store-supported Xcode and iOS SDK, then open `ios/Beanstalk.xcodeproj`. The project can be regenerated with [XcodeGen](https://github.com/yonaskolb/XcodeGen):
 
 ```bash
 cd ios
@@ -71,7 +95,7 @@ Full simulator, signing, notification, and physical-device checks require Xcode,
 
 ## Run the notification service
 
-The Node 22 service uses Fastify, SQLite, and a persistent delivery queue. APNs is deliberately degraded until all four credentials are supplied outside the repository.
+The Node 22 service uses Fastify, SQLite, and a persistent delivery queue. Push delivery supports **APNs** (iPhone) and **FCM** (Android). Until each provider's credentials are configured outside the repository, `/healthz` reports **`status: "degraded"`** with `pushDisabled: true` for that side; production monitors can require a provider with `REQUIRE_APNS=1` or `REQUIRE_FCM=1` (or `REQUIRE_PUSH=1` for either).
 
 ```bash
 cd notification-service
@@ -82,7 +106,7 @@ npm run migrate
 npm run dev
 ```
 
-Its production container binds to `127.0.0.1:8787` for an existing HTTPS proxy or tunnel. See [`notification-service/README.md`](notification-service/README.md) for deployment, backup, recovery, health monitoring, and APNs configuration.
+Its production container binds to `127.0.0.1:8787` for an existing HTTPS proxy or tunnel. See [`notification-service/README.md`](notification-service/README.md) for deployment, backup, recovery, health monitoring, and APNs/FCM configuration.
 
 ## Run the web app
 
@@ -98,6 +122,8 @@ For changes, run `npm run check`, `npm run build`, and `npm run test:coverage`. 
 
 ```text
 ios/                       Native SwiftUI app and portable core tests
+android/                   Native Compose app (`./gradlew :app:assembleDebug`)
+android-apk/               Capacitor wrap of the web app (CI sideload artifact)
 notification-service/      FDA notice ingestion, device API, SQLite queue, APNs
 food-recall-app/            Existing React/PWA historical browser and public pages
 docs/app-store/             Enrollment, privacy, metadata, review, and release package

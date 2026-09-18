@@ -1,0 +1,60 @@
+{
+  "identifierContract": {
+    "fcmTokenAsFid": {
+      "ok": false,
+      "error": "pushIdentifier must be a 10 to 200 character URL-safe Firebase Installation ID"
+    },
+    "fcmTokenAsToken": {
+      "ok": true,
+      "normalized": "dXyZ0AbCdEfGhIjKlMnOp:APA91bContractProbeOnly-ThisIsARegistrationTokenNotAFid"
+    },
+    "fidAsFid": {
+      "ok": true,
+      "normalized": "cAbCdEfGhIjKlMnOpQrStU"
+    },
+    "fidAsToken": {
+      "ok": true,
+      "normalized": "cAbCdEfGhIjKlMnOpQrStU"
+    }
+  },
+  "rejectedTokenLabeledFid": {
+    "status": 400,
+    "body": {
+      "error": {
+        "code": "invalid_request",
+        "message": "pushIdentifier must be a 10 to 200 character URL-safe Firebase Installation ID"
+      }
+    }
+  },
+  "acceptedTokenLabeledToken": {
+    "status": 201,
+    "keys": [
+      "deviceId",
+      "clientSecret"
+    ]
+  },
+  "rotatePutDevicesMe": {
+    "status": 404,
+    "error": "Not Found"
+  },
+  "rotatePutDevicesMeToken": {
+    "status": 200,
+    "keys": [
+      "id",
+      "provider",
+      "identifierKind",
+      "environment",
+      "active",
+      "disabledReason",
+      "terms"
+    ],
+    "hasDeviceId": false,
+    "hasClientSecret": false
+  },
+  "noticeQuery121": {
+    "status": 400
+  },
+  "noticeQuotedQuery": {
+    "status": 200
+  }
+}

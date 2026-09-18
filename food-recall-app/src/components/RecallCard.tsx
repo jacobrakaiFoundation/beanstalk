@@ -48,6 +48,7 @@ export default function RecallCard({ recall, onSelect, isNew, watchlist, dietary
         <div className="flex flex-wrap items-center gap-1.5">
           <RiskBadge classification={recall.classification} showClass={true} />
           <span className={statusChipClass(recall.status)}>{recall.status}</span>
+          <span className="chip chip-neutral">{recall.source}</span>
           {scope.label !== "Unclear" && (
             <span className="chip chip-neutral" title={scope.states.length > 0 ? scope.states.join(", ") : undefined}>
               {scope.label}
@@ -91,11 +92,11 @@ export default function RecallCard({ recall, onSelect, isNew, watchlist, dietary
 
       <dl className="mt-auto space-y-1 text-xs text-zinc-600 dark:text-zinc-400">
         <div className="flex gap-2">
-          <dt className="w-14 shrink-0 text-zinc-500">Firm</dt>
+          <dt className="w-14 shrink-0 text-zinc-500 dark:text-zinc-400">Firm</dt>
           <dd className="truncate">{firmLine || "Not stated"}</dd>
         </div>
         <div className="flex gap-2">
-          <dt className="w-14 shrink-0 text-zinc-500">Sold in</dt>
+          <dt className="w-14 shrink-0 text-zinc-500 dark:text-zinc-400">Sold in</dt>
           <dd className="truncate">{recall.distributionPattern || "Not stated"}</dd>
         </div>
       </dl>

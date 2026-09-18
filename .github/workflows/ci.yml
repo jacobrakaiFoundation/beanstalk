@@ -7,6 +7,9 @@ name: ci
 #   service — lint, test and build the notification service on Node 22.
 #   native  — run the Swift tests and compile the Release app with the current
 #             App Store submission toolchain.
+#   android — build the Capacitor-wrapped Vite SPA and upload a debug-signed
+#             sideload APK. Uses the Android debug keystore; Play upload
+#             signing is not configured.
 #   pr      — pull requests only. Title format, the `Closes #N` reference, the
 #             template's Summary section, auto-labels, CODEOWNERS validity and
 #             a grep for hardcoded secrets in the diff. No Node, no install:
@@ -142,6 +145,124 @@ jobs:
           -destination 'generic/platform=iOS Simulator'
           CODE_SIGNING_ALLOWED=NO
           build
+
+  android:
+    name: android sideload apk
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    if: github.event.pull_request.draft != true
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: food-recall-app/package-lock.json
+
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
+
+      # ubuntu-latest already ships an Android SDK. The setup-android action
+      # still requests the retired `tools` package and fails. Accept licenses
+      # so Gradle can install compileSdk 36 if the image is missing it.
+      - name: Accept Android SDK licenses
+        run: |
+          sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          if [ -z "$sdk_root" ]; then
+            echo "::error::ANDROID_HOME is not set on this runner"
+            exit 1
+          fi
+          sdkmanager=$(find "$sdk_root" -path '*cmdline-tools/*/bin/sdkmanager' | sort | tail -n 1)
+          if [ ! -x "$sdkmanager" ]; then
+            echo "::error::sdkmanager not found under $sdk_root"
+            exit 1
+          fi
+          yes | "$sdkmanager" --sdk_root="$sdk_root" --licenses >/dev/null || true
+
+      - name: Install web dependencies
+        working-directory: food-recall-app
+        run: npm ci
+
+      - name: Build web assets at origin root and sync Capacitor
+        working-directory: food-recall-app
+        run: npm run build:android
+
+      - name: Assemble debug APK
+        working-directory: android-apk
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Upload sideload APK
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: beanstalk-debug-apk
+          path: android-apk/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+  android-native:
+    name: android native assemble
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    if: github.event.pull_request.draft != true
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
+
+      - name: Accept Android SDK licenses
+        run: |
+          sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          if [ -z "$sdk_root" ]; then
+            echo "::error::ANDROID_HOME is not set on this runner"
+            exit 1
+          fi
+          sdkmanager=$(find "$sdk_root" -path '*cmdline-tools/*/bin/sdkmanager' | sort | tail -n 1)
+          if [ ! -x "$sdkmanager" ]; then
+            echo "::error::sdkmanager not found under $sdk_root"
+            exit 1
+          fi
+          yes | "$sdkmanager" --sdk_root="$sdk_root" --licenses >/dev/null || true
+
+      - name: Assemble native debug APK
+        working-directory: android
+        run: ./gradlew :app:assembleDebug --no-daemon
+
+      - name: Native JVM unit tests
+        working-directory: android
+        run: >-
+          ./gradlew :app:testDebugUnitTest --no-daemon
+          --tests org.jacobrakaifoundation.beanstalk.ColdStartResilienceTest
+          --tests org.jacobrakaifoundation.beanstalk.ApplicationGraphColdStartTest
+          --tests org.jacobrakaifoundation.beanstalk.data.WatchlistSyncEngineTest
+          --tests org.jacobrakaifoundation.beanstalk.data.network.BeanstalkApiTest
+          --tests org.jacobrakaifoundation.beanstalk.notifications.AlertControlPolicyTest
+          --tests org.jacobrakaifoundation.beanstalk.util.UserFacingErrorTest
+          --tests org.jacobrakaifoundation.beanstalk.notifications.NotificationCoordinatorTest
+          --tests org.jacobrakaifoundation.beanstalk.ui.BrowseRequestTest
+          --tests org.jacobrakaifoundation.beanstalk.ui.NotificationDetailStateReducerTest
+          --tests org.jacobrakaifoundation.beanstalk.ui.WatchlistScreenTest
+
+      - name: Upload native debug APK
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: beanstalk-native-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
 
   pr:
     name: pull request hygiene

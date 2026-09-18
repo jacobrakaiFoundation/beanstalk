@@ -2,7 +2,9 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 
-const pagesBase = "/beanstalk/";
+// GitHub Pages is served at /beanstalk/. The Android APK copies dist/ into a
+// WebView at the origin root, so that build sets VITE_BASE=/.
+const pagesBase = process.env.VITE_BASE ?? "/beanstalk/";
 
 export default defineConfig({
   base: pagesBase,
@@ -11,10 +13,10 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       manifest: {
-        name: "Beanstalk — FDA Food Recall Search",
+        name: "Beanstalk — FDA and USDA FSIS food recall search",
         short_name: "beanstalk",
         description:
-          "Search FDA food recall records by product, company, or hazard. Free to use, with source details and local watchlists.",
+          "Search FDA openFDA and USDA FSIS food recall records by product, company, or hazard. Free to use, with source details and local watchlists.",
         start_url: pagesBase,
         scope: pagesBase,
         theme_color: "#1d4535",
@@ -47,6 +49,11 @@ export default defineConfig({
             }
           });
         },
+      },
+      "/api/fsis-recalls": {
+        target: "https://www.fsis.usda.gov",
+        changeOrigin: true,
+        rewrite: () => "/fsis/api/recall/v/1",
       },
     },
   },

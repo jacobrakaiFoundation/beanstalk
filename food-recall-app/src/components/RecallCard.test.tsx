@@ -28,6 +28,7 @@ const makeRecall = (overrides: Partial<Recall> = {}): Recall => ({
   initialFirmNotification: "",
   productQuantity: "",
   terminationDate: "",
+  source: "FDA",
   ...overrides,
 });
 
@@ -69,6 +70,18 @@ describe("RecallCard", () => {
   it("renders status badge", () => {
     render(<RecallCard recall={makeRecall()} onSelect={() => {}} isNew={false} watchlist={[]} />);
     expect(screen.getByText("Ongoing")).toBeTruthy();
+  });
+
+  it("renders source badge", () => {
+    render(<RecallCard recall={makeRecall()} onSelect={() => {}} isNew={false} watchlist={[]} />);
+    expect(screen.getByText("FDA")).toBeTruthy();
+  });
+
+  it("renders USDA-FSIS source badge for FSIS recalls", () => {
+    render(
+      <RecallCard recall={makeRecall({ source: "USDA-FSIS" })} onSelect={() => {}} isNew={false} watchlist={[]} />,
+    );
+    expect(screen.getByText("USDA-FSIS")).toBeTruthy();
   });
 
   it("renders firm location with the firm name when present", () => {
@@ -152,6 +165,13 @@ describe("RecallCard", () => {
     render(<RecallCard recall={makeRecall()} onSelect={() => {}} isNew={false} watchlist={[]} />);
     expect(screen.getByText("Sold in")).toBeTruthy();
     expect(screen.getByText("Nationwide", { selector: "dd" })).toBeTruthy();
+  });
+
+  it("uses dark-mode tokens that meet WCAG 2.1 AA on card labels and the Class I suffix", () => {
+    render(<RecallCard recall={makeRecall()} onSelect={() => {}} isNew={false} watchlist={[]} />);
+    expect(screen.getByText("Firm").className).toContain("dark:text-zinc-400");
+    expect(screen.getByText("Sold in").className).toContain("dark:text-zinc-400");
+    expect(screen.getByText("Class I").className).not.toContain("opacity-");
   });
 
   it("handles empty distribution pattern gracefully", () => {

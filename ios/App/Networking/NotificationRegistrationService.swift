@@ -9,16 +9,19 @@ final class NotificationRegistrationService: ObservableObject {
     @Published private(set) var statusMessage = "Alerts are not set up."
     @Published private(set) var isWorking = false
     @Published private(set) var alertsEnabled = false
+    @Published private(set) var alertsAvailable = false
     @Published private(set) var hasStoredRegistration = false
 
     private let deviceAPI = DeviceAPI()
+    private let isPushConfigured: () -> Bool
     private let operationQueue = SerializedAsyncQueue()
     private var currentTerms: [String] = []
     private var watchlistRevision: UInt64 = 0
     private var notificationIntentRevision: UInt64 = 0
     private var cancellables = Set<AnyCancellable>()
 
-    init() {
+    init(isPushConfigured: @escaping () -> Bool = { AppConfiguration.isPushConfigured }) {
+        self.isPushConfigured = isPushConfigured
         NotificationCenter.default.publisher(for: .didRegisterForRemoteNotifications)
             .compactMap { $0.userInfo?["deviceToken"] as? String }
             .receive(on: DispatchQueue.main)
@@ -30,7 +33,14 @@ final class NotificationRegistrationService: ObservableObject {
         NotificationCenter.default.publisher(for: .remoteNotificationRegistrationFailed)
             .compactMap { $0.userInfo?["message"] as? String }
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] message in self?.statusMessage = message }
+            .sink { [weak self] message in
+                guard let self else { return }
+                if self.isPushConfigured() {
+                    self.statusMessage = message
+                } else {
+                    self.applyUnavailableState()
+                }
+            }
             .store(in: &cancellables)
 
         Task { await refreshStatus() }
@@ -38,6 +48,10 @@ final class NotificationRegistrationService: ObservableObject {
 
     func requestAfterFirstWatchTerm(terms: [String]) async {
         _ = captureTerms(terms)
+        guard isPushConfigured() else {
+            applyUnavailableState()
+            return
+        }
         let requestIntentRevision = notificationIntentRevision
         isWorking = true
         defer { isWorking = false }
@@ -59,12 +73,17 @@ final class NotificationRegistrationService: ObservableObject {
             statusMessage = "Waiting for this iPhone's notification token…"
             UIApplication.shared.registerForRemoteNotifications()
         } catch {
-            statusMessage = "Could not request alerts: \(error.localizedDescription)"
+            statusMessage = AlertControlPolicy.enableFailedMessage
         }
     }
 
     func synchronize(terms: [String]) async {
         let snapshot = captureTerms(terms)
+        guard isPushConfigured() else {
+            applyUnavailableState()
+            hasStoredRegistration = await deviceAPI.hasStoredRegistration()
+            return
+        }
         await refreshStatus()
         alertsEnabled = await deviceAPI.alertsEnabled()
         hasStoredRegistration = await deviceAPI.hasStoredRegistration()
@@ -76,7 +95,10 @@ final class NotificationRegistrationService: ObservableObject {
             await deletion.value
             return
         }
-        guard AlertControlPolicy.shouldAttemptRegistration(alertsEnabled: alertsEnabled) else { return }
+        guard AlertControlPolicy.shouldAttemptRegistration(
+            alertsEnabled: alertsEnabled,
+            alertsAvailable: isPushConfigured()
+        ) else { return }
         guard authorizationStatus == .authorized || authorizationStatus == .provisional else { return }
         UIApplication.shared.registerForRemoteNotifications()
         if let token = await deviceAPI.storedToken() {
@@ -93,7 +115,10 @@ final class NotificationRegistrationService: ObservableObject {
         let snapshot = captureTerms(terms)
         let intentRevision = notificationIntentRevision
         alertsEnabled = await deviceAPI.alertsEnabled()
-        guard AlertControlPolicy.shouldAttemptRegistration(alertsEnabled: alertsEnabled) else { return }
+        guard AlertControlPolicy.shouldAttemptRegistration(
+            alertsEnabled: alertsEnabled,
+            alertsAvailable: isPushConfigured()
+        ) else { return }
         guard authorizationStatus == .authorized || authorizationStatus == .provisional else { return }
         isWorking = true
         defer { isWorking = false }
@@ -112,13 +137,15 @@ final class NotificationRegistrationService: ObservableObject {
         UIApplication.shared.unregisterForRemoteNotifications()
         isWorking = true
         defer { isWorking = false }
+        let available = isPushConfigured()
+        alertsAvailable = available
 
         do {
             try await deviceAPI.disableLocally()
         } catch {
             alertsEnabled = await deviceAPI.alertsEnabled()
             hasStoredRegistration = await deviceAPI.hasStoredRegistration()
-            statusMessage = "Could not save the alert opt-out on this iPhone: \(error.localizedDescription)"
+            statusMessage = AlertControlPolicy.disableLocallyFailedMessage
             return
         }
 
@@ -129,6 +156,9 @@ final class NotificationRegistrationService: ObservableObject {
         }
         alertsEnabled = false
         await deletion.value
+        if !available {
+            applyUnavailableState()
+        }
     }
 
     func refreshStatus() async {
@@ -136,6 +166,11 @@ final class NotificationRegistrationService: ObservableObject {
         authorizationStatus = settings.authorizationStatus
         alertsEnabled = await deviceAPI.alertsEnabled()
         hasStoredRegistration = await deviceAPI.hasStoredRegistration()
+        guard isPushConfigured() else {
+            applyUnavailableState()
+            return
+        }
+        alertsAvailable = true
         switch settings.authorizationStatus {
         case .authorized, .provisional, .ephemeral:
             if !alertsEnabled {
@@ -190,7 +225,10 @@ final class NotificationRegistrationService: ObservableObject {
         let enabledBeforeRequest = await deviceAPI.alertsEnabled()
         guard termsRevision == watchlistRevision,
               intentRevision == notificationIntentRevision,
-              AlertControlPolicy.shouldAttemptRegistration(alertsEnabled: enabledBeforeRequest) else { return }
+              AlertControlPolicy.shouldAttemptRegistration(
+                  alertsEnabled: enabledBeforeRequest,
+                  alertsAvailable: isPushConfigured()
+              ) else { return }
         do {
             try await deviceAPI.registerOrRotate(
                 token: token,
@@ -199,7 +237,10 @@ final class NotificationRegistrationService: ObservableObject {
             )
             let enabledAfterRequest = await deviceAPI.alertsEnabled()
             guard intentRevision == notificationIntentRevision,
-                  AlertControlPolicy.shouldAttemptRegistration(alertsEnabled: enabledAfterRequest) else {
+                  AlertControlPolicy.shouldAttemptRegistration(
+                      alertsEnabled: enabledAfterRequest,
+                      alertsAvailable: isPushConfigured()
+                  ) else {
                 UIApplication.shared.unregisterForRemoteNotifications()
                 await performRegistrationDeletion()
                 return
@@ -214,7 +255,7 @@ final class NotificationRegistrationService: ObservableObject {
                 UIApplication.shared.unregisterForRemoteNotifications()
                 await performRegistrationDeletion()
             } else {
-                statusMessage = "This iPhone could not register for alerts: \(error.localizedDescription)"
+                statusMessage = AlertControlPolicy.enableFailedMessage
             }
         }
     }
@@ -227,7 +268,10 @@ final class NotificationRegistrationService: ObservableObject {
         let enabled = await deviceAPI.alertsEnabled()
         guard termsRevision == watchlistRevision,
               intentRevision == notificationIntentRevision,
-              AlertControlPolicy.shouldAttemptRegistration(alertsEnabled: enabled) else { return }
+              AlertControlPolicy.shouldAttemptRegistration(
+                  alertsEnabled: enabled,
+                  alertsAvailable: isPushConfigured()
+              ) else { return }
         do {
             try await deviceAPI.syncWatchlist(terms)
             let stillEnabled = await deviceAPI.alertsEnabled()
@@ -253,7 +297,7 @@ final class NotificationRegistrationService: ObservableObject {
         } catch {
             guard termsRevision == watchlistRevision,
                   intentRevision == notificationIntentRevision else { return }
-            statusMessage = "Watchlist saved locally; alert sync failed: \(error.localizedDescription)"
+            statusMessage = AlertControlPolicy.watchlistSyncFailedMessage
         }
     }
 
@@ -269,10 +313,17 @@ final class NotificationRegistrationService: ObservableObject {
                 statusMessage = "The saved server credentials had expired. Local alert registration was cleared."
             }
         } catch {
-            statusMessage = "The server registration was not removed and may still receive alerts. Retry deletion: \(error.localizedDescription)"
+            statusMessage = AlertControlPolicy.serverDeletionFailedMessage
         }
         alertsEnabled = await deviceAPI.alertsEnabled()
         hasStoredRegistration = await deviceAPI.hasStoredRegistration()
+    }
+
+    private func applyUnavailableState() {
+        alertsAvailable = false
+        alertsEnabled = false
+        isWorking = false
+        statusMessage = AlertControlPolicy.unavailableMessage
     }
 
     private func captureTerms(_ terms: [String]) -> (terms: [String], revision: UInt64) {

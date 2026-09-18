@@ -3,21 +3,30 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Beanstalk — FDA Food Recall Search</title>
-  <meta name="description" content="Search FDA food recall records by product, company, or hazard. Browse source details, distribution, and dietary terms in Beanstalk's free web app.">
+  <title>Beanstalk — FDA and USDA FSIS food recall search</title>
+  <meta name="description" content="Free search of FDA openFDA and USDA FSIS food recall records by product, company, or hazard. Source links, dietary filters, and local watchlists. No account required.">
+  <meta name="keywords" content="FDA food recall, USDA FSIS, openFDA, food safety, meat poultry egg recall, food recall search, public health, JACOBRAKAI FOUNDATION">
+  <meta name="robots" content="index, follow">
+  <meta name="author" content="JACOBRAKAI FOUNDATION">
   <link rel="canonical" href="https://jacobrakaifoundation.github.io/beanstalk/">
-  <meta property="og:title" content="Beanstalk — FDA Food Recall Search">
-  <meta property="og:description" content="Search FDA food recall records by product, company, or hazard. Browse source details, distribution, and dietary terms in Beanstalk's free web app.">
+  <meta property="og:title" content="Beanstalk — FDA and USDA FSIS food recall search">
+  <meta property="og:description" content="Free search of FDA openFDA and USDA FSIS food recall records by product, company, or hazard. Source links and local watchlists. No account required.">
   <meta property="og:site_name" content="Beanstalk">
   <meta property="og:type" content="website">
+  <meta property="og:locale" content="en_US">
   <meta property="og:url" content="https://jacobrakaifoundation.github.io/beanstalk/">
   <meta property="og:image" content="https://jacobrakaifoundation.github.io/beanstalk/og-image.png">
+  <meta property="og:image:alt" content="Beanstalk food recall search with product filters and source badges">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Beanstalk — FDA Food Recall Search">
-  <meta name="twitter:description" content="Search FDA food recall records by product, company, or hazard. Browse source details, distribution, and dietary terms in Beanstalk's free web app.">
+  <meta name="twitter:title" content="Beanstalk — FDA and USDA FSIS food recall search">
+  <meta name="twitter:description" content="Free search of FDA openFDA and USDA FSIS food recall records by product, company, or hazard.">
   <meta name="twitter:image" content="https://jacobrakaifoundation.github.io/beanstalk/og-image.png">
+  <meta name="twitter:image:alt" content="Beanstalk food recall search with product filters and source badges">
   <meta name="theme-color" content="#f8f6ee" media="(prefers-color-scheme: light)" />
   <meta name="theme-color" content="#111e17" media="(prefers-color-scheme: dark)" />
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"WebApplication","name":"Beanstalk","alternateName":"Beanstalk food recall search","url":"https://jacobrakaifoundation.github.io/beanstalk/","description":"Free search of FDA openFDA and USDA FSIS food recall records by product, company, or hazard.","applicationCategory":"HealthApplication","operatingSystem":"Web","isAccessibleForFree":true,"keywords":["FDA","USDA FSIS","openFDA","food recall","food safety","public health"],"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"creator":{"@type":"Organization","name":"JACOBRAKAI FOUNDATION","url":"https://jacobrakai.org/about/","taxID":"33-3382083"}}
+  </script>
   <link rel="icon" type="image/svg+xml" href="%BASE_URL%favicon.svg">
   <link rel="icon" href="%BASE_URL%favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="%BASE_URL%apple-touch-icon.png">
@@ -35,10 +44,11 @@
 <body>
   <div id="root"></div>
   <noscript>
-    <h1>Beanstalk — FDA Food Recall Search</h1>
-    <p>Search food enforcement records as published by openFDA by product, company, or hazard. The free web app requires JavaScript for interactive search.</p>
+    <h1>Beanstalk — FDA and USDA FSIS food recall search</h1>
+    <p>Search food enforcement records as published by openFDA and USDA FSIS by product, company, or hazard. The free web app requires JavaScript for interactive search.</p>
+    <p>Topics: FDA food recalls, USDA FSIS, openFDA, food safety, meat poultry egg recall, public health.</p>
     <p>Records are historical and may be incomplete or outdated. No search result is a determination that a product is safe.</p>
-    <p><a href="%BASE_URL%about.html">About Beanstalk and funding</a> · <a href="https://www.fda.gov/safety/recalls-market-withdrawals-safety-alerts">FDA recall notices</a></p>
+    <p><a href="%BASE_URL%about.html">About Beanstalk and funding</a> · <a href="https://www.fda.gov/safety/recalls-market-withdrawals-safety-alerts">FDA recall notices</a> · <a href="https://www.fsis.usda.gov/recalls">USDA FSIS recalls</a></p>
   </noscript>
   <script type="module" src="/src/main.tsx"></script>
 </body>

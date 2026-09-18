@@ -9,13 +9,17 @@ const product = {
 };
 
 async function loadRecords(results: Record<string, unknown>[]) {
-  const fetchMock = vi.fn().mockResolvedValue({
-    ok: true,
-    json: async () => ({ results, meta: { results: { total: results.length } } }),
+  const fsisEmpty = { ok: true, json: async () => [] as unknown[] };
+  const fetchMock = vi.fn((url: unknown) => {
+    if (String(url).includes("/api/fsis-recalls")) return Promise.resolve(fsisEmpty);
+    return Promise.resolve({
+      ok: true,
+      json: async () => ({ results, meta: { results: { total: results.length } } }),
+    });
   });
   vi.stubGlobal("fetch", fetchMock);
   const result = await fetchRecalls({ limit: 20, skip: 0 });
-  expect(fetchMock).toHaveBeenCalledTimes(1);
+  expect(fetchMock.mock.calls.filter((c) => !String(c[0]).includes("/api/fsis-recalls"))).toHaveLength(1);
   expect(result.error).toBeNull();
   expect(result.isDemo).toBe(false);
   expect(result.isStale).toBe(false);
