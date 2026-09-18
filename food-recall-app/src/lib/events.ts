@@ -1,6 +1,13 @@
 import type { AdverseEvent, AdverseEventConsumer, AdverseEventProduct } from "../types/event";
 import { type FetchError, isDemoMode, sanitizeSearchQuery } from "./api";
 import { mockEvents } from "./mockEvents";
+import {
+  bootstrapSearchAfterCursor,
+  buildOpenFdaQuery,
+  FDA_SKIP_LIMIT,
+  fetchOpenFdaResource,
+  parseSearchAfterFromResponse,
+} from "./openfdaPaging";
 
 interface OpenFDAEventRecord {
   report_number?: string;
@@ -202,6 +209,7 @@ export type EventFetchResult = {
   isStale: boolean;
   lastSynced: string | null;
   isDemo: boolean;
+  nextSearchAfter?: string | null;
 };
 
 async function fetchWithTimeout(
@@ -220,6 +228,10 @@ async function fetchWithTimeout(
   } finally {
     clearTimeout(timer);
   }
+}
+
+async function fetchEventResponse(query: string, signal?: AbortSignal): Promise<Response> {
+  return fetchOpenFdaResource("event", query, (url) => fetchWithTimeout(url, FETCH_TIMEOUT_MS, signal));
 }
 
 function parseErrorCode(status: number, body: unknown): FetchError {
@@ -260,32 +272,12 @@ export async function fetchAdverseEvents(params?: {
   signal?: AbortSignal;
   /** Raw openFDA search clause; skips phrase wrapping from buildEventSearchParam. */
   searchOverride?: string;
+  searchAfter?: string;
 }): Promise<EventFetchResult> {
   const limit = params?.limit ?? 20;
   const skip = params?.skip ?? 0;
   const search = params?.search || "";
   const searchParam = params?.searchOverride ?? buildEventSearchParam(search);
-  // openFDA rejects skip > 25,000; we do not implement search_after. Cap and refuse the request.
-  const cappedSkip = Math.min(skip, 25000);
-  if (cappedSkip !== skip) {
-    return {
-      events: [],
-      total: 0,
-      error: {
-        code: "BAD_REQUEST",
-        message: "Skip exceeds FDA limit 25,000 — narrow filters",
-        status: 400,
-        retryable: false,
-      },
-      isStale: false,
-      lastSynced: getEventLastSynced(),
-      isDemo: false,
-    };
-  }
-
-  const cacheKey = `event|${params?.searchOverride ? "or-tokens|" : ""}${sanitizeSearchQuery(search)}|${limit}|${cappedSkip}`;
-  const cachedEntry = getCacheEntry(cacheKey);
-  const cached = cachedEntry?.data ?? null;
   const demo = isDemoMode();
 
   if (demo) {
@@ -309,9 +301,51 @@ export async function fetchAdverseEvents(params?: {
       }
     }
     const total = filtered.length;
-    const paged = filtered.slice(cappedSkip, cappedSkip + limit);
+    const paged = filtered.slice(skip, skip + limit);
     return { events: paged, total, error: null, isStale: false, lastSynced: getEventLastSynced(), isDemo: true };
   }
+
+  let searchAfter = params?.searchAfter || "";
+  if (!searchAfter && skip > FDA_SKIP_LIMIT) {
+    try {
+      searchAfter =
+        (await bootstrapSearchAfterCursor({
+          limit,
+          skip,
+          searchParam,
+          sort: "date_started:desc",
+          fetchPage: (query) => fetchEventResponse(query, params?.signal),
+        })) ?? "";
+    } catch (e: unknown) {
+      const isAbort = e instanceof DOMException && e.name === "AbortError";
+      return {
+        events: [],
+        total: 0,
+        error: isAbort
+          ? { code: "TIMEOUT", message: "Request timed out", retryable: true }
+          : { code: "NETWORK", message: e instanceof Error ? e.message : "Network error", retryable: true },
+        isStale: false,
+        lastSynced: getEventLastSynced(),
+        isDemo: false,
+      };
+    }
+    if (!searchAfter) {
+      return {
+        events: [],
+        total: 0,
+        error: null,
+        isStale: false,
+        lastSynced: getEventLastSynced(),
+        isDemo: false,
+        nextSearchAfter: null,
+      };
+    }
+  }
+  const requestSkip = searchAfter ? 0 : skip;
+
+  const cacheKey = `event|${params?.searchOverride ? "or-tokens|" : ""}${sanitizeSearchQuery(search)}|${limit}|${requestSkip}|${searchAfter}`;
+  const cachedEntry = getCacheEntry(cacheKey);
+  const cached = cachedEntry?.data ?? null;
 
   try {
     if (params?.signal?.aborted) {
@@ -325,33 +359,15 @@ export async function fetchAdverseEvents(params?: {
       };
     }
 
-    const isBrowser = typeof window !== "undefined" && window.location.origin !== "null";
-    const proxyBase = isBrowser
-      ? `${window.location.origin}/api/food/event.json`
-      : "https://api.fda.gov/food/event.json";
-    const directBase = "https://api.fda.gov/food/event.json";
-    let url = `${proxyBase}?limit=${limit}&skip=${cappedSkip}&sort=date_started:desc`;
-    if (searchParam) url += `&search=${encodeURIComponent(searchParam)}`;
-
-    let res: Response;
-    try {
-      res = await fetchWithTimeout(url, FETCH_TIMEOUT_MS, params?.signal);
-      if (!res.ok && res.status === 404 && proxyBase !== directBase && isBrowser) {
-        const directUrl = `${directBase}?limit=${limit}&skip=${cappedSkip}&sort=date_started:desc${searchParam ? `&search=${encodeURIComponent(searchParam)}` : ""}`;
-        res = await fetchWithTimeout(directUrl, FETCH_TIMEOUT_MS, params?.signal);
-      }
-    } catch (e) {
-      if (
-        isBrowser &&
-        proxyBase !== directBase &&
-        !(e instanceof DOMException && (e as DOMException).name === "AbortError")
-      ) {
-        const directUrl = `${directBase}?limit=${limit}&skip=${cappedSkip}&sort=date_started:desc${searchParam ? `&search=${encodeURIComponent(searchParam)}` : ""}`;
-        res = await fetchWithTimeout(directUrl, FETCH_TIMEOUT_MS, params?.signal);
-      } else {
-        throw e;
-      }
-    }
+    const query = buildOpenFdaQuery({
+      limit,
+      skip: requestSkip,
+      sort: "date_started:desc",
+      searchParam,
+      searchAfter: searchAfter || undefined,
+    });
+    const res = await fetchEventResponse(query, params?.signal);
+    const nextSearchAfter = parseSearchAfterFromResponse(res);
 
     if (!res.ok) {
       let body: unknown = null;
@@ -410,7 +426,15 @@ export async function fetchAdverseEvents(params?: {
     }
     const total = typeof data.meta?.results?.total === "number" ? data.meta.results.total : events.length;
     setCache(cacheKey, { events, total });
-    return { events, total, error: null, isStale: false, lastSynced: getEventLastSynced(), isDemo: false };
+    return {
+      events,
+      total,
+      error: null,
+      isStale: false,
+      lastSynced: getEventLastSynced(),
+      isDemo: false,
+      nextSearchAfter,
+    };
   } catch (e: unknown) {
     const isAbort = e instanceof DOMException && e.name === "AbortError";
     const err: FetchError = isAbort

@@ -2,8 +2,17 @@ import type { Recall, RecallClassification, RecallSource } from "../types/recall
 import { buildDietaryPredicate, type DietaryConcern, matchesDietaryConcerns } from "./dietary";
 import { type FsisApiRecord, isArchived, isFsisSnapshot, mapFsisRecord } from "./fsis";
 import { mockRecalls } from "./mockData";
+import {
+  bootstrapSearchAfterCursor,
+  buildOpenFdaQuery,
+  FDA_SKIP_LIMIT,
+  fetchOpenFdaResource,
+  parseSearchAfterFromResponse,
+} from "./openfdaPaging";
 import { buildReasonCategoryPredicate, categorizeReason, isReasonCategory } from "./reasonCategory";
 import { STATE_NAMES } from "./usStates";
+
+export { FDA_SKIP_LIMIT, parseSearchAfterFromLink, parseSearchAfterFromResponse } from "./openfdaPaging";
 
 // ---------- FSIS (USDA) recalls ----------
 
@@ -307,6 +316,7 @@ export function buildCacheKey(
   skip: number,
   hazard: string,
   source: string,
+  searchAfter = "",
 ): string {
   const sortedDietary = [...dietary].sort();
   return JSON.stringify([
@@ -319,6 +329,7 @@ export function buildCacheKey(
     skip,
     hazard,
     source,
+    searchAfter,
   ]);
 }
 
@@ -398,6 +409,8 @@ export type FetchResult = {
   lastSynced: string | null;
   isDemo: boolean;
   fsisUnavailable?: boolean;
+  /** Cursor for the next openFDA page when `skip` would exceed {@link FDA_SKIP_LIMIT}. */
+  nextSearchAfter?: string | null;
 };
 
 const FETCH_TIMEOUT_MS = 8000;
@@ -419,6 +432,10 @@ async function fetchWithTimeout(
   } finally {
     clearTimeout(timer);
   }
+}
+
+async function fetchEnforcementResponse(query: string, signal?: AbortSignal): Promise<Response> {
+  return fetchOpenFdaResource("enforcement", query, (url) => fetchWithTimeout(url, FETCH_TIMEOUT_MS, signal));
 }
 
 function parseErrorCode(status: number, body: unknown): FetchError {
@@ -452,10 +469,12 @@ async function mergeOpenFdaWithFsis(args: {
   state: string;
   dietary: string[];
   hazard: string;
-  cappedSkip: number;
+  pageSkip: number;
   fsisPromise: Promise<FsisFeed>;
+  nextSearchAfter?: string | null;
+  usingSearchAfter?: boolean;
 }): Promise<FetchResult> {
-  const { fdaRecalls, fdaTotal, cacheKey, source, cappedSkip, fsisPromise } = args;
+  const { fdaRecalls, fdaTotal, cacheKey, source, pageSkip, fsisPromise, nextSearchAfter, usingSearchAfter } = args;
   let recalls = fdaRecalls;
   const total = fdaTotal;
   let fsisUnavailable = false;
@@ -463,7 +482,7 @@ async function mergeOpenFdaWithFsis(args: {
     try {
       const feed = await fsisPromise;
       fsisUnavailable = feed.unavailable;
-      if (feed.recalls.length > 0 && cappedSkip === 0) {
+      if (feed.recalls.length > 0 && pageSkip === 0 && !usingSearchAfter) {
         const filteredFsis = filterFsisRecalls(feed.recalls, {
           search: args.search,
           classification: args.classification,
@@ -491,6 +510,7 @@ async function mergeOpenFdaWithFsis(args: {
     lastSynced: getLastSynced(),
     isDemo: false,
     fsisUnavailable,
+    nextSearchAfter,
   };
 }
 
@@ -506,6 +526,8 @@ export async function fetchRecalls(params?: {
   hazard?: string;
   source?: RecallSource | "";
   signal?: AbortSignal;
+  /** openFDA `search_after` cursor for pages past {@link FDA_SKIP_LIMIT}. */
+  searchAfter?: string;
 }): Promise<FetchResult> {
   const limit = params?.limit ?? 20;
   const skip = params?.skip ?? 0;
@@ -534,27 +556,6 @@ export async function fetchRecalls(params?: {
     if (dp) predicates.push(dp);
   }
   const searchParam = buildSearchParam(search, predicates);
-  // openFDA rejects skip > 25,000; we do not implement search_after. Cap and refuse the request.
-  const cappedSkip = Math.min(skip, 25000);
-  if (cappedSkip !== skip) {
-    // Offset beyond FDA limit — return empty with truncated window info, do not request
-    return {
-      recalls: [],
-      total: 0,
-      error: {
-        code: "BAD_REQUEST",
-        message: "Skip exceeds FDA limit 25,000 — narrow filters",
-        status: 400,
-        retryable: false,
-      },
-      isStale: false,
-      lastSynced: getLastSynced(),
-      isDemo: false,
-    };
-  }
-  const cacheKey = buildCacheKey(search, classification, status, state, dietary, limit, cappedSkip, hazard, source);
-  const cachedEntry = getCacheEntry(cacheKey);
-  const cached = cachedEntry?.data ?? null;
   const demo = isDemoMode();
 
   // Demo mode: explicit, conspicuously fictional data — filter before slicing
@@ -577,9 +578,61 @@ export async function fetchRecalls(params?: {
     if (hazard) filtered = filtered.filter((r) => categorizeReason(r.reasonForRecall) === hazard);
     if (source) filtered = filtered.filter((r) => r.source === source);
     const total = filtered.length;
-    const paged = filtered.slice(cappedSkip, cappedSkip + limit);
+    const paged = filtered.slice(skip, skip + limit);
     return { recalls: paged, total, error: null, isStale: false, lastSynced: getLastSynced(), isDemo: true };
   }
+
+  let searchAfter = params?.searchAfter || "";
+  if (!searchAfter && skip > FDA_SKIP_LIMIT) {
+    try {
+      searchAfter =
+        (await bootstrapSearchAfterCursor({
+          limit,
+          skip,
+          searchParam,
+          sort: "report_date:desc",
+          fetchPage: (query) => fetchEnforcementResponse(query, params?.signal),
+        })) ?? "";
+    } catch (e: unknown) {
+      const isAbort = e instanceof DOMException && e.name === "AbortError";
+      return {
+        recalls: [],
+        total: 0,
+        error: isAbort
+          ? { code: "TIMEOUT", message: "Request timed out", retryable: true }
+          : { code: "NETWORK", message: e instanceof Error ? e.message : "Network error", retryable: true },
+        isStale: false,
+        lastSynced: getLastSynced(),
+        isDemo: false,
+      };
+    }
+    if (!searchAfter) {
+      return {
+        recalls: [],
+        total: 0,
+        error: null,
+        isStale: false,
+        lastSynced: getLastSynced(),
+        isDemo: false,
+        nextSearchAfter: null,
+      };
+    }
+  }
+  const requestSkip = searchAfter ? 0 : skip;
+  const cacheKey = buildCacheKey(
+    search,
+    classification,
+    status,
+    state,
+    dietary,
+    limit,
+    requestSkip,
+    hazard,
+    source,
+    searchAfter,
+  );
+  const cachedEntry = getCacheEntry(cacheKey);
+  const cached = cachedEntry?.data ?? null;
 
   try {
     if (params?.signal?.aborted) {
@@ -600,7 +653,7 @@ export async function fetchRecalls(params?: {
         (b.recallInitiationDate || "").localeCompare(a.recallInitiationDate || ""),
       );
       return {
-        recalls: sorted.slice(cappedSkip, cappedSkip + limit),
+        recalls: sorted.slice(skip, skip + limit),
         total: filteredFsis.length,
         error: null,
         isStale: false,
@@ -614,42 +667,15 @@ export async function fetchRecalls(params?: {
       source === "FDA"
         ? Promise.resolve({ recalls: [] as Recall[], unavailable: false })
         : loadFsisFeed(params?.signal);
-    const isBrowser = typeof window !== "undefined" && window.location.origin !== "null";
-    const proxyBase = isBrowser
-      ? `${window.location.origin}/api/food/enforcement.json`
-      : "https://api.fda.gov/food/enforcement.json";
-    const directBase = "https://api.fda.gov/food/enforcement.json";
-    let url = `${proxyBase}?limit=${limit}&skip=${cappedSkip}&sort=report_date:desc`;
-    if (searchParam) {
-      url += `&search=${encodeURIComponent(searchParam)}`;
-    }
-    // No api_key in client bundle; server proxy injects OPENFDA_API_KEY when available
-
-    let res: Response;
-    try {
-      res = await fetchWithTimeout(url, FETCH_TIMEOUT_MS, params?.signal);
-      // SPA static hosts return 200 with text/html for unknown API routes.
-      // Detect non-JSON content-type and fall back to direct FDA URL.
-      // Only flag SPA catch-all when headers are present and explicitly non-JSON.
-      // If headers are absent (e.g. test mocks), assume the response is valid JSON.
-      const contentType = res.headers?.get?.("content-type") ?? null;
-      const isSpaCatchAll = res.ok && contentType !== null && !contentType.includes("application/json");
-      if (((!res.ok && res.status === 404) || isSpaCatchAll) && proxyBase !== directBase && isBrowser) {
-        const directUrl = `${directBase}?limit=${limit}&skip=${cappedSkip}&sort=report_date:desc${searchParam ? `&search=${encodeURIComponent(searchParam)}` : ""}`;
-        res = await fetchWithTimeout(directUrl, FETCH_TIMEOUT_MS, params?.signal);
-      }
-    } catch (e) {
-      if (
-        isBrowser &&
-        proxyBase !== directBase &&
-        !(e instanceof DOMException && (e as DOMException).name === "AbortError")
-      ) {
-        const directUrl = `${directBase}?limit=${limit}&skip=${cappedSkip}&sort=report_date:desc${searchParam ? `&search=${encodeURIComponent(searchParam)}` : ""}`;
-        res = await fetchWithTimeout(directUrl, FETCH_TIMEOUT_MS, params?.signal);
-      } else {
-        throw e;
-      }
-    }
+    const query = buildOpenFdaQuery({
+      limit,
+      skip: requestSkip,
+      sort: "report_date:desc",
+      searchParam,
+      searchAfter: searchAfter || undefined,
+    });
+    const res = await fetchEnforcementResponse(query, params?.signal);
+    const nextSearchAfter = parseSearchAfterFromResponse(res);
     if (!res.ok) {
       let body: unknown = null;
       try {
@@ -671,8 +697,10 @@ export async function fetchRecalls(params?: {
           state,
           dietary,
           hazard,
-          cappedSkip,
+          pageSkip: requestSkip,
           fsisPromise,
+          nextSearchAfter,
+          usingSearchAfter: Boolean(searchAfter),
         });
       }
       // For retryable errors, return stale cache if available with label
@@ -773,8 +801,10 @@ export async function fetchRecalls(params?: {
       state,
       dietary,
       hazard,
-      cappedSkip,
+      pageSkip: requestSkip,
       fsisPromise,
+      nextSearchAfter,
+      usingSearchAfter: Boolean(searchAfter),
     });
   } catch (e: unknown) {
     const isAbort = e instanceof DOMException && e.name === "AbortError";

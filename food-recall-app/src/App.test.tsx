@@ -359,12 +359,12 @@ describe("App search and pagination", () => {
     await waitFor(() => expect(screen.getByText(/Failed to load recalls/)).toBeInTheDocument());
   });
 
-  it("shows truncated window message when total exceeds FDA max offset", async () => {
+  it("shows search_after paging copy when total exceeds the FDA skip cap", async () => {
     const mockData = Array.from({ length: 6 }, (_, i) => makeRecall({ id: `F-${i}`, recallNumber: `F-${i}` }));
     fetchRecallsMock.mockResolvedValue(makeFetchResult({ recalls: mockData, total: 50000 }));
 
     render(<App />);
-    await waitFor(() => expect(screen.getByText(/FDA's offset limit/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/Pages after skip/)).toBeInTheDocument());
   });
 
   it("abort controller racing: rapid fetches only use latest result", async () => {
@@ -396,7 +396,7 @@ describe("App search and pagination", () => {
     expect(screen.queryByText("First Result")).not.toBeInTheDocument();
   });
 
-  it("fetchRecalls is called with skip capped at 25000", async () => {
+  it("fetchRecalls is called with skip 0 on the first page even when total exceeds 25000", async () => {
     const mockData = Array.from({ length: 6 }, (_, i) => makeRecall({ id: `F-${i}`, recallNumber: `F-${i}` }));
     fetchRecallsMock.mockResolvedValue(makeFetchResult({ recalls: mockData, total: 100000 }));
 
@@ -404,8 +404,27 @@ describe("App search and pagination", () => {
     await waitFor(() => expect(screen.getByText(/Page 1/)).toBeInTheDocument());
 
     for (const call of fetchRecallsMock.mock.calls) {
-      expect(call[0]?.skip).toBeLessThanOrEqual(25000);
+      expect(call[0]?.skip).toBe(0);
+      expect(call[0]?.searchAfter).toBeUndefined();
     }
+  });
+
+  it("passes the previous page searchAfter cursor when Next is clicked", async () => {
+    const mockData = Array.from({ length: 6 }, (_, i) => makeRecall({ id: `F-${i}`, recallNumber: `F-${i}` }));
+    fetchRecallsMock.mockResolvedValue(
+      makeFetchResult({ recalls: mockData, total: 50000, nextSearchAfter: "cursor-1" }),
+    );
+
+    render(<App />);
+    await waitFor(() => expect(screen.getByLabelText("Next page")).toBeEnabled());
+    fireEvent.click(screen.getByLabelText("Next page"));
+
+    await waitFor(() => {
+      const calls = fetchRecallsMock.mock.calls;
+      const last = calls[calls.length - 1]?.[0];
+      expect(last?.skip).toBe(6);
+      expect(last?.searchAfter).toBe("cursor-1");
+    });
   });
 });
 

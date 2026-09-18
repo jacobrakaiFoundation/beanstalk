@@ -20,6 +20,7 @@ import type { DietaryConcern } from "./lib/dietary";
 import { eventSearchText, fetchAdverseEvents, getEventLastSynced } from "./lib/events";
 import { isNewRecall } from "./lib/formatDate";
 import { getPermissionStatus, requestNotificationPermission, sendNotification } from "./lib/notifications";
+import { FDA_SKIP_LIMIT } from "./lib/openfdaPaging";
 import type { ReasonCategory } from "./lib/reasonCategory";
 import { type DateSortDirection, sortRecallsByDate } from "./lib/sortRecalls";
 import { matchesWatchlist } from "./lib/watchlist";
@@ -36,8 +37,6 @@ import {
 type AppTab = "recalls" | "events";
 
 const PAGE_SIZE = 6;
-const FDA_MAX_SKIP = 25000;
-const MAX_PAGE = Math.floor(FDA_MAX_SKIP / PAGE_SIZE);
 
 function formatRetrieved(iso: string | null): string {
   return iso ? new Date(iso).toLocaleString() : "unknown";
@@ -109,6 +108,8 @@ export default function App() {
   notificationsEnabledRef.current = notificationsEnabled;
   const [reloadKey, setReloadKey] = useState(0);
   const triggerReload = () => setReloadKey((k) => k + 1);
+  const recallSearchAfterByPage = useRef<Map<number, string>>(new Map());
+  const eventSearchAfterByPage = useRef<Map<number, string>>(new Map());
   const handleEnableNotifications = async () => {
     const granted = await requestNotificationPermission();
     setNotificationsEnabled(granted);
@@ -137,14 +138,13 @@ export default function App() {
   const triggerEventReload = () => setEventReloadKey((k) => k + 1);
 
   const rawTotalPages = Math.ceil(total / PAGE_SIZE);
-  const totalPages = Math.max(1, Math.min(rawTotalPages, MAX_PAGE + 1));
-  const reachableTotal = Math.min(total, (MAX_PAGE + 1) * PAGE_SIZE);
-  const hasTruncatedWindow = total > reachableTotal;
+  const totalPages = Math.max(1, rawTotalPages);
+  const skipLimitPage = Math.floor(FDA_SKIP_LIMIT / PAGE_SIZE);
+  const usesSearchAfter = (totalPages - 1) * PAGE_SIZE > FDA_SKIP_LIMIT;
 
   const eventRawTotalPages = Math.ceil(eventTotal / PAGE_SIZE);
-  const eventTotalPages = Math.max(1, Math.min(eventRawTotalPages, MAX_PAGE + 1));
-  const eventReachableTotal = Math.min(eventTotal, (MAX_PAGE + 1) * PAGE_SIZE);
-  const eventHasTruncatedWindow = eventTotal > eventReachableTotal;
+  const eventTotalPages = Math.max(1, eventRawTotalPages);
+  const eventUsesSearchAfter = (eventTotalPages - 1) * PAGE_SIZE > FDA_SKIP_LIMIT;
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(query), 400);
@@ -168,6 +168,8 @@ export default function App() {
       if (prev !== 0) return 0;
       return prev;
     });
+    recallSearchAfterByPage.current.clear();
+    eventSearchAfterByPage.current.clear();
   }, [classification, status, state, dietary, debounced, tab, hazard, source]);
 
   useEffect(() => {
@@ -188,10 +190,12 @@ export default function App() {
     abortRef.current = controller;
     setLoading(true);
     setError(null);
+    const skip = page * PAGE_SIZE;
     fetchRecalls({
       search: debounced,
       limit: PAGE_SIZE,
-      skip: Math.min(page * PAGE_SIZE, FDA_MAX_SKIP),
+      skip,
+      searchAfter: recallSearchAfterByPage.current.get(page),
       classification,
       status,
       state,
@@ -200,40 +204,53 @@ export default function App() {
       source,
       signal: controller.signal,
     })
-      .then(({ recalls: data, total: t, error: err, isStale: stale, isDemo: demo, fsisUnavailable: fsisDown }) => {
-        if (requestId !== requestIdRef.current) return;
-        if (controller.signal.aborted) return;
-        setRecalls(data);
-        setTotal(t);
-        setError(err);
-        setIsStale(stale);
-        setIsDemo(demo);
-        setFsisUnavailable(Boolean(fsisDown));
-        setLastSynced(getLastSynced());
-        setLoading(false);
-        const newRecalls = data.filter((r) => !seenIdsRef.current.has(r.id));
-        if (newRecalls.length > 0 && !firstLoadRef.current && !stale && !demo && !err) {
-          const watched = newRecalls.filter(
-            (r) =>
-              matchesWatchlist(`${r.productDescription} ${r.reasonForRecall} ${r.recallingFirm}`, watchlistRef.current)
-                .length > 0,
-          );
-          if (watched.length > 0 && notificationsEnabledRef.current) {
-            sendNotification(
-              `${watched.length} newly observed recall${watched.length > 1 ? "s" : ""} matching watchlist`,
-              watched.map((r) => r.productDescription.slice(0, 80)).join("\n"),
+      .then(
+        ({
+          recalls: data,
+          total: t,
+          error: err,
+          isStale: stale,
+          isDemo: demo,
+          fsisUnavailable: fsisDown,
+          nextSearchAfter,
+        }) => {
+          if (requestId !== requestIdRef.current) return;
+          if (controller.signal.aborted) return;
+          if (nextSearchAfter) recallSearchAfterByPage.current.set(page + 1, nextSearchAfter);
+          setRecalls(data);
+          setTotal(t);
+          setError(err);
+          setIsStale(stale);
+          setIsDemo(demo);
+          setFsisUnavailable(Boolean(fsisDown));
+          setLastSynced(getLastSynced());
+          setLoading(false);
+          const newRecalls = data.filter((r) => !seenIdsRef.current.has(r.id));
+          if (newRecalls.length > 0 && !firstLoadRef.current && !stale && !demo && !err) {
+            const watched = newRecalls.filter(
+              (r) =>
+                matchesWatchlist(
+                  `${r.productDescription} ${r.reasonForRecall} ${r.recallingFirm}`,
+                  watchlistRef.current,
+                ).length > 0,
             );
+            if (watched.length > 0 && notificationsEnabledRef.current) {
+              sendNotification(
+                `${watched.length} newly observed recall${watched.length > 1 ? "s" : ""} matching watchlist`,
+                watched.map((r) => r.productDescription.slice(0, 80)).join("\n"),
+              );
+            }
           }
-        }
-        data.forEach((r) => {
-          seenIdsRef.current.add(r.id);
-        });
-        if (seenIdsRef.current.size > 1000) {
-          const entries = [...seenIdsRef.current];
-          seenIdsRef.current = new Set(entries.slice(entries.length - 1000));
-        }
-        firstLoadRef.current = false;
-      })
+          data.forEach((r) => {
+            seenIdsRef.current.add(r.id);
+          });
+          if (seenIdsRef.current.size > 1000) {
+            const entries = [...seenIdsRef.current];
+            seenIdsRef.current = new Set(entries.slice(entries.length - 1000));
+          }
+          firstLoadRef.current = false;
+        },
+      )
       .catch(() => {
         if (requestId !== requestIdRef.current) return;
         setLoading(false);
@@ -251,15 +268,18 @@ export default function App() {
     eventAbortRef.current = controller;
     setEventLoading(true);
     setEventError(null);
+    const eventSkip = eventPage * PAGE_SIZE;
     fetchAdverseEvents({
       search: debounced,
       limit: PAGE_SIZE,
-      skip: Math.min(eventPage * PAGE_SIZE, FDA_MAX_SKIP),
+      skip: eventSkip,
+      searchAfter: eventSearchAfterByPage.current.get(eventPage),
       signal: controller.signal,
     })
-      .then(({ events: data, total: t, error: err, isStale: stale, isDemo: demo }) => {
+      .then(({ events: data, total: t, error: err, isStale: stale, isDemo: demo, nextSearchAfter }) => {
         if (requestId !== eventRequestIdRef.current) return;
         if (controller.signal.aborted) return;
+        if (nextSearchAfter) eventSearchAfterByPage.current.set(eventPage + 1, nextSearchAfter);
         setEvents(data);
         setEventTotal(t);
         setEventError(err);
@@ -526,11 +546,7 @@ export default function App() {
               </div>
               <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
                 <p className="text-sm text-zinc-700 dark:text-zinc-300" role="status" aria-live="polite">
-                  {loading
-                    ? "Loading recalls…"
-                    : hasTruncatedWindow
-                      ? `${reachableTotal.toLocaleString()} of ${total.toLocaleString()} recalls reachable`
-                      : `${total.toLocaleString()} ${total === 1 ? "recall" : "recalls"}`}
+                  {loading ? "Loading recalls…" : `${total.toLocaleString()} ${total === 1 ? "recall" : "recalls"}`}
                   {!loading && isStale && " · stale"}
                 </p>
                 {!loading && recalls.length > 0 && (
@@ -608,11 +624,11 @@ export default function App() {
                     onPrevious={() => setPage((p) => Math.max(0, p - 1))}
                     onNext={() => setPage((p) => p + 1)}
                   />
-                  {hasTruncatedWindow && (
+                  {usesSearchAfter && (
                     <p className="hint mt-3 text-center">
-                      Showing the first {reachableTotal.toLocaleString()} of {total.toLocaleString()}. FDA&apos;s offset
-                      limit of {FDA_MAX_SKIP.toLocaleString()} stops paging after page {MAX_PAGE + 1}; narrow the
-                      filters to see more.
+                      Pages after skip {FDA_SKIP_LIMIT.toLocaleString()} (page {skipLimitPage + 2}) use openFDA{" "}
+                      <code className="text-[11px]">search_after</code>. Keep using Next — skip offsets cannot jump
+                      there.
                     </p>
                   )}
                   <p className="hint mt-2 text-center">
@@ -636,9 +652,7 @@ export default function App() {
                 <p className="text-sm text-zinc-700 dark:text-zinc-300" role="status" aria-live="polite">
                   {eventLoading
                     ? "Loading adverse event reports…"
-                    : eventHasTruncatedWindow
-                      ? `${eventReachableTotal.toLocaleString()} of ${eventTotal.toLocaleString()} reports reachable`
-                      : `${eventTotal.toLocaleString()} ${eventTotal === 1 ? "report" : "reports"}`}
+                    : `${eventTotal.toLocaleString()} ${eventTotal === 1 ? "report" : "reports"}`}
                   {!eventLoading && eventIsStale && " · stale"}
                 </p>
               </div>
@@ -690,11 +704,10 @@ export default function App() {
                     onPrevious={() => setEventPage((p) => Math.max(0, p - 1))}
                     onNext={() => setEventPage((p) => p + 1)}
                   />
-                  {eventHasTruncatedWindow && (
+                  {eventUsesSearchAfter && (
                     <p className="hint mt-3 text-center">
-                      Showing the first {eventReachableTotal.toLocaleString()} of {eventTotal.toLocaleString()}.
-                      FDA&apos;s offset limit of {FDA_MAX_SKIP.toLocaleString()} stops paging after page {MAX_PAGE + 1}.
-                      Narrow the search to see more.
+                      Pages after skip {FDA_SKIP_LIMIT.toLocaleString()} use openFDA{" "}
+                      <code className="text-[11px]">search_after</code>. Keep using Next.
                     </p>
                   )}
                   <p className="hint mt-2 text-center">
@@ -753,9 +766,10 @@ export default function App() {
                 displayed per FDA record.
               </p>
               <p>
-                Search notes: no matches return openFDA 404 (shown as empty). Paging stops at skip 25,000;{" "}
-                <code className="text-[11px]">search_after</code> is not used. Related events match any product token
-                (parenthesized OR). Watchlist terms also match adverse event product brands, reactions, and outcomes.
+                Search notes: no matches return openFDA 404 (shown as empty). Paging uses skip through 25,000, then
+                openFDA <code className="text-[11px]">search_after</code> via the Link header. Related events match any
+                product token (parenthesized OR). Watchlist terms also match adverse event product brands, reactions,
+                and outcomes.
               </p>
               <p>
                 Meat, poultry, and egg products are regulated by{" "}

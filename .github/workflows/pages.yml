@@ -57,6 +57,8 @@ jobs:
       # `npm run build` is `tsc --noEmit && vite build`. Default Vite base is
       # "/beanstalk/" so Pages asset URLs and the service-worker scope match
       # the project-site path. Android APK builds pass VITE_BASE=/ instead.
+      # After `npx wrangler deploy` in openfda-proxy/, set VITE_OPENFDA_PROXY
+      # here so GitHub Pages can read openFDA Link/search_after headers.
       - name: Build
         run: npm run build
 
