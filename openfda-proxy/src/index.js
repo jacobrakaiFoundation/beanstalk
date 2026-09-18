@@ -5,11 +5,13 @@ const EXPOSE_HEADERS = "Link, X-OpenFDA-Search-After";
 export function parseSearchAfterFromLink(linkHeader) {
   if (!linkHeader) return null;
   for (const part of linkHeader.split(",")) {
-    if (!/rel\s*=\s*["']?next["']?/i.test(part)) continue;
-    const urlMatch = part.match(/<([^>]+)>/);
-    if (!urlMatch) continue;
+    const rel = part.toLowerCase();
+    if (!rel.includes('rel="next"') && !rel.includes("rel='next'") && !rel.includes("rel=next")) continue;
+    const start = part.indexOf("<");
+    const end = part.indexOf(">", start + 1);
+    if (start === -1 || end === -1) continue;
     try {
-      const url = new URL(urlMatch[1], FDA_ORIGIN);
+      const url = new URL(part.slice(start + 1, end), FDA_ORIGIN);
       const token = url.searchParams.get("search_after");
       if (token) return token;
     } catch {
@@ -24,10 +26,11 @@ export function rewriteOpenFdaLinkHeader(linkHeader, origin) {
   return linkHeader
     .split(",")
     .map((part) => {
-      const match = part.match(/^\s*<([^>]+)>(.*)$/);
-      if (!match) return part;
+      const start = part.indexOf("<");
+      const end = part.indexOf(">", start + 1);
+      if (start === -1 || end === -1) return part;
       try {
-        const upstream = new URL(match[1], FDA_ORIGIN);
+        const upstream = new URL(part.slice(start + 1, end), FDA_ORIGIN);
         upstream.searchParams.delete("api_key");
         const path = upstream.pathname.includes("/food/")
           ? `/food/${upstream.pathname.split("/food/").pop()}`
@@ -35,7 +38,7 @@ export function rewriteOpenFdaLinkHeader(linkHeader, origin) {
         if (!ALLOWED_PATHS.has(path)) return part;
         const dest = new URL(path, origin);
         dest.search = upstream.search;
-        return `<${dest.toString()}>${match[2]}`;
+        return `${part.slice(0, start)}<${dest.toString()}>${part.slice(end + 1)}`;
       } catch {
         return part;
       }

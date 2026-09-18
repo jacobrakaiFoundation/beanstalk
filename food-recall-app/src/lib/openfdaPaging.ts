@@ -14,11 +14,13 @@ export const DEFAULT_OPENFDA_PROXY = "https://beanstalk-openfda.jacob-e-durham.w
 export function parseSearchAfterFromLink(linkHeader: string | null | undefined): string | null {
   if (!linkHeader) return null;
   for (const part of linkHeader.split(",")) {
-    if (!/rel\s*=\s*["']?next["']?/i.test(part)) continue;
-    const urlMatch = part.match(/<([^>]+)>/);
-    if (!urlMatch) continue;
+    const rel = part.toLowerCase();
+    if (!rel.includes('rel="next"') && !rel.includes("rel='next'") && !rel.includes("rel=next")) continue;
+    const start = part.indexOf("<");
+    const end = part.indexOf(">", start + 1);
+    if (start === -1 || end === -1) continue;
     try {
-      const url = new URL(urlMatch[1], "https://api.fda.gov");
+      const url = new URL(part.slice(start + 1, end), "https://api.fda.gov");
       const token = url.searchParams.get("search_after");
       if (token) return token;
     } catch {
