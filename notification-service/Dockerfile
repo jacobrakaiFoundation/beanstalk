@@ -1,5 +1,11 @@
 FROM node:22-bookworm-slim AS build
 WORKDIR /app
+# better-sqlite3 13 still runs `node-gyp rebuild` on install even when a
+# prebuild is bundled (WiseLibs/better-sqlite3#1503). The slim image has
+# no toolchain, so the compile has to happen here in the discarded build stage.
+RUN apt-get update \
+  && apt-get install --yes --no-install-recommends python3 make g++ \
+  && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY tsconfig.json ./

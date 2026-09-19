@@ -507,6 +507,12 @@ describe("buildCacheKey — collision-free", () => {
     const fsisKey = buildCacheKey("milk", "", "", "", [], 20, 0, "", "USDA-FSIS");
     expect(fdaKey).not.toBe(fsisKey);
   });
+
+  it("searchAfter cursor is part of the cache key", () => {
+    const skipKey = buildCacheKey("milk", "", "", "", [], 20, 0, "", "");
+    const cursorKey = buildCacheKey("milk", "", "", "", [], 20, 0, "", "", "0=token");
+    expect(skipKey).not.toBe(cursorKey);
+  });
 });
 
 describe("fetchRecalls — source filter", () => {
@@ -876,5 +882,73 @@ describe("SPA static host fallback (#90)", () => {
     expect(res.recalls.length).toBe(1);
     expect(res.recalls[0].productDescription).toBe("Direct");
     expect(res.isDemo).toBe(false);
+  });
+});
+
+describe("openFDA search_after paging", () => {
+  const record = {
+    recall_number: "F-DEEP",
+    product_description: "Deep page",
+    reason_for_recall: "X",
+    classification: "Class I",
+    status: "Ongoing",
+    recalling_firm: "Firm",
+    distribution_pattern: "",
+  };
+
+  it("keeps skip in the request when skip is at the FDA cap", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ results: [record], meta: { results: { total: 30000 } } }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    await fetchRecalls({ search: "", limit: 6, skip: 25000 });
+    const fdaUrls = fetchMock.mock.calls.map((call) => String(call[0])).filter((url) => url.includes("enforcement"));
+    expect(fdaUrls.some((url) => url.includes("skip=25000"))).toBe(true);
+    expect(fdaUrls.some((url) => url.includes("search_after"))).toBe(false);
+  });
+
+  it("bootstraps search_after from skip=0 when skip exceeds 25000", async () => {
+    const fetchMock = vi.fn().mockImplementation((url: unknown) => {
+      if (isFsisProxyUrl(url)) return Promise.resolve({ ok: true, json: async () => [] });
+      const href = String(url);
+      const token = href.includes("search_after=") ? "walked" : "from-start";
+      const link = `<https://api.fda.gov/food/enforcement.json?search_after=${token}>; rel="next"`;
+      return Promise.resolve({
+        ok: true,
+        headers: { get: (name: string) => (name.toLowerCase() === "link" ? link : null) },
+        json: async () => ({ results: [record], meta: { results: { total: 40000 } } }),
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const res = await fetchRecalls({ search: "", limit: 6, skip: 25006 });
+    expect(res.error).toBeNull();
+    expect(res.recalls[0].productDescription).toBe("Deep page");
+    const fdaUrls = fetchMock.mock.calls.map((call) => String(call[0])).filter((url) => url.includes("enforcement"));
+    expect(fdaUrls.some((url) => /(?:^|[?&])skip=0(?:&|$)/.test(url) && url.includes("limit=1000"))).toBe(true);
+    expect(fdaUrls.some((url) => url.includes("search_after="))).toBe(true);
+    expect(fdaUrls.every((url) => !url.includes("skip=25000"))).toBe(true);
+    expect(res.nextSearchAfter).toBe("walked");
+  });
+
+  it("uses a provided searchAfter cursor without skip", async () => {
+    const fetchMock = vi.fn().mockImplementation((url: unknown) => {
+      if (isFsisProxyUrl(url)) return Promise.resolve({ ok: true, json: async () => [] });
+      return Promise.resolve({
+        ok: true,
+        headers: {
+          get: (name: string) =>
+            name.toLowerCase() === "link"
+              ? '<https://api.fda.gov/food/enforcement.json?search_after=next>; rel="next"'
+              : null,
+        },
+        json: async () => ({ results: [record], meta: { results: { total: 40000 } } }),
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    await fetchRecalls({ search: "", limit: 6, skip: 25006, searchAfter: "given" });
+    const fdaUrls = fetchMock.mock.calls.map((call) => String(call[0])).filter((url) => url.includes("enforcement"));
+    expect(fdaUrls.some((url) => url.includes("search_after=given"))).toBe(true);
+    expect(fdaUrls.some((url) => /[?&]skip=/.test(url))).toBe(false);
   });
 });

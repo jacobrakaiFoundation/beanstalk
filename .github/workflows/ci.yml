@@ -2,8 +2,9 @@ name: ci
 
 # The workflow that runs on every push and pull request:
 #
-#   checks  — lint, build and test the existing React/PWA. The job name is a
-#             protected-branch status context and must remain stable.
+#   checks  — lint, build and test the existing React/PWA, plus openFDA proxy
+#             helper tests. The job name is a protected-branch status context
+#             and must remain stable.
 #   service — lint, test and build the notification service on Node 22.
 #   native  — run the Swift tests and compile the Release app with the current
 #             App Store submission toolchain.
@@ -66,6 +67,10 @@ jobs:
 
       - name: Test
         run: npm run test:coverage
+
+      - name: Test openFDA CORS proxy helpers
+        working-directory: openfda-proxy
+        run: node --test
 
   service:
     name: notification service checks

@@ -251,6 +251,26 @@ describe("fetchAdverseEvents", () => {
     expect(res.error?.message).toBe("Aborted");
     expect(res.events).toEqual([]);
   });
+
+  it("uses a provided searchAfter cursor without skip", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: {
+        get: (name: string) =>
+          name.toLowerCase() === "link" ? '<https://api.fda.gov/food/event.json?search_after=next>; rel="next"' : null,
+      },
+      json: async () => ({
+        results: [{ report_number: "AE-DEEP", products: [{ name_brand: "Deep" }] }],
+        meta: { results: { total: 40000 } },
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const res = await fetchAdverseEvents({ search: "", limit: 6, skip: 25006, searchAfter: "given" });
+    expect(res.error).toBeNull();
+    const urls = fetchMock.mock.calls.map((call) => String(call[0]));
+    expect(urls.some((url) => url.includes("search_after=given"))).toBe(true);
+    expect(urls.every((url) => !/[?&]skip=/.test(url))).toBe(true);
+  });
 });
 
 describe("tokenizeProductDescription", () => {
