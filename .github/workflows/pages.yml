@@ -57,9 +57,14 @@ jobs:
       # `npm run build` is `tsc --noEmit && vite build`. Default Vite base is
       # "/beanstalk/" so Pages asset URLs and the service-worker scope match
       # the project-site path. Android APK builds pass VITE_BASE=/ instead.
-      # After `npx wrangler deploy` in openfda-proxy/, set VITE_OPENFDA_PROXY
-      # here so GitHub Pages can read openFDA Link/search_after headers.
+      #
+      # Vite inlines VITE_* at build time. The worker is already deployed;
+      # without this, Pages fetch hits api.fda.gov cross-origin and cannot
+      # read Link / X-OpenFDA-Search-After, so search_after paging never starts.
+      # No trailing slash: openFdaProxyBase() strips one, then joins `/food/...`.
       - name: Build
+        env:
+          VITE_OPENFDA_PROXY: https://beanstalk-openfda.jacob-e-durham.workers.dev
         run: npm run build
 
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6

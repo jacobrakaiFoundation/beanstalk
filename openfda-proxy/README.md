@@ -8,7 +8,7 @@ The worker:
 - Re-exposes `Link` and copies `search_after` onto `X-OpenFDA-Search-After`
 - Rewrites `Link` URLs onto this origin and strips `api_key` so a server-injected key cannot leak into the client cursor cache
 
-Deployed at `https://beanstalk-openfda.jacob-e-durham.workers.dev` after `npx wrangler deploy`. The web app uses this origin only when `VITE_OPENFDA_PROXY` is set (for example in `.github/workflows/pages.yml`), so an undeployed worker cannot stall GitHub Pages fetches.
+Deployed at `https://beanstalk-openfda.jacob-e-durham.workers.dev` after `npx wrangler deploy`. The Pages build hardcodes that origin as `VITE_OPENFDA_PROXY` in `.github/workflows/pages.yml` (no trailing slash), so the static app can read `Link` / `search_after`. An unset proxy keeps fetches on `api.fda.gov` and does not stall Pages.
 
 ```bash
 npx wrangler deploy
