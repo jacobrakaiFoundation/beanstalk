@@ -2,7 +2,7 @@
 
 ## Status
 
-**Pending.** Repository work does not confirm an account, payment, identity verification, package registration, Firebase project, or signing setup.
+**Enrolled (checked 2026-09-19 in Play Console).** Organization account `Jacobrakai Foundation`, account ID `8935841002228783128`, identity verified 2026-09-14. Package names `org.jacobrakaifoundation.beanstalk` and `com.v1.beanstalk` are registered under Android developer verification with 3 keys each. The Beanstalk app record exists; its first release has been in review since 2026-09-15.
 
 ## Create the Play account deliberately
 

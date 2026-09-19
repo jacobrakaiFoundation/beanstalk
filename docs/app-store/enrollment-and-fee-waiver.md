@@ -2,7 +2,7 @@
 
 ## Status
 
-**Pending.** This repository contains preparation only. It does not confirm a D-U-N-S match, Apple organization enrollment, fee-waiver request, waiver approval, payment, or active membership.
+**Enrolled (checked 2026-09-19 in developer.apple.com/account).** Organization membership for `Jacobrakai Foundation`, Team ID `X5K96H5VRR`, Account Holder Jacob Durham, annual fee waived, renewal 2026-09-15 → 2027-09-15. Program License Agreement (issued 2026-08-18) accepted 2026-09-15. App Store Connect still shows its own Terms of Service prompt on first visit; no app record exists yet.
 
 ## Known public identity facts
 
