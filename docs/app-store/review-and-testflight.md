@@ -21,6 +21,16 @@ Paste and update bracketed build-specific details before submission:
 
 Do not submit with bracketed text. Attach a short video if the quiet initial seeding behavior makes notification review impractical.
 
+## Uploading a build from the command line
+
+Xcode's stored account login is not available to `xcodebuild -exportArchive` from a non-GUI shell. Upload with an App Store Connect API key instead (Users and Access → Integrations → App Store Connect API; the `.p8` downloads once and lives outside this repository, for example `~/.private_keys/`):
+
+```bash
+xcrun altool --upload-app -f export/Beanstalk.ipa -t ios --apiKey <KEY_ID> --apiIssuer <ISSUER_ID>
+```
+
+The archive itself can be produced unsigned (`CODE_SIGNING_ALLOWED=NO`) and signed at export time with `signingStyle: automatic` and the Foundation team; no registered device is needed for App Store distribution.
+
 ## TestFlight checklist
 
 - [ ] Upload a Release archive signed by the Foundation team; confirm the build finishes processing without compliance warnings.
