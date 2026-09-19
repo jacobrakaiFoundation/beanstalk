@@ -205,7 +205,7 @@ jobs:
         run: ./gradlew assembleDebug --no-daemon
 
       - name: Upload sideload APK
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: beanstalk-debug-apk
           path: android-apk/app/build/outputs/apk/debug/app-debug.apk
@@ -263,7 +263,7 @@ jobs:
           --tests org.jacobrakaifoundation.beanstalk.ui.WatchlistScreenTest
 
       - name: Upload native debug APK
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: beanstalk-native-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
