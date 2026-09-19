@@ -61,6 +61,7 @@ jobs:
       # Vite inlines VITE_* at build time. The worker is already deployed;
       # without this, Pages fetch hits api.fda.gov cross-origin and cannot
       # read Link / X-OpenFDA-Search-After, so search_after paging never starts.
+      # Hardcoded so an unset repo variable cannot omit the origin.
       # No trailing slash: openFdaProxyBase() strips one, then joins `/food/...`.
       - name: Build
         env:
