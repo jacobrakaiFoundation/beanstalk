@@ -29,7 +29,12 @@ Xcode's stored account login is not available to `xcodebuild -exportArchive` fro
 xcrun altool --upload-app -f export/Beanstalk.ipa -t ios --apiKey <KEY_ID> --apiIssuer <ISSUER_ID>
 ```
 
-The archive itself can be produced unsigned (`CODE_SIGNING_ALLOWED=NO`) and signed at export time with `signingStyle: automatic` and the Foundation team; no registered device is needed for App Store distribution.
+The archive itself can be produced unsigned (`CODE_SIGNING_ALLOWED=NO`). Export signing has two working paths:
+
+- `signingStyle: automatic` works only while Xcode's account session is reachable (GUI logged in, keychain unlocked).
+- Headless: an Apple Distribution certificate and an `IOS_APP_STORE` profile created through the App Store Connect API (`POST /v1/certificates` with a local CSR, `POST /v1/profiles`), imported into a scratch keychain, then `codesign --force --sign "Apple Distribution: …" --keychain <scratch> --entitlements <profile entitlements>` on `Products/Applications/Beanstalk.app` with `embedded.mobileprovision` copied in, zipped as `Payload/` → `.ipa`, then `altool --validate-app` and `--upload-app`. No registered device is needed for App Store distribution.
+
+Build 2 (2026-09-19) shipped this way after the `api.beanstalk.jacobrakai.org` host was replaced by `api.jacobrakai.org` (Universal SSL covers one subdomain label).
 
 ## TestFlight checklist
 
