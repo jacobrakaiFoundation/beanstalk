@@ -11,7 +11,7 @@ Vite + React 19 + TypeScript + Tailwind CSS v4 + PWA (Workbox)
 - **Early Signals (CAERS)**: [openFDA Food Adverse Event API](https://api.fda.gov/food/event.json) — same proxy/auth/rate limits as enforcement
 - **Publish cadence**: openFDA refreshes the enforcement dataset on a **weekly** schedule (FDA does not guarantee a fixed weekday). Status fields are as published, not a current lifecycle.
 - **Empty search**: openFDA returns HTTP 404 + “No matches found” — the app shows an empty list, not an error.
-- **Pagination**: Per [openFDA paging](https://open.fda.gov/apis/paging/), `skip` works through the first 25,000 matches. Later pages follow `search_after` from the response `Link` header. Skip-based `rel=next` links after page 0 do **not** include a cursor (and `skip=25000`'s next URL is `skip=25006`, which openFDA rejects), so the UI chains cursors from the first page. GitHub Pages cannot read `Link` cross-origin; deploy `openfda-proxy/` and set `VITE_OPENFDA_PROXY` so production can. Status is as published by openFDA, not a live lifecycle.
+- **Pagination**: Per [openFDA paging](https://open.fda.gov/apis/paging/), `skip` works through the first 25,000 matches. Later pages follow `search_after` from the response `Link` header. Skip-based `rel=next` links after page 0 do **not** include a cursor (and `skip=25000`'s next URL is `skip=25006`, which openFDA rejects), so the UI chains cursors from the first page. GitHub Pages cannot read `Link` cross-origin; the Pages workflow sets `VITE_OPENFDA_PROXY` to the deployed `openfda-proxy/` worker so production can. Status is as published by openFDA, not a live lifecycle.
 - **Related Events**: parenthesized OR of product tokens ([#102](https://github.com/jacobrakaiFoundation/beanstalk/pull/102)).
 - **API key**: Local dev may set `VITE_OPENFDA_KEY` (40→240 req/min); in the browser the app calls `/api/food/…`, and the dev or host proxy can inject `OPENFDA_API_KEY` server-side so the key is not bundled (see `src/lib/api.ts`).
 - **Cache**: 6-hour localStorage cache with LRU eviction for offline/stale serving
@@ -65,4 +65,5 @@ The Android sideload APK uses `npm run build:android` (`VITE_BASE=/` plus `npx c
 | Variable | Required | Description |
 |---|---|---|
 | `VITE_OPENFDA_KEY` | No | openFDA API key (40→240 req/min) |
+| `VITE_OPENFDA_PROXY` | No (Pages build sets it) | CORS proxy origin that re-exposes `Link` / `search_after`. No trailing slash. |
 | `VITE_DEMO` | No | Set to `true` to enable demo mode by default |
