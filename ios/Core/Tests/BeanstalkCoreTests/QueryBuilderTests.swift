@@ -4,7 +4,7 @@ import XCTest
 final class QueryBuilderTests: XCTestCase {
     func testNoticeQueryPreservesCursorAndSanitizesSearch() throws {
         let url = try NoticeRequestBuilder.listURL(
-            baseURL: URL(string: "https://api.beanstalk.jacobrakai.org")!,
+            baseURL: URL(string: "https://api.jacobrakai.org")!,
             limit: 25,
             cursor: "next/page==",
             query: "  milk \"bar\"\\  "

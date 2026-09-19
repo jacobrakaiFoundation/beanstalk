@@ -31,7 +31,7 @@ android {
         versionCode = 1
         versionName = "1.0.0"
 
-        buildConfigField("String", "BACKEND_BASE_URL", "\"https://api.beanstalk.jacobrakai.org\"")
+        buildConfigField("String", "BACKEND_BASE_URL", "\"https://api.jacobrakai.org\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
     }

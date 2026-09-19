@@ -19,7 +19,7 @@
     <key>CFBundleVersion</key>
     <string>$(CURRENT_PROJECT_VERSION)</string>
     <key>BEANSTALK_BACKEND_BASE_URL</key>
-    <string>https://api.beanstalk.jacobrakai.org</string>
+    <string>https://api.jacobrakai.org</string>
     <key>APNS_ENVIRONMENT</key>
     <string>$(APNS_ENVIRONMENT)</string>
     <key>LSRequiresIPhoneOS</key>

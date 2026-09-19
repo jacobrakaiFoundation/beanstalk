@@ -3,7 +3,7 @@ import Foundation
 enum AppConfiguration {
     static let backendBaseURL: URL = {
         let configured = Bundle.main.object(forInfoDictionaryKey: "BEANSTALK_BACKEND_BASE_URL") as? String
-        return URL(string: configured ?? "") ?? URL(string: "https://api.beanstalk.jacobrakai.org")!
+        return URL(string: configured ?? "") ?? URL(string: "https://api.jacobrakai.org")!
     }()
 
     static let apnsEnvironment: String = {

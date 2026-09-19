@@ -9,7 +9,7 @@ class RequestBuildersTest {
     @Test
     fun `notice request bounds limit and sanitizes query`() {
         val url = RequestBuilders.notices(
-            baseURL = "https://api.beanstalk.jacobrakai.org",
+            baseURL = "https://api.jacobrakai.org",
             limit = 1_000,
             cursor = "next page",
             query = "  cheese\\\"  ",
