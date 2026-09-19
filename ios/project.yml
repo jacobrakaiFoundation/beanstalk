@@ -26,6 +26,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: org.jacobrakaifoundation.beanstalk
         PRODUCT_NAME: Beanstalk
+        DEVELOPMENT_TEAM: X5K96H5VRR
+        CODE_SIGN_STYLE: Automatic
         MARKETING_VERSION: 1.0.0
         CURRENT_PROJECT_VERSION: 1
         IPHONEOS_DEPLOYMENT_TARGET: 17.0
