@@ -14,7 +14,8 @@ interface AppDependencies {
   sender: PushSender;
   now?: () => Date;
   logger?: boolean;
-  trustProxy?: boolean;
+  /** Proxy hops to trust (0 = none). Never `true`: that trusts every hop and lets a client pick its own rate-limit key via X-Forwarded-For. */
+  trustProxy?: number;
   logStream?: Writable;
   pollStaleAfterMs?: number;
 }
@@ -135,7 +136,9 @@ function deviceResponse(device: DeviceRecord): Omit<DeviceRecord, "pushIdentifie
 
 export async function buildApp(dependencies: AppDependencies): Promise<FastifyInstance> {
   const app = Fastify({
-    trustProxy: dependencies.trustProxy ?? false,
+    // Fastify's types take a predicate, not a hop count: trust exactly the
+    // configured number of hops (hop 0 = the socket peer, i.e. cloudflared).
+    trustProxy: (_address: string, hop: number): boolean => hop < (dependencies.trustProxy ?? 0),
     logController: new LogController({ disableRequestLogging: true }),
     logger: dependencies.logger
       ? {

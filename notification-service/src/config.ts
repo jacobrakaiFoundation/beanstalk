@@ -13,7 +13,8 @@ export interface ServiceConfig {
   pollIntervalMs: number;
   queueIntervalMs: number;
   retentionDays: number;
-  trustProxy: boolean;
+  /** Proxy hops to trust for the client address (0 = none). 1 behind cloudflared alone. */
+  trustProxy: number;
   pollStaleAfterMs: number;
   announcementConcurrency: number;
   apns: {
@@ -86,7 +87,7 @@ export function loadConfig(): ServiceConfig {
     pollIntervalMs: integer("POLL_INTERVAL_MS", 15 * 60 * 1000, 60_000),
     queueIntervalMs: integer("QUEUE_INTERVAL_MS", 5_000, 1_000),
     retentionDays: integer("DELIVERY_RETENTION_DAYS", 30, 1),
-    trustProxy: process.env.TRUST_PROXY === "1",
+    trustProxy: integer("TRUST_PROXY", 0, 0),
     pollStaleAfterMs: integer("POLL_STALE_AFTER_MS", 35 * 60 * 1000, 60_000),
     announcementConcurrency,
     apns,
