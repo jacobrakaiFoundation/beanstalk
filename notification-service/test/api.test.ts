@@ -188,6 +188,29 @@ describe("device API", () => {
   });
 });
 
+describe("client address behind a proxy", () => {
+  it("takes the address the trusted hop appended, not one the client wrote into X-Forwarded-For", async () => {
+    const database = new AppDatabase(":memory:");
+    const devices = new DeviceStore(database);
+    const sender = new FakeSender([], false);
+    const queue = new NotificationQueue(database, devices, sender);
+    const app = await buildApp({ database, devices, queue, sender, trustProxy: 1 });
+    openApps.push(app);
+    openDatabases.push(database);
+    const seen: string[] = [];
+    app.addHook("onRequest", async (request) => {
+      seen.push(request.ip);
+    });
+    await app.inject({
+      method: "GET",
+      url: "/healthz",
+      remoteAddress: "10.0.0.5",
+      headers: { "x-forwarded-for": "203.0.113.9, 198.51.100.7" },
+    });
+    expect(seen).toEqual(["198.51.100.7"]);
+  });
+});
+
 describe("notice API", () => {
   it("paginates after filtering and returns the stable iPhone wire shape", async () => {
     const { app, database } = await context();
@@ -375,7 +398,7 @@ describe("notice API", () => {
     const devices = new DeviceStore(database);
     const sender = new FakeSender([], false);
     const queue = new NotificationQueue(database, devices, sender);
-    const app = await buildApp({ database, devices, queue, sender, logger: true, trustProxy: true, logStream });
+    const app = await buildApp({ database, devices, queue, sender, logger: true, trustProxy: 1, logStream });
     openApps.push(app);
     openDatabases.push(database);
     await app.inject({

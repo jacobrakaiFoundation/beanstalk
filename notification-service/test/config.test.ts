@@ -6,6 +6,13 @@ afterEach(() => {
 });
 
 describe("service configuration", () => {
+  it("reads TRUST_PROXY as a hop count and never as trust-everything", () => {
+    vi.stubEnv("TRUST_PROXY", "1");
+    expect(loadConfig().trustProxy).toBe(1);
+    vi.stubEnv("TRUST_PROXY", "true");
+    expect(() => loadConfig()).toThrow("TRUST_PROXY must be an integer >= 0");
+  });
+
   it("rejects more than the current and prior FDA annual XML sources", () => {
     vi.stubEnv(
       "FDA_ANNUAL_XML_URLS",

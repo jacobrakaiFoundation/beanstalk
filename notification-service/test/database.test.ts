@@ -4,6 +4,7 @@ import { join } from "node:path";
 import Database from "better-sqlite3";
 import { describe, expect, it } from "vitest";
 import { AppDatabase } from "../src/database.js";
+import { storedNotice } from "./helpers.js";
 
 function mode(path: string): number {
   return statSync(path).mode & 0o777;
@@ -88,5 +89,40 @@ describe("database file protections", () => {
       database?.close();
       rmSync(root, { recursive: true, force: true });
     }
+  });
+});
+
+describe("replaceEnrichment", () => {
+  it("overwrites announcement text without touching eligibility, and refuses an unknown notice", () => {
+    const database = new AppDatabase(":memory:");
+    database.migrate();
+    const original = storedNotice("relabel", "2026-09-17T00:00:00.000Z");
+    original.codeInfo = "Brand | Product";
+    database.upsertNotice({ ...original, eligibleForAlert: false });
+    database.replaceEnrichment({
+      ...original,
+      summary: "Rewritten summary",
+      codeInfo: "Brand: X · Product: Y",
+      eligibleForAlert: true,
+      foodClassification: "unknown",
+      retrievedAt: "2026-09-19T20:00:00.000Z",
+    });
+    const stored = database.getStoredNotice(original.id);
+    expect(stored?.summary).toBe("Rewritten summary");
+    expect(stored?.codeInfo).toBe("Brand: X · Product: Y");
+    expect(stored?.retrievedAt).toBe("2026-09-19T20:00:00.000Z");
+    expect(stored?.eligibleForAlert).toBe(false);
+    expect(stored?.foodClassification).toBe("food");
+    // A thin re-read (optional fields null) keeps what was stored instead of erasing it.
+    database.replaceEnrichment({ ...original, summary: "Thinner", codeInfo: null, companyName: null });
+    expect(database.getStoredNotice(original.id)).toMatchObject({
+      summary: "Thinner",
+      codeInfo: "Brand: X · Product: Y",
+      companyName: original.companyName,
+    });
+    expect(database.listNoticeIdsByKind("rss", 10)).toEqual([original.id]);
+    expect(() => database.replaceEnrichment({ ...original, id: "missing" })).toThrow(/not stored/u);
+    expect(() => database.listNoticeIdsByKind("rss", 0)).toThrow(/between 1 and 500/u);
+    database.close();
   });
 });

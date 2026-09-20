@@ -41,7 +41,7 @@ Authenticated routes use `Authorization: Bearer <deviceId>.<clientSecret>`. The 
   "classification": null,
   "status": null,
   "distribution": "Official distribution wording...",
-  "codeInfo": "Product Description | PLU | States | Best By Dates\n...",
+  "codeInfo": "Product Description: Cabricharme Raw Milk Cheese · PLU: 57953 · States: California, New Jersey · Best By Dates: Through 10/7/2026\n...",
   "publicationDate": "2026-09-11T22:15:00.000Z",
   "recallInitiationDate": null,
   "retrievedAt": "2026-09-13T20:00:00.000Z",
@@ -72,6 +72,8 @@ Docker Compose is the canonical path because the host Node runtime is older than
 3. Run `docker compose build` and `docker compose up -d`.
 4. Route the chosen HTTPS hostname to `http://127.0.0.1:8787`, then run `HEALTH_URL=https://HOST/healthz scripts/monitor.sh`. Once a mobile release depends on a provider, set its matching `REQUIRE_APNS=1` or `REQUIRE_FCM=1` monitoring flag. Tune the pending-age and pending-count thresholds only from measured production capacity.
 5. Optionally install `deploy/beanstalk-notifications.service` to manage Compose at boot.
+
+After a change to how FDA pages are read, notices already stored keep their old text because the poller enriches a notice once. Re-read the most recent RSS notices in place, without sending any notification, with `docker compose exec notifications node dist/reenrich.js 50` (limit 1-500; `src/reenrich.ts` documents what it keeps and logs). iPhone clients cache notice responses for up to 6 hours (`ios/App/Networking/APIClient.swift`), so re-enriched text can take that long to reach an already-installed app.
 
 For APNs, mount the `.p8` file under `secrets/`, set `APNS_PRIVATE_KEY_PATH=/run/secrets/<file>.p8`, and set the team ID, key ID, and app bundle ID. Keep `.env` mode `0600` and `secrets/` mode `0700`. Do not place a private key in the image or repository.
 

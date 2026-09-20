@@ -82,7 +82,10 @@ describe("FDA poller", () => {
   });
 
   it("pauses alerts and stores no truncated row when announcement enrichment fails", async () => {
-    const { database, source, clock, poller } = context();
+    const { database, queue, source, clock } = context();
+    const errors: Record<string, unknown>[] = [];
+    const logger = { info: () => {}, warn: () => {}, error: (data: Record<string, unknown>) => errors.push(data) };
+    const poller = new FdaPoller(database, queue, source, () => clock.now, logger);
     source.rss = rss([{ slug: "old", title: "Old recall", date: "Fri, 11 Sep 2026 18:15:00 EDT" }]);
     await poller.pollOnce();
     clock.now = new Date("2026-09-13T20:15:00.000Z");
@@ -92,6 +95,11 @@ describe("FDA poller", () => {
     ]);
     source.announcementError = new Error("announcement unavailable");
     await expect(poller.pollOnce()).rejects.toThrow("announcement unavailable");
+    // The log names the notice that broke the poll, not only that the poll broke.
+    expect(errors[0]).toMatchObject({
+      sourceURL: expect.stringContaining("incomplete-new"),
+      error: "announcement unavailable",
+    });
     expect(database.getPollState()).toMatchObject({ gapStatus: "failed", consecutiveFailures: 1 });
     expect(queueCount(database)).toBe(0);
     expect(

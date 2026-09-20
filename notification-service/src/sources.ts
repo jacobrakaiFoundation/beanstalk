@@ -85,9 +85,72 @@ export interface ParsedRssItem {
   notice: StoredNotice;
 }
 
+interface TableRow {
+  cells: string[];
+  headerCells: boolean;
+}
+
+/**
+ * One readable line per table row, so a phone shows "Lot Number: 260225" instead
+ * of a pipe-separated row the reader has to line up against a header by eye.
+ *
+ * FDA marks header rows inconsistently: some announcements use <th>, others a
+ * first <td> row of short labels. A first row is treated as the header when it
+ * is <th>-only, or when every first-row cell is a short label with no digit in
+ * it AND a later row carries a digit (a lot, UPC or date). Without that second
+ * condition a header-less table of two products ("Truly AIP | Bread Mix" over
+ * "Truly AIP | Flour") would turn its first product into labels and lose it.
+ * Each data cell is then written as "Header: value", joined with " · ". Cells
+ * keep their column position even when blank, so a blank cell never shifts a
+ * lot number under the wrong label; blank cells are simply omitted from the
+ * line. Rows whose cell count differs from the header keep their cells in
+ * order, joined the same way, so nothing is dropped.
+ */
+export function readableTableLines(rows: readonly TableRow[]): string[] {
+  const filled = rows.filter((row) => row.cells.some(Boolean));
+  const first = filled[0];
+  if (!first) return [];
+  const firstRowIsLabels = first.cells.every((cell) => cell.length <= 40 && !/\d/u.test(cell));
+  const laterRowHasDigit = filled.slice(1).some((row) => row.cells.some((cell) => /\d/u.test(cell)));
+  const headerLike = first.headerCells || (firstRowIsLabels && laterRowHasDigit);
+  const header = headerLike ? first.cells : null;
+  const body = headerLike ? filled.slice(1) : filled;
+  return body.map((row) => {
+    if (header && row.cells.length === header.length) {
+      return row.cells
+        .map((cell, index) => (cell ? `${header[index]}: ${cell}` : ""))
+        .filter(Boolean)
+        .join(" · ");
+    }
+    return row.cells.filter(Boolean).join(" · ");
+  });
+}
+
 export interface AnnouncementDocument {
   html: string;
   finalURL: string;
+}
+
+/**
+ * Upper bound on any one enriched text field. Real FDA announcements run
+ * 1-3 K characters (the largest fixture, GF Blends 2026-09-17, is 2,346), so
+ * this never touches a genuine notice; it only stops a pathological page from
+ * storing and serving hundreds of kilobytes per notice. Cut on a word
+ * boundary and say so, with the FDA link still on every notice.
+ */
+export const ENRICHED_TEXT_LIMIT = 16_000;
+const SHORTENED_NOTE = "\n\n[Text shortened; the full notice is at the FDA link.]";
+
+/** True when boundedText cut this field; lets callers log the truncation. */
+export function wasShortened(value: string | null): boolean {
+  return value !== null && value.endsWith(SHORTENED_NOTE);
+}
+
+export function boundedText(value: string): string {
+  if (value.length <= ENRICHED_TEXT_LIMIT) return value;
+  const budget = ENRICHED_TEXT_LIMIT - SHORTENED_NOTE.length;
+  const cut = value.lastIndexOf(" ", budget);
+  return value.slice(0, cut > budget / 2 ? cut : budget).trimEnd() + SHORTENED_NOTE;
 }
 
 function normalizedPageText(value: string): string {
@@ -132,9 +195,23 @@ export function enrichFromAnnouncement(notice: StoredNotice, document: Announcem
         (node.name === "h2" && /^Company Contact Information$/iu.test(normalizedPageText(element.text())))) return true;
 
     if (node.name === "table") {
-      const tableRows = element.find("tr").map((_rowIndex, row) =>
-        $(row).find("th, td").map((_cellIndex, cell) => normalizedPageText($(cell).text())).get().join(" | "),
-      ).get().filter(Boolean);
+      // Rows and cells are scoped to this table and row: a nested table's text
+      // is already part of its outer cell, and the collector does not descend
+      // into table children, so every cell is emitted exactly once.
+      const rows: TableRow[] = element
+        .find("tr")
+        .filter((_rowIndex, row) => $(row).closest("table").is(element))
+        .map((_rowIndex, row) => {
+          const cells = $(row)
+            .find("th, td")
+            .filter((_cellIndex, cell) => $(cell).closest("tr").is(row));
+          return {
+            cells: cells.map((_cellIndex, cell) => normalizedPageText($(cell).text())).get(),
+            headerCells: cells.filter("th").length > 0 && cells.filter("td").length === 0,
+          };
+        })
+        .get();
+      const tableRows = readableTableLines(rows);
       const tableText = tableRows.join("\n");
       if (tableText) {
         announcementParts.push(`\n\n${tableText}\n\n`);
@@ -167,7 +244,16 @@ export function enrichFromAnnouncement(notice: StoredNotice, document: Announcem
     current = current.next();
   }
 
-  const summary = normalizedPageText(announcementParts.join("")).replace(/\n{3,}/gu, "\n\n");
+  // Block boundaries were pushed as "\n\n"; keep them as blank lines (a phone
+  // shows paragraphs, not one run-on block) instead of folding them through
+  // normalizedPageText, which collapses every newline run to one.
+  const summary = announcementParts
+    .join("")
+    .replace(/\u00a0/gu, " ")
+    .replace(/[\t\r ]+/gu, " ")
+    .replace(/ ?\n ?/gu, "\n")
+    .replace(/\n{3,}/gu, "\n\n")
+    .trim();
   if (summary.length < 40) throw new Error("FDA announcement page has no usable official announcement text");
   const productType = definition("Product Type");
   if (!productType) throw new Error("FDA announcement page is missing Product Type");
@@ -177,12 +263,12 @@ export function enrichFromAnnouncement(notice: StoredNotice, document: Announcem
   const foodClassification = pageClassifiesFood && contentClassifiesFood ? "food" : "unknown";
   const unique = (values: string[]): string | null => {
     const deduplicated = [...new Set(values.filter(Boolean))];
-    return deduplicated.length > 0 ? deduplicated.join("\n\n") : null;
+    return deduplicated.length > 0 ? boundedText(deduplicated.join("\n\n")) : null;
   };
   return {
     ...notice,
     title,
-    summary,
+    summary: boundedText(summary),
     productDescription: definition("Product Description"),
     reasonForRecall: definition("Reason for Announcement"),
     companyName: definition("Company Name"),

@@ -347,6 +347,57 @@ export class AppDatabase {
     return existing === undefined;
   }
 
+  listNoticeIdsByKind(sourceKind: "rss" | "annual", limit: number): string[] {
+    if (!Number.isInteger(limit) || limit < 1 || limit > 500) throw new Error("limit must be an integer between 1 and 500");
+    const rows = this.connection
+      .prepare("SELECT id FROM notices WHERE source_kind = ? ORDER BY publication_date DESC, id DESC LIMIT ?")
+      .all(sourceKind, limit) as { id: string }[];
+    return rows.map((row) => row.id);
+  }
+
+  /**
+   * Overwrite the announcement-derived text of an existing notice, including
+   * the FDA recall class shown to readers. Title and summary are always
+   * replaced (a re-read exists to reword them). The optional structured
+   * fields are replaced only when the re-read produced a value: a page whose
+   * table sits outside the scanned block parses to nulls, and writing those
+   * would erase lot numbers already on phones. It leaves eligible_for_alert,
+   * food_classification and source bookkeeping alone so a re-read of the FDA
+   * page can never queue an alert or change what may alert.
+   */
+  replaceEnrichment(notice: StoredNotice): void {
+    const result = this.connection
+      .prepare(`
+        UPDATE notices SET
+          title = @title,
+          summary = @summary,
+          product_description = COALESCE(@productDescription, product_description),
+          reason_for_recall = COALESCE(@reasonForRecall, reason_for_recall),
+          company_name = COALESCE(@companyName, company_name),
+          classification = COALESCE(@classification, classification),
+          status = COALESCE(@status, status),
+          distribution = COALESCE(@distribution, distribution),
+          code_info = COALESCE(@codeInfo, code_info),
+          retrieved_at = @retrievedAt,
+          updated_at = @retrievedAt
+        WHERE id = @id
+      `)
+      .run({
+        id: notice.id,
+        title: notice.title,
+        summary: notice.summary,
+        productDescription: notice.productDescription,
+        reasonForRecall: notice.reasonForRecall,
+        companyName: notice.companyName,
+        classification: notice.classification,
+        status: notice.status,
+        distribution: notice.distribution,
+        codeInfo: notice.codeInfo,
+        retrievedAt: notice.retrievedAt,
+      });
+    if (result.changes !== 1) throw new Error(`replaceEnrichment: notice ${notice.id} is not stored`);
+  }
+
   getStoredNotice(id: string): StoredNotice | null {
     const row = this.connection.prepare("SELECT * FROM notices WHERE id = ?").get(id) as NoticeRow | undefined;
     return row ? toStoredNotice(row) : null;
