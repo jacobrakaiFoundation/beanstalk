@@ -141,6 +141,11 @@ export interface AnnouncementDocument {
 export const ENRICHED_TEXT_LIMIT = 16_000;
 const SHORTENED_NOTE = "\n\n[Text shortened; the full notice is at the FDA link.]";
 
+/** True when boundedText cut this field; lets callers log the truncation. */
+export function wasShortened(value: string | null): boolean {
+  return value !== null && value.endsWith(SHORTENED_NOTE);
+}
+
 export function boundedText(value: string): string {
   if (value.length <= ENRICHED_TEXT_LIMIT) return value;
   const budget = ENRICHED_TEXT_LIMIT - SHORTENED_NOTE.length;

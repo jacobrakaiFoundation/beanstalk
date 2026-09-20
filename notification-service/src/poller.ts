@@ -1,6 +1,13 @@
 import type { AppDatabase } from "./database.js";
 import type { NotificationQueue } from "./queue.js";
-import { enrichFromAnnouncement, parseAnnualDocument, parseRss, type FdaSource, type ParsedRssItem } from "./sources.js";
+import {
+  enrichFromAnnouncement,
+  parseAnnualDocument,
+  parseRss,
+  wasShortened,
+  type FdaSource,
+  type ParsedRssItem,
+} from "./sources.js";
 
 export interface PollLogger {
   info(data: Record<string, unknown>, message: string): void;
@@ -200,8 +207,24 @@ export class FdaPoller {
         nextIndex += 1;
         const item = items[index];
         if (!item) continue;
-        const document = await this.source.fetchAnnouncement(item.notice.sourceURL);
-        results[index] = { ...item, notice: enrichFromAnnouncement(item.notice, document) };
+        // One unreadable page still fails the whole poll (a recall must never be
+        // silently skipped), but the log names which notice did it.
+        let enriched: ParsedRssItem["notice"];
+        try {
+          const document = await this.source.fetchAnnouncement(item.notice.sourceURL);
+          enriched = enrichFromAnnouncement(item.notice, document);
+        } catch (error) {
+          this.logger.error(
+            { noticeId: item.notice.id, sourceURL: item.notice.sourceURL, error: error instanceof Error ? error.message : String(error) },
+            "FDA announcement enrichment failed",
+          );
+          throw error;
+        }
+        const shortenedFields = (["summary", "codeInfo", "distribution"] as const).filter((field) => wasShortened(enriched[field]));
+        if (shortenedFields.length > 0) {
+          this.logger.warn({ noticeId: enriched.id, sourceURL: enriched.sourceURL, shortenedFields }, "FDA announcement text shortened");
+        }
+        results[index] = { ...item, notice: enriched };
       }
     };
     await Promise.all(Array.from({ length: Math.min(this.announcementConcurrency, items.length) }, () => worker()));
