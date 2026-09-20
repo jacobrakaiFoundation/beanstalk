@@ -357,8 +357,11 @@ export class AppDatabase {
 
   /**
    * Overwrite the announcement-derived text of an existing notice, including
-   * the FDA recall class shown to readers. Unlike upsertNotice this never keeps
-   * the old wording (COALESCE would), and it leaves eligible_for_alert,
+   * the FDA recall class shown to readers. Title and summary are always
+   * replaced (a re-read exists to reword them). The optional structured
+   * fields are replaced only when the re-read produced a value: a page whose
+   * table sits outside the scanned block parses to nulls, and writing those
+   * would erase lot numbers already on phones. It leaves eligible_for_alert,
    * food_classification and source bookkeeping alone so a re-read of the FDA
    * page can never queue an alert or change what may alert.
    */
@@ -368,13 +371,13 @@ export class AppDatabase {
         UPDATE notices SET
           title = @title,
           summary = @summary,
-          product_description = @productDescription,
-          reason_for_recall = @reasonForRecall,
-          company_name = @companyName,
-          classification = @classification,
-          status = @status,
-          distribution = @distribution,
-          code_info = @codeInfo,
+          product_description = COALESCE(@productDescription, product_description),
+          reason_for_recall = COALESCE(@reasonForRecall, reason_for_recall),
+          company_name = COALESCE(@companyName, company_name),
+          classification = COALESCE(@classification, classification),
+          status = COALESCE(@status, status),
+          distribution = COALESCE(@distribution, distribution),
+          code_info = COALESCE(@codeInfo, code_info),
           retrieved_at = @retrievedAt,
           updated_at = @retrievedAt
         WHERE id = @id

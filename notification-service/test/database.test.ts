@@ -113,6 +113,13 @@ describe("replaceEnrichment", () => {
     expect(stored?.retrievedAt).toBe("2026-09-19T20:00:00.000Z");
     expect(stored?.eligibleForAlert).toBe(false);
     expect(stored?.foodClassification).toBe("food");
+    // A thin re-read (optional fields null) keeps what was stored instead of erasing it.
+    database.replaceEnrichment({ ...original, summary: "Thinner", codeInfo: null, companyName: null });
+    expect(database.getStoredNotice(original.id)).toMatchObject({
+      summary: "Thinner",
+      codeInfo: "Brand: X · Product: Y",
+      companyName: original.companyName,
+    });
     expect(database.listNoticeIdsByKind("rss", 10)).toEqual([original.id]);
     expect(() => database.replaceEnrichment({ ...original, id: "missing" })).toThrow(/not stored/u);
     expect(() => database.listNoticeIdsByKind("rss", 0)).toThrow(/between 1 and 500/u);
