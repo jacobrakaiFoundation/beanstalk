@@ -1,7 +1,6 @@
 import * as http2 from "node:http2";
 import { importPKCS8, SignJWT } from "jose";
 import type { DeliveryResult, ProviderPushSender, PushMessage } from "./push.js";
-import { RoutedPushSender, type PushSender } from "./push.js";
 
 export type { DeliveryResult, PushMessage, PushSender } from "./push.js";
 
@@ -156,9 +155,4 @@ export function createApnsPushSender(credentials: Partial<ApnsCredentials>): Pro
     return new DisabledApnsPushSender();
   }
   return new ApnsPushSender(credentials as ApnsCredentials);
-}
-
-/** @deprecated Use createApnsPushSender and RoutedPushSender for multi-provider delivery. */
-export function createPushSender(credentials: Partial<ApnsCredentials>): PushSender {
-  return new RoutedPushSender([createApnsPushSender(credentials)]);
 }
