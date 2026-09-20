@@ -4,3 +4,11 @@ dist/
 *.apk
 *.aab
 *.ap_
+
+# Local agent runtime state, never source
+.claude-flow/
+agentdb.rvf
+agentdb.rvf.lock
+ruvector.db
+.claude/.proven-config-version
+.claude/proven-config.json
