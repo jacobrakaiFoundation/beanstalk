@@ -356,10 +356,11 @@ export class AppDatabase {
   }
 
   /**
-   * Overwrite the announcement-derived text of an existing notice. Unlike
-   * upsertNotice this never keeps the old wording (COALESCE would), and it
-   * leaves eligibility, classification and source bookkeeping alone so a
-   * re-read of the FDA page can never queue an alert or change what may alert.
+   * Overwrite the announcement-derived text of an existing notice, including
+   * the FDA recall class shown to readers. Unlike upsertNotice this never keeps
+   * the old wording (COALESCE would), and it leaves eligible_for_alert,
+   * food_classification and source bookkeeping alone so a re-read of the FDA
+   * page can never queue an alert or change what may alert.
    */
   replaceEnrichment(notice: StoredNotice): void {
     const result = this.connection

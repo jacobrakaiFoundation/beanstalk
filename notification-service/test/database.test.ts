@@ -104,6 +104,7 @@ describe("replaceEnrichment", () => {
       summary: "Rewritten summary",
       codeInfo: "Brand: X · Product: Y",
       eligibleForAlert: true,
+      foodClassification: "unknown",
       retrievedAt: "2026-09-19T20:00:00.000Z",
     });
     const stored = database.getStoredNotice(original.id);
@@ -111,6 +112,7 @@ describe("replaceEnrichment", () => {
     expect(stored?.codeInfo).toBe("Brand: X · Product: Y");
     expect(stored?.retrievedAt).toBe("2026-09-19T20:00:00.000Z");
     expect(stored?.eligibleForAlert).toBe(false);
+    expect(stored?.foodClassification).toBe("food");
     expect(database.listNoticeIdsByKind("rss", 10)).toEqual([original.id]);
     expect(() => database.replaceEnrichment({ ...original, id: "missing" })).toThrow(/not stored/u);
     expect(() => database.listNoticeIdsByKind("rss", 0)).toThrow(/between 1 and 500/u);
