@@ -347,6 +347,53 @@ export class AppDatabase {
     return existing === undefined;
   }
 
+  listNoticeIdsByKind(sourceKind: "rss" | "annual", limit: number): string[] {
+    if (!Number.isInteger(limit) || limit < 1 || limit > 500) throw new Error("limit must be an integer between 1 and 500");
+    const rows = this.connection
+      .prepare("SELECT id FROM notices WHERE source_kind = ? ORDER BY publication_date DESC, id DESC LIMIT ?")
+      .all(sourceKind, limit) as { id: string }[];
+    return rows.map((row) => row.id);
+  }
+
+  /**
+   * Overwrite the announcement-derived text of an existing notice. Unlike
+   * upsertNotice this never keeps the old wording (COALESCE would), and it
+   * leaves eligibility, classification and source bookkeeping alone so a
+   * re-read of the FDA page can never queue an alert or change what may alert.
+   */
+  replaceEnrichment(notice: StoredNotice): void {
+    const result = this.connection
+      .prepare(`
+        UPDATE notices SET
+          title = @title,
+          summary = @summary,
+          product_description = @productDescription,
+          reason_for_recall = @reasonForRecall,
+          company_name = @companyName,
+          classification = @classification,
+          status = @status,
+          distribution = @distribution,
+          code_info = @codeInfo,
+          retrieved_at = @retrievedAt,
+          updated_at = @retrievedAt
+        WHERE id = @id
+      `)
+      .run({
+        id: notice.id,
+        title: notice.title,
+        summary: notice.summary,
+        productDescription: notice.productDescription,
+        reasonForRecall: notice.reasonForRecall,
+        companyName: notice.companyName,
+        classification: notice.classification,
+        status: notice.status,
+        distribution: notice.distribution,
+        codeInfo: notice.codeInfo,
+        retrievedAt: notice.retrievedAt,
+      });
+    if (result.changes !== 1) throw new Error(`replaceEnrichment: notice ${notice.id} is not stored`);
+  }
+
   getStoredNotice(id: string): StoredNotice | null {
     const row = this.connection.prepare("SELECT * FROM notices WHERE id = ?").get(id) as NoticeRow | undefined;
     return row ? toStoredNotice(row) : null;

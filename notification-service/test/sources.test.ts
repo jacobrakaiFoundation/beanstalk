@@ -1,10 +1,15 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
-import { enrichFromAnnouncement, HttpFdaSource, parseAnnualDocument } from "../src/sources.js";
+import { boundedText, ENRICHED_TEXT_LIMIT, enrichFromAnnouncement, HttpFdaSource, parseAnnualDocument, readableTableLines } from "../src/sources.js";
 import { annual, storedNotice } from "./helpers.js";
 
 const fixture = readFileSync(fileURLToPath(new URL("./fixtures/fda-announcement.html", import.meta.url)), "utf8");
+
+const gfBlendsFixture = readFileSync(
+  fileURLToPath(new URL("./fixtures/fda-announcement-gf-blends.html", import.meta.url)),
+  "utf8",
+);
 
 describe("FDA announcement enrichment", () => {
   it("preserves full official wording and supported structured fields", () => {
@@ -27,6 +32,43 @@ describe("FDA announcement enrichment", () => {
     expect(enriched.distribution).toContain("Arizona");
   });
 
+  it("renders an FDA products table as labelled lines with blank lines between paragraphs", () => {
+    // The 2026-09-17 GF Blends announcement: paragraphs, a "Products Affected"
+    // heading, then a Brand | Product | Lot Number | Best-By Dates table. On a
+    // phone the old output ran every paragraph together and showed the table
+    // as pipe-separated rows the reader had to line up against a header by eye.
+    const notice = storedNotice(
+      "gf-blends-recalls-truly-aip-all-purpose-flour-and-bread-mix-and-eat-gangster-flat-bread-pizza-mix",
+      "2026-09-17T00:00:00.000Z",
+      "RSS title",
+    );
+    const enriched = enrichFromAnnouncement(notice, { html: gfBlendsFixture, finalURL: notice.canonicalURL });
+    expect(enriched.summary).not.toContain(" | ");
+    expect(enriched.summary).toContain("\n\nProducts Affected\n\n");
+    expect(enriched.summary).toContain(
+      "Brand: Truly AIP · Product: All Purpose Flour 15.3 oz · Lot Number: 260225 · Best-By Dates: 2-25-28",
+    );
+    expect(enriched.summary).toContain("Lot Number: 260803");
+    expect(enriched.summary).not.toMatch(/^Brand \| Product/mu);
+    expect(enriched.codeInfo).toContain("Lot Number: 260617 · Best-By Dates: 12-17-27");
+    expect(enriched.codeInfo).not.toContain(" | ");
+    // Every paragraph is separated by a blank line: no two non-empty lines are adjacent
+    // except inside the products table, whose rows stay one per line.
+    const paragraphs = enriched.summary.split("\n\n");
+    expect(paragraphs.length).toBeGreaterThanOrEqual(6);
+    expect(enriched).toMatchObject({ companyName: "GF Blends", foodClassification: "food" });
+  });
+
+  it("emits a nested table's rows once", () => {
+    const notice = storedNotice("nested", "2026-09-11T22:15:00.000Z", "Nested");
+    const html = fixture.replace(
+      "<tbody><tr><td>Cabricharme Raw Milk Cheese</td>",
+      "<tbody><tr><td><table><tr><td>Cabricharme Raw Milk Cheese</td></tr></table></td>",
+    );
+    const enriched = enrichFromAnnouncement(notice, { html, finalURL: notice.canonicalURL });
+    expect(enriched.summary.match(/Cabricharme Raw Milk Cheese/gu)).toHaveLength(1);
+  });
+
   it("uses Product Type as the authoritative food classifier", () => {
     const notice = storedNotice("not-food", "2026-09-11T22:15:00.000Z", "Looks like food");
     const html = fixture.replace("Food &amp; Beverages<br>Allergens", "Drugs");
@@ -42,7 +84,9 @@ describe("FDA announcement enrichment", () => {
     const enriched = enrichFromAnnouncement(notice, { html, finalURL: notice.canonicalURL });
     expect(enriched.summary).toContain("People with an egg allergy risk a serious reaction.");
     expect(enriched.summary).toContain("Consumers should destroy the affected product.");
-    expect(enriched.summary).toContain("Cabricharme Raw Milk Cheese | 57953 | California, New Jersey | Through 10/7/2026");
+    expect(enriched.summary).toContain(
+      "Product Description: Cabricharme Raw Milk Cheese · PLU: 57953 · States: California, New Jersey · Best By Dates: Through 10/7/2026",
+    );
     expect(enriched.summary.indexOf("serious reaction")).toBeLessThan(enriched.summary.indexOf("57953"));
     expect(enriched.summary.indexOf("57953")).toBeLessThan(enriched.summary.indexOf("Consumers should destroy"));
     expect(enriched.summary).not.toContain("This text must not enter");
@@ -130,5 +174,68 @@ describe("bounded FDA fetching", () => {
     ).rejects.toThrow("size limit");
     expect(canceled).toBe(true);
     fetchMock.mockRestore();
+  });
+});
+
+describe("boundedText", () => {
+  it("leaves a real announcement whole and cuts a pathological one on a word boundary with a note", () => {
+    const real = "word ".repeat(500).trim();
+    expect(boundedText(real)).toBe(real);
+    const huge = "lot 260225 ".repeat(5_000);
+    const bounded = boundedText(huge);
+    expect(bounded.length).toBeLessThanOrEqual(ENRICHED_TEXT_LIMIT);
+    expect(bounded).toMatch(/\S\n\n\[Text shortened; the full notice is at the FDA link\.\]$/u);
+  });
+});
+
+describe("readableTableLines", () => {
+  it("keeps a blank cell in its column so labels never shift onto the wrong value", () => {
+    expect(
+      readableTableLines([
+        { cells: ["Brand", "Product", "Lot Number", "Best-By Dates"], headerCells: true },
+        { cells: ["", "All Purpose Flour", "260225", "2-25-28"], headerCells: false },
+        { cells: ["", "", "", ""], headerCells: false },
+      ]),
+    ).toEqual(["Product: All Purpose Flour · Lot Number: 260225 · Best-By Dates: 2-25-28"]);
+  });
+
+  it("labels cells from a th header row", () => {
+    expect(
+      readableTableLines([
+        { cells: ["Lot", "Best by"], headerCells: true },
+        { cells: ["260225", "2-25-28"], headerCells: false },
+      ]),
+    ).toEqual(["Lot: 260225 · Best by: 2-25-28"]);
+  });
+
+  it("treats a short digit-free first td row as the header, as FDA often marks it", () => {
+    expect(
+      readableTableLines([
+        { cells: ["Brand", "Product"], headerCells: false },
+        { cells: ["Truly AIP", "Bread Mix 14 oz"], headerCells: false },
+      ]),
+    ).toEqual(["Brand: Truly AIP · Product: Bread Mix 14 oz"]);
+  });
+
+  it("keeps a header-less table of digit-free product rows as plain rows, losing no product", () => {
+    expect(
+      readableTableLines([
+        { cells: ["Truly AIP", "Bread Mix"], headerCells: false },
+        { cells: ["Truly AIP", "Flour"], headerCells: false },
+      ]),
+    ).toEqual(["Truly AIP · Bread Mix", "Truly AIP · Flour"]);
+  });
+
+  it("keeps a single-row or digit-bearing table as plain cells and never drops a cell", () => {
+    expect(readableTableLines([{ cells: ["UPC 0 12345 67890 1", "Sold in AZ"], headerCells: false }])).toEqual([
+      "UPC 0 12345 67890 1 · Sold in AZ",
+    ]);
+    expect(
+      readableTableLines([
+        { cells: ["Lot", "Best by"], headerCells: true },
+        { cells: ["260225", "2-25-28", "extra cell"], headerCells: false },
+      ]),
+    ).toEqual(["260225 · 2-25-28 · extra cell"]);
+    expect(readableTableLines([])).toEqual([]);
   });
 });
