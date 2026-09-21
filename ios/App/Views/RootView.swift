@@ -3,6 +3,7 @@ import SwiftUI
 
 struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @EnvironmentObject private var router: AppRouter
     @EnvironmentObject private var notifications: NotificationRegistrationService
     @Query(sort: \WatchTermEntity.createdAt) private var watchTerms: [WatchTermEntity]
@@ -12,19 +13,25 @@ struct RootView: View {
             RecallsView()
                 .tabItem { Label("Recalls", systemImage: "exclamationmark.triangle") }
                 .tag(AppTab.recalls)
+                .accessibilityLabel("Recalls")
 
             SavedView()
                 .tabItem { Label("Saved", systemImage: "bookmark") }
                 .tag(AppTab.saved)
+                .accessibilityLabel("Saved")
 
             WatchlistView()
                 .tabItem { Label("Watchlist", systemImage: "bell") }
                 .tag(AppTab.watchlist)
+                .accessibilityLabel("Watchlist")
 
             SettingsView()
                 .tabItem { Label("Settings", systemImage: "gearshape") }
                 .tag(AppTab.settings)
+                .accessibilityLabel("Settings")
         }
+        .accessibilityReduceMotionAware()
+        .supportsLargerText()
         .task {
             await notifications.synchronize(terms: watchTerms.map(\.normalizedTerm))
         }
