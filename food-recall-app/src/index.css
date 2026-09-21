@@ -57,7 +57,10 @@ html.dark {
   color-scheme: dark;
 }
 /* WCAG 1.4.12 Text Spacing - ensure no loss when user overrides spacing */
-* { overflow-wrap: break-word; word-break: break-word; }
+* {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
 
 body {
   @apply bg-zinc-50 text-zinc-900 antialiased;
@@ -200,11 +203,24 @@ body {
 }
 
 /* Sufficient Contrast + Focus Visible - 3px outline for WCAG 2.4.7 */
-:focus-visible { outline: 3px solid #059669; outline-offset: 2px; }
+:focus-visible {
+  outline: 3px solid #059669;
+  outline-offset: 2px;
+}
 /* Differentiate Without Color - status chips already use text+shape+icon; ensure RiskBadge conveys via text */
-.sr-only-captions { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+.sr-only-captions {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
 /* Captions & Audio Descriptions: any future <video>/<audio> must include <track kind="captions" srclang="en" label="English" default> and transcript */
-video::cue { background: rgba(0,0,0,0.8); color: white; font-size: 1rem; }
+video::cue {
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  font-size: 1rem;
+}
 
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -214,6 +230,7 @@ video::cue { background: rgba(0,0,0,0.8); color: white; font-size: 1rem; }
     animation-duration: 0.01ms !important;
     /* biome-ignore lint/complexity/noImportantStyles: honor reduced-motion over component transitions */
     transition-duration: 0.01ms !important;
+    /* biome-ignore lint/complexity/noImportantStyles: honor reduced-motion over smooth scroll */
     scroll-behavior: auto !important;
   }
 }

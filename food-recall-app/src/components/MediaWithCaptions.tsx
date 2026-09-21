@@ -13,7 +13,7 @@
 interface Props {
   src: string;
   type: "video" | "audio";
-  captionsSrc?: string;
+  captionsSrc: string;
   captionsLabel?: string;
   transcript?: string;
   poster?: string;
@@ -32,16 +32,9 @@ export default function MediaWithCaptions({
   if (type === "audio") {
     return (
       <div className="space-y-2">
-        <audio
-          controls
-          preload="metadata"
-          aria-label={title}
-          className="w-full"
-        >
+        <audio controls preload="metadata" aria-label={title} className="w-full">
           <source src={src} />
-          {captionsSrc && (
-            <track kind="captions" src={captionsSrc} srcLang="en" label={captionsLabel} default />
-          )}
+          <track kind="captions" src={captionsSrc} srcLang="en" label={captionsLabel} default />
           Your browser does not support audio playback. {transcript && `Transcript: ${transcript}`}
         </audio>
         {transcript && (
@@ -64,9 +57,7 @@ export default function MediaWithCaptions({
         className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800"
       >
         <source src={src} />
-        {captionsSrc && (
-          <track kind="captions" src={captionsSrc} srcLang="en" label={captionsLabel} default />
-        )}
+        <track kind="captions" src={captionsSrc} srcLang="en" label={captionsLabel} default />
         {/* Audio description track when provided as separate captions file */}
         Your browser does not support video playback. {transcript && `Transcript: ${transcript}`}
       </video>
