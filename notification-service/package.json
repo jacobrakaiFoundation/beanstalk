@@ -21,7 +21,7 @@
     "better-sqlite3": "^13.0.3",
     "cheerio": "^1.1.2",
     "fast-xml-parser": "^5.2.5",
-    "fastify": "^5.6.1",
+    "fastify": "^5.12.5",
     "google-auth-library": "^11.0.2",
     "jose": "^6.1.0"
   },
