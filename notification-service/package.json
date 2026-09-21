@@ -22,7 +22,7 @@
     "cheerio": "^1.1.2",
     "fast-xml-parser": "^5.2.5",
     "fastify": "^5.6.1",
-    "google-auth-library": "^11.0.2",
+    "google-auth-library": "^11.1.0",
     "jose": "^6.1.0"
   },
   "devDependencies": {
