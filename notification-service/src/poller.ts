@@ -1,4 +1,5 @@
 import type { AppDatabase } from "./database.js";
+import { canonicalizeFdaUrl } from "./domain.js";
 import type { NotificationQueue } from "./queue.js";
 import {
   enrichFromAnnouncement,
@@ -48,7 +49,8 @@ export class FdaPoller {
       const parsed = parseRss(await this.source.fetchRss(), startedAt);
       const state = this.database.getPollState();
       if (!state.initialized) return await this.seed(parsed, startedAt);
-      const cursorIndex = parsed.findIndex((item) => item.cursorKey === state.cursorKey);
+      const directIndex = parsed.findIndex((item) => item.cursorKey === state.cursorKey);
+      const cursorIndex = directIndex < 0 ? await this.renamedCursorIndex(parsed, state.cursorKey) : directIndex;
       if (cursorIndex < 0) return await this.reconcileGap(parsed, startedAt);
       return await this.ingestNormal(parsed, cursorIndex, startedAt);
     } catch (error) {
@@ -125,6 +127,30 @@ export class FdaPoller {
     ingest();
     this.logger.info({ newNoticeCount: newItems.length, queuedCount }, "FDA RSS update completed");
     return { kind: "updated", newNoticeCount: newItems.length, queuedCount };
+  }
+
+  /**
+   * FDA sometimes corrects an announcement's slug in place, dropping the old URL
+   * from RSS and 301-redirecting it to the new one. The annual XML only ever
+   * lists the new URL, so gap reconciliation can never find the old cursor.
+   * A redirect from the cursor to a URL still in the feed proves continuity.
+   * Returns -1 when the cursor is not a renamed feed item.
+   */
+  private async renamedCursorIndex(items: ParsedRssItem[], cursorKey: string | null): Promise<number> {
+    if (!cursorKey) return -1;
+    let finalURL: string;
+    try {
+      ({ finalURL } = await this.source.fetchAnnouncement(cursorKey));
+    } catch (error) {
+      // A removed page is a real gap; annual reconciliation decides it.
+      this.logger.warn({ cursorKey, error: errorMessage(error) }, "Previous RSS cursor did not resolve");
+      return -1;
+    }
+    const renamedKey = canonicalizeFdaUrl(finalURL);
+    if (renamedKey === cursorKey) return -1;
+    const index = items.findIndex((item) => item.cursorKey === renamedKey);
+    if (index >= 0) this.logger.warn({ cursorKey, renamedKey }, "Previous RSS cursor was renamed by FDA");
+    return index;
   }
 
   private async reconcileGap(items: ParsedRssItem[], now: string): Promise<PollResult> {
