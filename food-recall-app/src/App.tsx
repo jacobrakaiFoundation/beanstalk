@@ -417,7 +417,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={handleEnableNotifications}
-                aria-label="Enable browser alert notifications for watchlist recalls"
+                aria-label="Enable alerts for watchlist recalls"
                 className="btn btn-quiet px-3"
               >
                 Enable alerts
@@ -426,7 +426,7 @@ export default function App() {
             {notificationsEnabled && (
               <span
                 className="chip chip-personal min-h-[44px] px-3"
-                aria-label="Browser alert notifications are enabled"
+                aria-label="Alerts on for watchlist recalls"
                 role="status"
               >
                 Alerts on

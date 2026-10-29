@@ -111,8 +111,11 @@ describe("App notification integration", () => {
   it("initializes notificationsEnabled as false when permission is not granted", () => {
     removeNotificationAPI();
     render(<App />);
-    // Button should appear because notifications are not enabled and permission is not denied
-    expect(screen.getByRole("button", { name: /enable browser alert/i })).toBeInTheDocument();
+    // Button should appear because notifications are not enabled and permission is not denied.
+    // WCAG 2.5.3: the accessible name must include the visible text.
+    const enable = screen.getByRole("button", { name: /^enable alerts/i });
+    expect(enable).toHaveTextContent("Enable alerts");
+    expect(enable).toHaveAccessibleName(/^Enable alerts\b/);
   });
 
   it("initializes notificationsEnabled as true when permission is granted and localStorage preference is set", async () => {
@@ -120,11 +123,11 @@ describe("App notification integration", () => {
     mockGetPermissionStatus = () => "granted";
     localStorage.setItem("notificationsEnabled", "true");
     render(<App />);
-    await waitFor(() => {
-      expect(screen.getByText(/alerts on/i)).toBeInTheDocument();
-    });
+    const status = await screen.findByRole("status", { name: /^alerts on/i });
+    expect(status).toHaveTextContent("Alerts on");
+    expect(status).toHaveAccessibleName(/^Alerts on\b/);
     // Enable Alerts button should NOT be present
-    expect(screen.queryByRole("button", { name: /enable browser alert/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^enable alerts/i })).not.toBeInTheDocument();
   });
 
   it("initializes notificationsEnabled as false when permission is granted but localStorage preference is not set", () => {
@@ -132,14 +135,14 @@ describe("App notification integration", () => {
     mockGetPermissionStatus = () => "granted";
     // localStorage has no notificationsEnabled key
     render(<App />);
-    expect(screen.getByRole("button", { name: /enable browser alert/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^enable alerts/i })).toBeInTheDocument();
   });
 
   it("hides Enable Alerts button when permission is denied", () => {
     mockNotificationAPI("denied");
     mockGetPermissionStatus = () => "denied";
     render(<App />);
-    expect(screen.queryByRole("button", { name: /enable browser alert/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^enable alerts/i })).not.toBeInTheDocument();
   });
 
   it("clicking Enable Alerts calls requestNotificationPermission", async () => {
@@ -148,7 +151,7 @@ describe("App notification integration", () => {
     mockRequestPermission.mockResolvedValue(true);
     render(<App />);
 
-    const button = await screen.findByRole("button", { name: /enable browser alert/i });
+    const button = await screen.findByRole("button", { name: /^enable alerts/i });
     fireEvent.click(button);
 
     await waitFor(() => {
@@ -162,7 +165,7 @@ describe("App notification integration", () => {
     mockRequestPermission.mockResolvedValue(true);
     render(<App />);
 
-    const button = await screen.findByRole("button", { name: /enable browser alert/i });
+    const button = await screen.findByRole("button", { name: /^enable alerts/i });
     fireEvent.click(button);
 
     await waitFor(() => {
@@ -176,7 +179,7 @@ describe("App notification integration", () => {
     mockRequestPermission.mockResolvedValue(true);
     render(<App />);
 
-    const button = await screen.findByRole("button", { name: /enable browser alert/i });
+    const button = await screen.findByRole("button", { name: /^enable alerts/i });
     fireEvent.click(button);
 
     await waitFor(() => {
@@ -190,7 +193,7 @@ describe("App notification integration", () => {
     mockRequestPermission.mockResolvedValue(false);
     render(<App />);
 
-    const button = await screen.findByRole("button", { name: /enable browser alert/i });
+    const button = await screen.findByRole("button", { name: /^enable alerts/i });
     fireEvent.click(button);
 
     // Wait a tick for the async handler
@@ -198,7 +201,7 @@ describe("App notification integration", () => {
       expect(mockRequestPermission).toHaveBeenCalled();
     });
     // Button should still be visible (state is false)
-    expect(screen.getByRole("button", { name: /enable browser alert/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^enable alerts/i })).toBeInTheDocument();
   });
 });
 
