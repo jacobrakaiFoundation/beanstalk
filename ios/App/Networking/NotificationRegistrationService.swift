@@ -81,7 +81,19 @@ final class NotificationRegistrationService: ObservableObject {
         let snapshot = captureTerms(terms)
         guard isPushConfigured() else {
             applyUnavailableState()
+            // Build 3 stored device credentials in the keychain. Do not delete them
+            // before the server DELETE: the client secret is what authenticates it.
+            // Success, 401, and 404 clear the keychain. A network failure leaves it
+            // so the next launch can retry.
+            if await deviceAPI.hasStoredRegistration() {
+                try? await deviceAPI.setAlertsEnabled(false)
+                let deletion = operationQueue.enqueue { [weak self] in
+                    await self?.performRegistrationDeletion()
+                }
+                await deletion.value
+            }
             hasStoredRegistration = await deviceAPI.hasStoredRegistration()
+            applyUnavailableState()
             return
         }
         await refreshStatus()

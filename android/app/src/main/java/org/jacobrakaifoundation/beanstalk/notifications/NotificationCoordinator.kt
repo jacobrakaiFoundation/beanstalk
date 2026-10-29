@@ -42,6 +42,12 @@ class NotificationCoordinator(
     suspend fun synchronize() {
         try {
             repository.deletePendingDeviceRegistration()
+            // Build 3 upgraders can still hold a registration after push is turned off.
+            // Delete it on the server before forgetting the local credentials. A failed
+            // delete keeps those credentials so the next launch can retry.
+            if (!isPushConfigured() && repository.hasDeviceRegistration()) {
+                repository.deleteDeviceRegistration()
+            }
         } catch (error: CancellationException) {
             throw error
         } catch (_: Exception) {

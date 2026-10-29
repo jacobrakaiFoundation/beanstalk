@@ -27,16 +27,38 @@ import org.robolectric.annotation.Config
 @Config(application = Application::class, sdk = [35])
 class NotificationCoordinatorTest {
     @Test
-    fun `synchronize without push never claims alerts are on`() = runBlocking {
+    fun `synchronize without push deletes a leftover registration and does not claim alerts are on`() = runBlocking {
         val credentials = MemoryCredentials(DeviceCredentials("device", "secret", "old-token"))
         val harness = harness(pushConfigured = false, credentials = credentials)
         try {
+            harness.server.enqueue(MockResponse().setResponseCode(204))
             harness.coordinator.synchronize()
+            val deletion = checkNotNull(harness.server.takeRequest(2, TimeUnit.SECONDS))
+            assertEquals("DELETE", deletion.method)
+            assertEquals("/v1/devices/me", deletion.path)
+            assertEquals(1, harness.server.requestCount)
+            assertNull(credentials.load())
             val state = harness.coordinator.state.value
             assertEquals(AlertControlPolicy.UNAVAILABLE_MESSAGE, state.message)
             assertFalse(state.alertsEnabled)
             assertFalse(state.alertsAvailable)
-            assertEquals(0, harness.server.requestCount)
+        } finally {
+            harness.close()
+        }
+    }
+
+    @Test
+    fun `synchronize without push keeps credentials when the leftover delete fails`() = runBlocking {
+        val credentials = MemoryCredentials(DeviceCredentials("device", "secret", "old-token"))
+        val harness = harness(pushConfigured = false, credentials = credentials)
+        try {
+            harness.server.shutdown()
+            harness.coordinator.synchronize()
+            assertEquals("old-token", credentials.load()?.pushIdentifier)
+            assertTrue(harness.repository.isDeviceDeletionPending())
+            val state = harness.coordinator.state.value
+            assertEquals(AlertControlPolicy.UNAVAILABLE_MESSAGE, state.message)
+            assertFalse(state.alertsEnabled)
         } finally {
             harness.close()
         }
