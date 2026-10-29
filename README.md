@@ -50,7 +50,7 @@ The app stores saved records and watch terms locally. If the user enables alerts
 - Watch terms match Unicode words and phrases without broad negation rules. Queue rows are durable and deduplicated by notice and device.
 - The existing web app remains available as a historical browser. Its CAERS Early Signals view is outside the first native iPhone release.
 
-Beanstalk is independent and is not affiliated with or endorsed by FDA. It is not medical advice. For meat, poultry, and processed egg products, also check [USDA FSIS recalls](https://www.fsis.usda.gov/recalls).
+Beanstalk is independent and is not affiliated with or endorsed by FDA or USDA FSIS. It is not medical advice. The web app merges a USDA FSIS recall snapshot with a Source filter. The iPhone app covers FDA-published notices and openFDA history; for meat, poultry, and processed egg products on native clients, also check [USDA FSIS recalls](https://www.fsis.usda.gov/recalls).
 
 ## Run the Android sideload APK
 
@@ -124,10 +124,11 @@ For changes, run `npm run check`, `npm run build`, and `npm run test:coverage`. 
 ios/                       Native SwiftUI app and portable core tests
 android/                   Native Compose app (`./gradlew :app:assembleDebug`)
 android-apk/               Capacitor wrap of the web app (CI sideload artifact)
-notification-service/      FDA notice ingestion, device API, SQLite queue, APNs
-food-recall-app/            Existing React/PWA historical browser and public pages
-docs/app-store/             Enrollment, privacy, metadata, review, and release package
-docs/readme/                Date-stamped project screenshots
+notification-service/      FDA notice ingestion, device API, SQLite queue, APNs/FCM
+food-recall-app/           React/PWA historical browser, FSIS snapshot, public pages
+openfda-proxy/             Cloudflare Worker re-exposing openFDA Link / search_after
+docs/app-store/            Enrollment, privacy, metadata, review, and release package
+docs/readme/               Date-stamped project screenshots
 ```
 
 ## App Store release state
