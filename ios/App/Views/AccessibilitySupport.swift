@@ -80,7 +80,7 @@ struct CaptionedVideoPlayer: View {
     var body: some View {
         VideoPlayer(player: AVPlayer(url: url))
             .accessibilityLabel(title)
-            .accessibilityHint("Video. Captions available. Supports audio descriptions via transcript.")
+            .accessibilityHint("Plays video.")
         // AVPlayerViewController automatically shows CC button when a WebVTT track is bundled.
         // For audio descriptions, provide a sibling Transcript view.
     }
