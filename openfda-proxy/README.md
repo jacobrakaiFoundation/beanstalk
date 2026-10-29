@@ -15,4 +15,4 @@ npx wrangler deploy
 # optional: npx wrangler secret put OPENFDA_API_KEY
 ```
 
-Run helper tests with `node --test` in this directory.
+Run helper tests with `npm test` (or `node --test src/index.test.js`) in this directory.
