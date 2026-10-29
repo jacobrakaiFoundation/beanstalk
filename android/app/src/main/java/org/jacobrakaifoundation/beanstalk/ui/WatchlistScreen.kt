@@ -100,8 +100,15 @@ fun WatchlistScreen(
             InformationBanner(
                 "Matches use case-insensitive whole words or exact phrases and show where each match occurred. A match does not determine dietary safety.",
             )
-            Text("Alert status", style = MaterialTheme.typography.titleMedium)
-            InformationBanner(state.notificationState.message)
+            if (
+                AlertControlPolicy.showsAlertControls(
+                    state.notificationState.alertsEnabled,
+                    state.notificationState.alertsAvailable,
+                )
+            ) {
+                Text("Alert status", style = MaterialTheme.typography.titleMedium)
+                InformationBanner(state.notificationState.message)
+            }
             Text("Add a watch term", style = MaterialTheme.typography.titleMedium)
             OutlinedTextField(
                 value = draft,

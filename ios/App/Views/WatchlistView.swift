@@ -60,10 +60,15 @@ struct WatchlistView: View {
                     }
                 }
 
-                Section("Alert status") {
-                    Text(notifications.statusMessage)
-                        .foregroundStyle(.secondary)
-                    if notifications.isWorking { ProgressView() }
+                if AlertControlPolicy.showsAlertControls(
+                    alertsEnabled: notifications.alertsEnabled,
+                    alertsAvailable: notifications.alertsAvailable
+                ) {
+                    Section("Alert status") {
+                        Text(notifications.statusMessage)
+                            .foregroundStyle(.secondary)
+                        if notifications.isWorking { ProgressView() }
+                    }
                 }
 
                 if !terms.isEmpty {

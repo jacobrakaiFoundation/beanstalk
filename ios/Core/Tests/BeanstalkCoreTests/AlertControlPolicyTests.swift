@@ -94,6 +94,18 @@ final class AlertControlPolicyTests: XCTestCase {
         XCTAssertFalse(AlertControlPolicy.pushRegistrationFailedMessage.contains("{"))
     }
 
+    func testPushOffCopyDoesNotMentionAlerts() {
+        XCTAssertFalse(AlertControlPolicy.showsAlertControls(alertsEnabled: false, alertsAvailable: false))
+        XCTAssertTrue(AlertControlPolicy.showsAlertControls(alertsEnabled: false, alertsAvailable: true))
+        let intro = AlertControlPolicy.freeAppDescription(alertsAvailable: false)
+        let donation = AlertControlPolicy.donationDescription(alertsAvailable: false)
+        XCTAssertFalse(intro.localizedCaseInsensitiveContains("alert"))
+        XCTAssertFalse(donation.localizedCaseInsensitiveContains("alert"))
+        XCTAssertFalse(intro.contains("Coming soon"))
+        XCTAssertFalse(donation.contains("Coming soon"))
+        XCTAssertTrue(AlertControlPolicy.freeAppDescription(alertsAvailable: true).contains("alert feature"))
+    }
+
     func testUnavailableCopyIsComingSoonNotDebugJargon() {
         XCTAssertEqual(AlertControlPolicy.unavailableMessage, "Coming soon")
         XCTAssertFalse(AlertControlPolicy.unavailableMessage.localizedCaseInsensitiveContains("debug"))

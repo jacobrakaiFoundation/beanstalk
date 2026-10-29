@@ -23,4 +23,8 @@ object AlertControlPolicy {
 
     fun shouldOfferEnable(alertsEnabled: Boolean, alertsAvailable: Boolean): Boolean =
         settingsAction(alertsEnabled, alertsAvailable) == AlertSettingsAction.TURN_ON
+
+    /** Push-off builds hide alert controls. The copy stays for a later build that enables push. */
+    fun showsAlertControls(alertsEnabled: Boolean, alertsAvailable: Boolean): Boolean =
+        alertsEnabled || alertsAvailable
 }
