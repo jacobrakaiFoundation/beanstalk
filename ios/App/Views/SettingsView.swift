@@ -86,11 +86,6 @@ struct SettingsView: View {
                     )
                     InformationBanner(
                         icon: "exclamationmark.shield",
-                        text: "Not a medical device; consult a professional.",
-                        color: .orange
-                    )
-                    InformationBanner(
-                        icon: "exclamationmark.shield",
                         text: "Beanstalk is not medical advice. No result means only that no matching record was found; it never means a product is safe.",
                         color: .orange
                     )
