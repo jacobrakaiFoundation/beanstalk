@@ -17,10 +17,14 @@ struct SettingsView: View {
             Form {
                 Section {
                     BeanstalkHeader()
-                    Text("Beanstalk is free. Every search, saved record, watch term, and alert feature is available without payment.")
+                    Text(AlertControlPolicy.freeAppDescription(alertsAvailable: notifications.alertsAvailable))
                         .font(.subheadline)
                 }
 
+                if AlertControlPolicy.showsAlertControls(
+                    alertsEnabled: notifications.alertsEnabled,
+                    alertsAvailable: notifications.alertsAvailable
+                ) {
                 Section("Notifications") {
                     Text(notifications.statusMessage)
                         .foregroundStyle(.secondary)
@@ -47,6 +51,18 @@ struct SettingsView: View {
                         }
                     }
                 }
+                .confirmationDialog(
+                    "Remove this device from Beanstalk alerts",
+                    isPresented: $confirmingServerDeletion,
+                    titleVisibility: .visible
+                ) {
+                    Button("Remove this device", role: .destructive) {
+                        Task { await notifications.disableAlerts() }
+                    }
+                } message: {
+                    Text("Beanstalk will stop local alerts and delete the server registration if one exists. Your watchlist remains on this iPhone.")
+                }
+                }
 
                 Section("Data on this iPhone") {
                     LabeledContent("Saved recalls", value: String(savedItems.count))
@@ -63,7 +79,7 @@ struct SettingsView: View {
                 }
 
                 Section("Support the Foundation") {
-                    Text("Donations are optional. Donating unlocks nothing in Beanstalk and does not change recall results or alerts.")
+                    Text(AlertControlPolicy.donationDescription(alertsAvailable: notifications.alertsAvailable))
                     Link(destination: AppConfiguration.donationURL) {
                         Label("Donate to JACOBRAKAI FOUNDATION", systemImage: "arrow.up.right.square")
                     }
@@ -101,17 +117,6 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
-            .confirmationDialog(
-                "Remove this device from Beanstalk alerts",
-                isPresented: $confirmingServerDeletion,
-                titleVisibility: .visible
-            ) {
-                Button("Remove this device", role: .destructive) {
-                    Task { await notifications.disableAlerts() }
-                }
-            } message: {
-                Text("Beanstalk will stop local alerts and delete the server registration if one exists. Your watchlist remains on this iPhone.")
-            }
             .confirmationDialog(
                 "Clear Beanstalk data from this iPhone?",
                 isPresented: $confirmingLocalDeletion,

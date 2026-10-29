@@ -3,8 +3,10 @@ package org.jacobrakaifoundation.beanstalk.ui
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.UriHandler
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -52,18 +54,44 @@ class SettingsScreenTest {
         )
     }
 
+    @Test
+    fun `push off hides notification copy`() {
+        setSettings(state = BeanstalkUiState(notificationState = NotificationState("Coming soon")))
+        compose.onAllNodesWithText("Coming soon", substring = true).assertCountEquals(0)
+        compose.onAllNodesWithText("Notifications").assertCountEquals(0)
+        compose.onAllNodesWithText("Enable alerts").assertCountEquals(0)
+        compose.onAllNodesWithText("Turn alerts off").assertCountEquals(0)
+        compose.onAllNodesWithText("alert", substring = true, ignoreCase = true).assertCountEquals(0)
+        compose.onNodeWithText("This device").assertIsDisplayed()
+        compose.onNodeWithText("Clear saved data").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `push on shows notification controls`() {
+        setSettings(
+            state = BeanstalkUiState(
+                notificationState = NotificationState("Alerts are off.", alertsAvailable = true),
+            ),
+        )
+        compose.onNodeWithText("Notifications").assertIsDisplayed()
+        compose.onNodeWithText("Enable alerts").performScrollTo().assertIsDisplayed()
+    }
+
     private fun clickLink(label: String) {
         compose.onNodeWithText(label).performScrollTo().assertIsDisplayed().performClick()
     }
 
-    private fun setSettings(uriHandler: UriHandler = RecordingUriHandler(mutableListOf())) {
+    private fun setSettings(
+        state: BeanstalkUiState = BeanstalkUiState(
+            notificationState = NotificationState("Alerts are not available on this device."),
+        ),
+        uriHandler: UriHandler = RecordingUriHandler(mutableListOf()),
+    ) {
         compose.setContent {
             CompositionLocalProvider(LocalUriHandler provides uriHandler) {
                 BeanstalkTheme {
                     SettingsScreen(
-                        state = BeanstalkUiState(
-                            notificationState = NotificationState("Alerts are not available on this device."),
-                        ),
+                        state = state,
                         onRequestNotifications = {},
                         onDisableNotifications = {},
                         onClearLocalData = {},
