@@ -1,17 +1,13 @@
 import SwiftUI
 
 /// iPhone accessibility support for App Store declarations.
-/// Each of the 9 App Store features is claimable because common tasks
-/// (onboarding, search, filters, view details, save, watchlist, settings, help)
-/// are operable with that feature.
+/// Common tasks (onboarding, search, filters, view details, save, watchlist,
+/// settings, help) are operable with VoiceOver, Voice Control, Larger Text,
+/// Dark Interface, Differentiate Without Color Alone, Sufficient Contrast,
+/// and Reduced Motion.
 ///
-/// Covers: VoiceOver, Voice Control, Larger Text (Dynamic Type), Dark Interface,
-/// Differentiate Without Color Alone, Sufficient Contrast, Reduced Motion,
-/// Captions, Audio Descriptions.
-///
-/// No video/audio ships today; captions infrastructure is prepared so that
-/// any future AVPlayerViewController will enable closedCaptionDisplayEnabled
-/// and provide a transcript (see VideoPlayerSupport).
+/// Captions and audio descriptions are not claimed. The app ships no audio
+/// or video, so it cannot support either feature.
 
 enum AccessibilitySupport {
     static let supportsVoiceOver = true
@@ -21,8 +17,8 @@ enum AccessibilitySupport {
     static let supportsDifferentiateWithoutColor = true
     static let supportsSufficientContrast = true
     static let supportsReducedMotion = true
-    static let supportsCaptions = true // via AVPlayerViewController + WebVTT <track>
-    static let supportsAudioDescriptions = true // via transcript fallback
+    static let supportsCaptions = false
+    static let supportsAudioDescriptions = false
 }
 
 // MARK: - Reduced Motion aware modifier
