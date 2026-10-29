@@ -137,3 +137,7 @@ The repository contains the implementation and a draft release package. Its App 
 ## Support the Foundation
 
 [Donate to JACOBRAKAI FOUNDATION](https://jacobrakai.org/donate/), a 501(c)(3) public charity (legal name JACOBRAKAI FOUNDATION; EIN 33-3382083). Donations are optional and unlock no app feature.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
