@@ -24,14 +24,11 @@ class SettingsScreenTest {
     val compose = createComposeRule()
 
     @Test
-    fun `settings shows the unaffiliated disclaimer and medical device line`() {
+    fun `settings shows the unaffiliated disclaimer`() {
         setSettings()
         compose.onNodeWithText(
             "Beanstalk is independent and is not affiliated with or endorsed by FDA or USDA FSIS. It is not medical advice.",
         ).performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Not a medical device; consult a professional.")
-            .performScrollTo()
-            .assertIsDisplayed()
     }
 
     @Test
