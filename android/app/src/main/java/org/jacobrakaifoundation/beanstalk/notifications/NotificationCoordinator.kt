@@ -3,6 +3,7 @@ package org.jacobrakaifoundation.beanstalk.notifications
 import android.content.Context
 import com.google.firebase.FirebaseApp
 import com.google.firebase.messaging.FirebaseMessaging
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -39,6 +40,18 @@ class NotificationCoordinator(
     }
 
     suspend fun synchronize() {
+        try {
+            repository.deletePendingDeviceRegistration()
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
+            mutableState.value = if (isPushConfigured()) {
+                NotificationState(AlertControlPolicy.DISABLE_FAILED_MESSAGE, alertsAvailable = true)
+            } else {
+                unavailableState()
+            }
+            return
+        }
         if (!isPushConfigured()) {
             mutableState.value = unavailableState()
             return
