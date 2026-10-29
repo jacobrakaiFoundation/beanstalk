@@ -61,6 +61,11 @@ struct RecallsView: View {
                 }
                 InformationBanner(
                     icon: "exclamationmark.shield",
+                    text: "Beanstalk is independent and is not affiliated with or endorsed by FDA or USDA FSIS. It is not medical advice.",
+                    color: .orange
+                )
+                InformationBanner(
+                    icon: "exclamationmark.shield",
                     text: "No matching record does not mean a product is safe.",
                     color: .orange
                 )
