@@ -12,11 +12,11 @@ The intended users are people checking food products or dietary concerns, commun
 
 ## What exists today
 
-The free, accountless web app searches the openFDA food enforcement archive by product, company, and hazard. It supports state and dietary-term filters, local watchlists, locally cached query results, and source detail views. A separate Early Signals view labels CAERS adverse event reports as unverified.
+The free, accountless web app searches the openFDA food enforcement archive and a USDA FSIS recall snapshot (Source filter: All / FDA / USDA-FSIS) by product, company, and hazard. It supports state and dietary-term filters, local watchlists, locally cached query results, and source detail views. A separate Early Signals view labels CAERS adverse event reports as unverified.
 
 The repository also contains a native iPhone implementation and a notification service designed around FDA public announcements. That implementation is not evidence of an App Store release or operating production alerts. The [release checklist](app-store/release-checklist.md) tracks the required checks.
 
-Beanstalk is independent of FDA. openFDA enforcement records are an archive, not a live recall-lifecycle or public-alert feed. Empty results do not establish product safety. See the [FDA source and limitations](https://open.fda.gov/apis/food/enforcement/) and [project data boundaries](../README.md#data-and-notification-boundaries).
+Beanstalk is independent of FDA and USDA FSIS. openFDA enforcement records are an archive, not a live recall-lifecycle or public-alert feed. The FSIS data is a build-time snapshot, not a live USDA alert feed. Empty results do not establish product safety. See the [FDA source and limitations](https://open.fda.gov/apis/food/enforcement/), [FSIS recalls](https://www.fsis.usda.gov/recalls), and [project data boundaries](../README.md#data-and-notification-boundaries).
 
 ## Proposed funding priorities
 
