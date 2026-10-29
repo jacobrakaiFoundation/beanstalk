@@ -1,6 +1,6 @@
-# Beanstalk — Food Recall Tracker
+# Beanstalk — FDA and USDA FSIS food recall search
 
-Search and filter food enforcement records **as published by openFDA**, with dietary concern matching, watchlist alerts, and an offline-capable PWA. Not a live FDA recall-lifecycle feed.
+Search and filter openFDA enforcement records and a USDA FSIS recall snapshot, with dietary concern matching, watchlist alerts, and an offline-capable PWA. Not a live FDA or USDA recall-lifecycle feed.
 
 ## Stack
 Vite + React 19 + TypeScript + Tailwind CSS v4 + PWA (Workbox)
@@ -23,7 +23,7 @@ Vite + React 19 + TypeScript + Tailwind CSS v4 + PWA (Workbox)
 cd food-recall-app
 npm ci
 npm run dev    # http://localhost:5173
-npm run build  # output: dist/
+npm run build  # fetch:fsis + tsc --noEmit + vite build → dist/
 npm run test   # vitest (unit + component)
 ```
 
@@ -31,7 +31,7 @@ npm run test   # vitest (unit + component)
 - **Tabs**: **Recalls** (enforcement) and **Early Signals** (unverified CAERS adverse event reports)
 - **Search**: Debounced cross-field search (product, reason, firm, reaction) with grouped OR clauses
 - **Early Signals**: Search product brand / reactions / outcomes; FDA “not scientifically verified” disclaimer on every event surface; related CAERS links on recall detail
-- **Filters**: Classification (I/II/III), Status (Ongoing/Completed/Terminated), Distribution State, Dietary Concerns (14 allergen types with negation handling) — recall tab only
+- **Filters**: Classification (I/II/III), Status (Ongoing/Completed/Terminated), Source (All / FDA / USDA-FSIS), Distribution State, Dietary Concerns (9 FDA major allergens plus 5 broader text matches, with negation handling) — recall tab only
 - **Watchlist**: Save keywords for browser notification alerts when matching recalls or adverse event reports appear
 - **Alerts**: Browser push notifications via Notification API, permission-gated
 - **PWA**: Installable, offline-capable with Workbox precaching and service worker
@@ -50,7 +50,8 @@ npm run test   # vitest (unit + component)
 - `formatDate.test.ts` — Date formatting, new-recall detection
 - `notifications.test.ts` — Permission flow, send/create
 - `SearchBar.test.tsx` — Label, value, onChange (includes reaction placeholder)
-- `FilterPanel.test.tsx` — Select options, onChange, clear
+- `FilterPanel.test.tsx` — Select options (including Source), onChange, clear
+- `fsis.test.ts` — FSIS record mapping, archive filter, status/classification handling
 - `landingPages.test.ts` — Discovery tags, JSON-LD, sitemap, and social meta on public HTML pages
 
 ## Deploy
@@ -64,6 +65,7 @@ The Android sideload APK uses `npm run build:android` (`VITE_BASE=/` plus `npx c
 ## Environment Variables
 | Variable | Required | Description |
 |---|---|---|
-| `VITE_OPENFDA_KEY` | No | openFDA API key (40→240 req/min) |
+| `VITE_OPENFDA_KEY` | No | openFDA API key (40→240 req/min); also usable by the Vite proxy |
+| `OPENFDA_API_KEY` | No | Server-side key for the Vite `/api/food` proxy (`vite.config.ts`); preferred over bundling `VITE_OPENFDA_KEY` |
 | `VITE_OPENFDA_PROXY` | No (Pages build sets it) | CORS proxy origin that re-exposes `Link` / `search_after`. No trailing slash. |
 | `VITE_DEMO` | No | Set to `true` to enable demo mode by default |

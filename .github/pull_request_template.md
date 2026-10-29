@@ -19,7 +19,7 @@ Closes #
 -
 
 ## How tested
-- [ ] `npm run build` passes (`tsc && vite build`) in `food-recall-app/`
+- [ ] `npm run build` passes (`fetch:fsis` + `tsc --noEmit` + `vite build`) in `food-recall-app/`
 - [ ] Manual verification (attach screenshot if UI)
 
 ## Screenshots / Recordings
