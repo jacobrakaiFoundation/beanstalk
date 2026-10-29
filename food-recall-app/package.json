@@ -2,6 +2,7 @@
   "name": "food-recall-app",
   "private": true,
   "version": "0.1.0",
+  "license": "MIT",
   "homepage": "https://jacobrakaifoundation.github.io/beanstalk/",
   "type": "module",
   "scripts": {
