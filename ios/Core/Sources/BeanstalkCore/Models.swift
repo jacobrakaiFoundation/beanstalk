@@ -115,6 +115,28 @@ public struct EnforcementRecord: Codable, Hashable, Identifiable, Sendable {
         return components.url!
     }
 
+    /// FDA's enforcement-report app opens `?Event=` as the iRES recall event.
+    /// openFDA `event_id` is that id. A product row needs an iRES product id,
+    /// which this record does not contain, so an event with several recall
+    /// numbers still lands on the shared event page.
+    public var fdaEnforcementReportURL: URL? {
+        guard let eventID = Self.enforcementReportEventID(eventID) else { return nil }
+        var components = URLComponents(string: "https://www.accessdata.fda.gov/scripts/ires/index.cfm")!
+        components.queryItems = [URLQueryItem(name: "Event", value: eventID)]
+        return components.url
+    }
+
+    public static func enforcementReportEventID(_ raw: String) -> String? {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        let digits = CharacterSet(charactersIn: "0123456789")
+        guard (1...12).contains(trimmed.count),
+              trimmed.unicodeScalars.allSatisfy(digits.contains),
+              !trimmed.hasPrefix("0") else {
+            return nil
+        }
+        return trimmed
+    }
+
     public var searchableFields: [WatchField] {
         [
             WatchField(name: "product", text: productDescription),

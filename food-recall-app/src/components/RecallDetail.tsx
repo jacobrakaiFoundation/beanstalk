@@ -1,5 +1,6 @@
 import { type ReactNode, useEffect, useRef } from "react";
 import { riskLevel } from "../lib/classification";
+import { fdaEnforcementReportURL } from "../lib/enforcementReportLink";
 import { formatRecallDate, toISODate } from "../lib/formatDate";
 import { categorizeReason, hazardLabel } from "../lib/reasonCategory";
 import type { AdverseEvent } from "../types/event";
@@ -117,6 +118,7 @@ export default function RecallDetail({ recall, onClose, onSelectEvent }: Props) 
     .filter(Boolean)
     .join(", ");
   const isFsis = recall.source === "USDA-FSIS";
+  const enforcementReportURL = isFsis ? null : fdaEnforcementReportURL(recall.eventId);
   const rawLink = recall.link ?? "";
   const fsisLink = isFsis && (rawLink.startsWith("http://") || rawLink.startsWith("https://")) ? rawLink : "";
   const classificationNote =
@@ -241,12 +243,10 @@ export default function RecallDetail({ recall, onClose, onSelectEvent }: Props) 
                   View on FSIS →
                 </a>
               </p>
-            ) : (
+            ) : enforcementReportURL ? (
               <p className="mt-3">
                 <a
-                  href={`https://www.accessdata.fda.gov/scripts/ires/index.cfm?Product=${encodeURIComponent(
-                    recall.productDescription.slice(0, 80),
-                  )}#tabNav_advancedSearch`}
+                  href={enforcementReportURL}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex min-h-[44px] items-center font-medium text-emerald-800 underline underline-offset-2 dark:text-emerald-300"
@@ -254,7 +254,7 @@ export default function RecallDetail({ recall, onClose, onSelectEvent }: Props) 
                   View on FDA Enforcement Reports →
                 </a>
               </p>
-            )}
+            ) : null}
             {!isFsis && (
               <p className="hint">
                 Developer:{" "}
