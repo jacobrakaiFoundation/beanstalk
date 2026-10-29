@@ -261,7 +261,6 @@ jobs:
           --tests org.jacobrakaifoundation.beanstalk.ui.BrowseRequestTest
           --tests org.jacobrakaifoundation.beanstalk.ui.NotificationDetailStateReducerTest
           --tests org.jacobrakaifoundation.beanstalk.ui.WatchlistScreenTest
-          --tests org.jacobrakaifoundation.beanstalk.ui.SettingsScreenTest
 
       - name: Upload native debug APK
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

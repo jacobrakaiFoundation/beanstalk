@@ -105,22 +105,6 @@ final class AlertControlPolicyTests: XCTestCase {
         )
     }
 
-    func testTurningOnAlertsDisclosureAppearsOnlyWhenPushCanBeEnabled() {
-        XCTAssertEqual(
-            AlertControlPolicy.turningOnAlertsDisclosure(alertsEnabled: false, alertsAvailable: true),
-            AlertControlPolicy.turningOnAlertsDisclosureMessage
-        )
-        XCTAssertNil(
-            AlertControlPolicy.turningOnAlertsDisclosure(alertsEnabled: false, alertsAvailable: false)
-        )
-        XCTAssertNil(
-            AlertControlPolicy.turningOnAlertsDisclosure(alertsEnabled: true, alertsAvailable: true)
-        )
-        XCTAssertTrue(
-            AlertControlPolicy.turningOnAlertsDisclosureMessage.contains("Jacobrakai Foundation's notification service")
-        )
-    }
-
     func testPushConfiguredReadsExplicitInfoPlistValuesOnly() {
         XCTAssertFalse(AlertControlPolicy.isPushConfigured(infoValue: nil))
         XCTAssertFalse(AlertControlPolicy.isPushConfigured(infoValue: false))

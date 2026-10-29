@@ -1,9 +1,7 @@
 package org.jacobrakaifoundation.beanstalk.ui
 
-import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
-import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -12,7 +10,6 @@ import org.jacobrakaifoundation.beanstalk.data.model.NoticeWatchResult
 import org.jacobrakaifoundation.beanstalk.data.model.RecallNotice
 import org.jacobrakaifoundation.beanstalk.data.model.WatchMatch
 import org.jacobrakaifoundation.beanstalk.data.model.WatchTerm
-import org.jacobrakaifoundation.beanstalk.notifications.AlertControlPolicy
 import org.jacobrakaifoundation.beanstalk.notifications.NotificationState
 import org.jacobrakaifoundation.beanstalk.ui.theme.BeanstalkTheme
 import org.junit.Assert.assertEquals
@@ -77,22 +74,6 @@ class WatchlistScreenTest {
         compose.onNodeWithText("Matches in recent announcements").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("“milk” in title").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Milk chocolate recalled").performScrollTo().assertIsDisplayed()
-    }
-
-    @Test
-    fun `alert disclosure is shown when alerts can be turned on`() {
-        setWatchlist(
-            state = BeanstalkUiState(
-                notificationState = NotificationState("Alerts are off.", alertsAvailable = true),
-            ),
-        )
-        compose.onNodeWithText(AlertControlPolicy.TURNING_ON_ALERTS_DISCLOSURE).assertIsDisplayed()
-    }
-
-    @Test
-    fun `alert disclosure is hidden when push is not configured`() {
-        setWatchlist(state = BeanstalkUiState(notificationState = NotificationState("Coming soon")))
-        compose.onAllNodesWithText(AlertControlPolicy.TURNING_ON_ALERTS_DISCLOSURE).assertCountEquals(0)
     }
 
     @Test

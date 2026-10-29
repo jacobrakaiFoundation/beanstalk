@@ -24,15 +24,6 @@ public enum AlertControlPolicy {
     public static let pushRegistrationFailedMessage =
         "This iPhone could not register for alerts. Try again later."
 
-    public static let turningOnAlertsDisclosureMessage =
-        "Turning on alerts sends watch terms and the device token to the Jacobrakai Foundation's notification service."
-
-    /// Shown where alerts can be turned on, and only when push is configured.
-    public static func turningOnAlertsDisclosure(alertsEnabled: Bool, alertsAvailable: Bool) -> String? {
-        guard alertsAvailable, !alertsEnabled else { return nil }
-        return turningOnAlertsDisclosureMessage
-    }
-
     /// Local user intent controls the Settings action. A pending or failed
     /// backend registration must never hide the ability to turn alerts off.
     /// Unavailable push hides Enable and never claims alerts are on.
