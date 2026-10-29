@@ -5,16 +5,29 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization")
 }
 
-val uploadKeystorePath = System.getenv("ANDROID_UPLOAD_KEYSTORE_PATH")
-val uploadStorePassword = System.getenv("ANDROID_UPLOAD_STORE_PASSWORD")
-val uploadKeyAlias = System.getenv("ANDROID_UPLOAD_KEY_ALIAS")
-val uploadKeyPassword = System.getenv("ANDROID_UPLOAD_KEY_PASSWORD")
-val playUploadSigningReady = listOf(
-    uploadKeystorePath,
-    uploadStorePassword,
-    uploadKeyAlias,
-    uploadKeyPassword,
-).all { !it.isNullOrBlank() }
+fun uploadCredential(name: String): String? {
+    val fromEnv = System.getenv(name)?.trim()?.takeIf { it.isNotEmpty() }
+    if (fromEnv != null) return fromEnv
+    return providers.gradleProperty(name).orNull?.trim()?.takeIf { it.isNotEmpty() }
+}
+
+val uploadCredentialNames = listOf(
+    "ANDROID_UPLOAD_KEYSTORE_PATH",
+    "ANDROID_UPLOAD_STORE_PASSWORD",
+    "ANDROID_UPLOAD_KEY_ALIAS",
+    "ANDROID_UPLOAD_KEY_PASSWORD",
+)
+val uploadCredentials = uploadCredentialNames.associateWith { uploadCredential(it) }
+val presentUploadCredentials = uploadCredentials.values.count { !it.isNullOrEmpty() }
+if (presentUploadCredentials != 0 && presentUploadCredentials != uploadCredentials.size) {
+    val missing = uploadCredentials.filterValues { it.isNullOrEmpty() }.keys.sorted().joinToString(", ")
+    error("Play upload signing needs all four ANDROID_UPLOAD_* values or none. Missing: $missing")
+}
+val playUploadSigningReady = presentUploadCredentials == uploadCredentials.size
+val uploadKeystorePath = uploadCredentials.getValue("ANDROID_UPLOAD_KEYSTORE_PATH")
+val uploadStorePassword = uploadCredentials.getValue("ANDROID_UPLOAD_STORE_PASSWORD")
+val uploadKeyAlias = uploadCredentials.getValue("ANDROID_UPLOAD_KEY_ALIAS")
+val uploadKeyPassword = uploadCredentials.getValue("ANDROID_UPLOAD_KEY_PASSWORD")
 
 if (file("google-services.json").exists()) {
     apply(plugin = "com.google.gms.google-services")
