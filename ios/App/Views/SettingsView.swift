@@ -31,8 +31,13 @@ struct SettingsView: View {
                     .accessibilityHint("Opens iOS Settings")
                     switch alertSettingsAction {
                     case .turnOn:
-                        Button("Turn on alerts for this watchlist") {
-                            Task { await notifications.requestAfterFirstWatchTerm(terms: watchTerms.map(\.normalizedTerm)) }
+                        Group {
+                            Text(AlertControlPolicy.turningOnAlertsDisclosureMessage)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            Button("Turn on alerts for this watchlist") {
+                                Task { await notifications.requestAfterFirstWatchTerm(terms: watchTerms.map(\.normalizedTerm)) }
+                            }
                         }
                     case .turnOff:
                         Button("Remove this device from Beanstalk alerts", role: .destructive) {

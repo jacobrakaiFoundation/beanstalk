@@ -63,6 +63,14 @@ struct WatchlistView: View {
                 Section("Alert status") {
                     Text(notifications.statusMessage)
                         .foregroundStyle(.secondary)
+                    if let disclosure = AlertControlPolicy.turningOnAlertsDisclosure(
+                        alertsEnabled: notifications.alertsEnabled,
+                        alertsAvailable: notifications.alertsAvailable
+                    ) {
+                        Text(disclosure)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
                     if notifications.isWorking { ProgressView() }
                 }
 

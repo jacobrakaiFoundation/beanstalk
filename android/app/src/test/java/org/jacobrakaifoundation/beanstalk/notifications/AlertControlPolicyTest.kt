@@ -2,6 +2,7 @@ package org.jacobrakaifoundation.beanstalk.notifications
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -34,6 +35,17 @@ class AlertControlPolicyTest {
             AlertControlPolicy.settingsAction(alertsEnabled = false, alertsAvailable = true),
         )
         assertTrue(AlertControlPolicy.shouldOfferEnable(alertsEnabled = false, alertsAvailable = true))
+    }
+
+    @Test
+    fun `turning alerts on discloses the notification service only when push is configured`() {
+        assertEquals(
+            AlertControlPolicy.TURNING_ON_ALERTS_DISCLOSURE,
+            AlertControlPolicy.turningOnAlertsDisclosure(alertsEnabled = false, alertsAvailable = true),
+        )
+        assertNull(AlertControlPolicy.turningOnAlertsDisclosure(alertsEnabled = false, alertsAvailable = false))
+        assertNull(AlertControlPolicy.turningOnAlertsDisclosure(alertsEnabled = true, alertsAvailable = true))
+        assertTrue(AlertControlPolicy.TURNING_ON_ALERTS_DISCLOSURE.contains("Jacobrakai Foundation's notification service"))
     }
 
     @Test

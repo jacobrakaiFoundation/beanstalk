@@ -102,6 +102,12 @@ fun WatchlistScreen(
             )
             Text("Alert status", style = MaterialTheme.typography.titleMedium)
             InformationBanner(state.notificationState.message)
+            AlertControlPolicy.turningOnAlertsDisclosure(
+                state.notificationState.alertsEnabled,
+                state.notificationState.alertsAvailable,
+            )?.let { disclosure ->
+                Text(disclosure, style = MaterialTheme.typography.bodyMedium)
+            }
             Text("Add a watch term", style = MaterialTheme.typography.titleMedium)
             OutlinedTextField(
                 value = draft,

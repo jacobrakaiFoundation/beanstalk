@@ -44,12 +44,20 @@ fun SettingsScreen(
                         Text("Turn alerts off")
                     }
                 }
-                AlertSettingsAction.TURN_ON -> item {
-                    Button(
-                        onClick = onRequestNotifications,
-                        enabled = !alerts.isWorking,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) { Text("Enable alerts") }
+                AlertSettingsAction.TURN_ON -> {
+                    item {
+                        Text(
+                            AlertControlPolicy.TURNING_ON_ALERTS_DISCLOSURE,
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                    item {
+                        Button(
+                            onClick = onRequestNotifications,
+                            enabled = !alerts.isWorking,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text("Enable alerts") }
+                    }
                 }
                 AlertSettingsAction.NONE -> Unit
             }
