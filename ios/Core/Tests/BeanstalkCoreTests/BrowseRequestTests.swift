@@ -21,7 +21,7 @@ final class BrowseRequestTests: XCTestCase {
         let values = queryValues(url)
         XCTAssertEqual(url.host, "api.fda.gov")
         XCTAssertEqual(url.path, "/food/enforcement.json")
-        XCTAssertFalse(url.absoluteString.contains("api.beanstalk.jacobrakai.org"))
+        XCTAssertFalse(url.absoluteString.contains("api.jacobrakai.org"))
         XCTAssertEqual(values["limit"], "25")
         XCTAssertEqual(values["skip"], "0")
         XCTAssertEqual(values["sort"], "report_date:desc")

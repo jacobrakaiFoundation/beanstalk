@@ -4,7 +4,7 @@ import XCTest
 final class QueryBuilderTests: XCTestCase {
     func testNoticeQueryPreservesCursorAndSanitizesSearch() throws {
         let url = try NoticeRequestBuilder.listURL(
-            baseURL: URL(string: "https://api.beanstalk.jacobrakai.org")!,
+            baseURL: URL(string: "https://api.jacobrakai.org")!,
             limit: 25,
             cursor: "next/page==",
             query: "  milk \"bar\"\\  "
@@ -12,6 +12,8 @@ final class QueryBuilderTests: XCTestCase {
         let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
         let values = Dictionary(uniqueKeysWithValues: (components?.queryItems ?? []).map { ($0.name, $0.value ?? "") })
 
+        XCTAssertEqual(url.scheme, "https")
+        XCTAssertEqual(url.host, "api.jacobrakai.org")
         XCTAssertEqual(url.path, "/v1/notices")
         XCTAssertEqual(values["limit"], "25")
         XCTAssertEqual(values["cursor"], "next/page==")
@@ -40,7 +42,7 @@ final class QueryBuilderTests: XCTestCase {
         XCTAssertEqual(values["skip"], "60")
         XCTAssertEqual(values["sort"], "report_date:desc")
         XCTAssertEqual(url.host, "api.fda.gov")
-        XCTAssertFalse(url.absoluteString.contains("api.beanstalk.jacobrakai.org"))
+        XCTAssertFalse(url.absoluteString.contains("api.jacobrakai.org"))
     }
 
     func testOpenFDARejectsPaginationPastAPIWindow() {

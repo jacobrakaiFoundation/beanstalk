@@ -101,7 +101,7 @@ class ApplicationGraphColdStartTest {
             encodeDefaults = true
             explicitNulls = false
         }
-        val api = BeanstalkApi("https://api.beanstalk.jacobrakai.org", json)
+        val api = BeanstalkApi(BuildConfig.BACKEND_BASE_URL, json)
         val repository = BeanstalkRepository(
             LocalStore(BeanstalkDatabase(context)),
             api,
