@@ -32,8 +32,6 @@ internal const val USDA_FSIS_RECALLS_URL =
 
 internal const val AFFILIATION_DISCLAIMER =
     "Beanstalk is independent and is not affiliated with or endorsed by FDA or USDA FSIS. It is not medical advice."
-internal const val MEDICAL_DEVICE_LINE =
-    "Not a medical device; consult a professional."
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -79,7 +77,6 @@ fun SettingsScreen(
             }
             state.localDataMessage?.let { item { InformationBanner(it) } }
             item { InformationBanner(AFFILIATION_DISCLAIMER) }
-            item { InformationBanner(MEDICAL_DEVICE_LINE) }
             item { SettingsLink("Privacy policy", PRIVACY_POLICY_URL, uriHandler) }
             item { SettingsLink("Support", SUPPORT_URL, uriHandler) }
             item { SettingsLink("FDA food recalls", FDA_RECALLS_URL, uriHandler) }
