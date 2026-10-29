@@ -82,6 +82,14 @@ class ColdStartResilienceTest {
         assertTrue(
             packageInfo.receivers.orEmpty().none { it.name.contains("FirebaseInstanceIdReceiver") },
         )
+        val requested = packageManager.getPackageInfo(
+            app.packageName,
+            PackageManager.GET_PERMISSIONS,
+        ).requestedPermissions.orEmpty().toSet()
+        assertTrue(requested.contains(android.Manifest.permission.INTERNET))
+        assertTrue(requested.contains(android.Manifest.permission.POST_NOTIFICATIONS))
+        assertFalse(requested.contains(android.Manifest.permission.WAKE_LOCK))
+        assertFalse(requested.contains("com.google.android.c2dm.permission.RECEIVE"))
     }
 
 }
