@@ -147,7 +147,7 @@ private struct NotificationMatchEvidence: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("Matched “\(matchedTerm)” in \(fieldLabel)", systemImage: "bell.badge")
+            Label("Matched “\(matchedTerm)” in \(fieldLabel)", systemImage: "eye")
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(Color.accentColor)
             if let sourceExcerpt {

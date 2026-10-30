@@ -14,7 +14,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.NotificationsNone
+import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -131,7 +131,7 @@ fun WatchlistScreen(
                 EmptyState(
                     "No watch terms yet",
                     "Add a word or exact phrase to check recent announcements.",
-                    Icons.Outlined.NotificationsNone,
+                    Icons.Outlined.Visibility,
                 )
             } else {
                 state.watchTerms.forEach { term ->
@@ -145,7 +145,7 @@ fun WatchlistScreen(
                     EmptyState(
                         "No recent loaded announcement matches these terms.",
                         "This does not mean a product is safe or that every FDA announcement has been received.",
-                        Icons.Outlined.NotificationsNone,
+                        Icons.Outlined.Visibility,
                     )
                 } else {
                     state.watchMatches.forEach { match ->

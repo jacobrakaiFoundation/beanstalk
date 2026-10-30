@@ -53,7 +53,7 @@ struct WatchlistView: View {
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(terms) { term in
-                            Label(term.normalizedTerm, systemImage: "bell")
+                            Label(term.normalizedTerm, systemImage: "eye")
                                 .accessibilityLabel("Watching for \(term.normalizedTerm)")
                         }
                         .onDelete(perform: deleteTerms)
