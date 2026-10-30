@@ -272,6 +272,18 @@ class LocalStore(private val database: BeanstalkDatabase) {
 
     suspend fun isWatchlistSyncPending(): Boolean = watchlistSnapshot().isPending
 
+    suspend fun isDeviceDeletionPending(): Boolean = withContext(Dispatchers.IO) {
+        syncValue(database.readableDatabase, DEVICE_DELETION_PENDING_KEY) == 1L
+    }
+
+    suspend fun markDeviceDeletionPending() = withContext(Dispatchers.IO) {
+        writeSyncValue(database.writableDatabase, DEVICE_DELETION_PENDING_KEY, 1L)
+    }
+
+    suspend fun clearDeviceDeletionPending() = withContext(Dispatchers.IO) {
+        database.writableDatabase.delete("sync_state", "state_key = ?", arrayOf(DEVICE_DELETION_PENDING_KEY))
+    }
+
     /** The terms and revision must describe the same committed local mutation. */
     internal suspend fun watchlistSnapshot(): WatchlistSnapshot = withContext(Dispatchers.IO) {
         val writable = database.writableDatabase
@@ -333,5 +345,6 @@ class LocalStore(private val database: BeanstalkDatabase) {
     private companion object {
         const val WATCHLIST_REVISION_KEY = "watchlist_revision"
         const val WATCHLIST_ACK_KEY = "watchlist_acknowledged_revision"
+        const val DEVICE_DELETION_PENDING_KEY = "device_deletion_pending"
     }
 }

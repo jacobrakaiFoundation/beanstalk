@@ -1,6 +1,7 @@
 package org.jacobrakaifoundation.beanstalk.notifications
 
 import android.app.Application
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.MockResponse
@@ -26,16 +27,38 @@ import org.robolectric.annotation.Config
 @Config(application = Application::class, sdk = [35])
 class NotificationCoordinatorTest {
     @Test
-    fun `synchronize without push never claims alerts are on`() = runBlocking {
+    fun `synchronize without push deletes a leftover registration and does not claim alerts are on`() = runBlocking {
         val credentials = MemoryCredentials(DeviceCredentials("device", "secret", "old-token"))
         val harness = harness(pushConfigured = false, credentials = credentials)
         try {
+            harness.server.enqueue(MockResponse().setResponseCode(204))
             harness.coordinator.synchronize()
+            val deletion = checkNotNull(harness.server.takeRequest(2, TimeUnit.SECONDS))
+            assertEquals("DELETE", deletion.method)
+            assertEquals("/v1/devices/me", deletion.path)
+            assertEquals(1, harness.server.requestCount)
+            assertNull(credentials.load())
             val state = harness.coordinator.state.value
             assertEquals(AlertControlPolicy.UNAVAILABLE_MESSAGE, state.message)
             assertFalse(state.alertsEnabled)
             assertFalse(state.alertsAvailable)
-            assertEquals(0, harness.server.requestCount)
+        } finally {
+            harness.close()
+        }
+    }
+
+    @Test
+    fun `synchronize without push keeps credentials when the leftover delete fails`() = runBlocking {
+        val credentials = MemoryCredentials(DeviceCredentials("device", "secret", "old-token"))
+        val harness = harness(pushConfigured = false, credentials = credentials)
+        try {
+            harness.server.shutdown()
+            harness.coordinator.synchronize()
+            assertEquals("old-token", credentials.load()?.pushIdentifier)
+            assertTrue(harness.repository.isDeviceDeletionPending())
+            val state = harness.coordinator.state.value
+            assertEquals(AlertControlPolicy.UNAVAILABLE_MESSAGE, state.message)
+            assertFalse(state.alertsEnabled)
         } finally {
             harness.close()
         }
@@ -98,6 +121,50 @@ class NotificationCoordinatorTest {
     }
 
     @Test
+    fun `offline opt-out retries deregistration on the next launch`() = runBlocking {
+        val credentials = MemoryCredentials(DeviceCredentials("device", "secret", "old-token"))
+        val harness = harness(pushConfigured = true, credentials = credentials)
+        try {
+            harness.local.addWatchTerm(WatchTerm("milk", 1))
+            harness.server.shutdown()
+            harness.coordinator.disableAlerts()
+            assertEquals(AlertControlPolicy.DISABLE_FAILED_MESSAGE, harness.coordinator.state.value.message)
+            assertTrue(harness.repository.isDeviceDeletionPending())
+            assertEquals("old-token", credentials.load()?.pushIdentifier)
+
+            val restarted = MockWebServer()
+            restarted.start()
+            val repository = BeanstalkRepository(
+                harness.local,
+                BeanstalkApi(restarted.url("/").toString(), ioDispatcher = Dispatchers.Unconfined),
+                credentials,
+            )
+            assertFalse(repository.syncWatchlistIfRegistered())
+            assertEquals(0, restarted.requestCount)
+
+            restarted.enqueue(MockResponse().setResponseCode(204))
+            val relaunch = NotificationCoordinator(
+                RuntimeEnvironment.getApplication(),
+                repository,
+                isPushConfigured = { true },
+                requestPushToken = { error("token should not be requested") },
+            )
+            relaunch.synchronize()
+            val deletion = checkNotNull(restarted.takeRequest(2, TimeUnit.SECONDS))
+            assertEquals("DELETE", deletion.method)
+            assertEquals("/v1/devices/me", deletion.path)
+            assertEquals(1, restarted.requestCount)
+            assertNull(credentials.load())
+            assertFalse(repository.isDeviceDeletionPending())
+            assertFalse(relaunch.state.value.alertsEnabled)
+            assertTrue(relaunch.state.value.message.contains("Alerts are off"))
+            restarted.shutdown()
+        } finally {
+            harness.close()
+        }
+    }
+
+    @Test
     fun `disableAlerts without push clears leftover registration and stays unavailable`() = runBlocking {
         val credentials = MemoryCredentials(DeviceCredentials("device", "secret", "old-token"))
         val harness = harness(pushConfigured = false, credentials = credentials)
@@ -135,6 +202,7 @@ class NotificationCoordinatorTest {
         )
         return Harness(
             local = local,
+            repository = repository,
             database = database,
             server = server,
             coordinator = NotificationCoordinator(
@@ -148,6 +216,7 @@ class NotificationCoordinatorTest {
 
     private class Harness(
         val local: LocalStore,
+        val repository: BeanstalkRepository,
         val database: BeanstalkDatabase,
         val server: MockWebServer,
         val coordinator: NotificationCoordinator,

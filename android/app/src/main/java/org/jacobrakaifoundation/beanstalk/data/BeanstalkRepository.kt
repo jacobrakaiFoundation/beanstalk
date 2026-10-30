@@ -136,9 +136,13 @@ class BeanstalkRepository(
 
     suspend fun isWatchlistSyncPending(): Boolean = local.isWatchlistSyncPending()
 
+    suspend fun isDeviceDeletionPending(): Boolean = local.isDeviceDeletionPending()
+
     suspend fun registerPushIdentifier(pushIdentifier: String) = registrationMutex.withLock {
         val terms = local.watchTerms().map { it.normalizedTerm }
         if (terms.isEmpty() && !local.isWatchlistSyncPending()) return@withLock
+        // A new opt-in cancels a deletion that has not reached the server yet.
+        local.clearDeviceDeletionPending()
         local.requireWatchlistSync()
         var current = credentials.load()
         if (current == null) {
@@ -162,10 +166,23 @@ class BeanstalkRepository(
     }
 
     suspend fun syncWatchlistIfRegistered(): Boolean = registrationMutex.withLock {
+        if (local.isDeviceDeletionPending()) return@withLock false
         watchlistSync.syncIfNeeded()
     }
 
     suspend fun deleteDeviceRegistration() = registrationMutex.withLock {
+        deleteDeviceRegistrationLocked()
+    }
+
+    /** Retries an opt-out that did not reach the server. False when nothing is queued. */
+    suspend fun deletePendingDeviceRegistration(): Boolean = registrationMutex.withLock {
+        if (!local.isDeviceDeletionPending()) return@withLock false
+        deleteDeviceRegistrationLocked()
+        true
+    }
+
+    private suspend fun deleteDeviceRegistrationLocked() {
+        local.markDeviceDeletionPending()
         val current = credentials.load()
         if (current != null) {
             try {
@@ -175,6 +192,7 @@ class BeanstalkRepository(
             }
         }
         credentials.clear()
+        local.clearDeviceDeletionPending()
     }
 
     private suspend fun <T> loadWithCache(

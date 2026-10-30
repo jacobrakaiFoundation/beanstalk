@@ -3,6 +3,7 @@ package org.jacobrakaifoundation.beanstalk.notifications
 import android.content.Context
 import com.google.firebase.FirebaseApp
 import com.google.firebase.messaging.FirebaseMessaging
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -39,6 +40,24 @@ class NotificationCoordinator(
     }
 
     suspend fun synchronize() {
+        try {
+            repository.deletePendingDeviceRegistration()
+            // Build 3 upgraders can still hold a registration after push is turned off.
+            // Delete it on the server before forgetting the local credentials. A failed
+            // delete keeps those credentials so the next launch can retry.
+            if (!isPushConfigured() && repository.hasDeviceRegistration()) {
+                repository.deleteDeviceRegistration()
+            }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
+            mutableState.value = if (isPushConfigured()) {
+                NotificationState(AlertControlPolicy.DISABLE_FAILED_MESSAGE, alertsAvailable = true)
+            } else {
+                unavailableState()
+            }
+            return
+        }
         if (!isPushConfigured()) {
             mutableState.value = unavailableState()
             return
