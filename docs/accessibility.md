@@ -1,6 +1,6 @@
 # Beanstalk iPhone Accessibility — App Store Declaration
 
-Both targets are claimable for all 9 features: `food-recall-app` (Capacitor web → WKWebView) and `ios/Beanstalk` native SwiftUI.
+The web app (`food-recall-app`, including the Capacitor WKWebView shell) can claim all 9 features. Native `ios/Beanstalk` can claim seven. It cannot claim Captions or Audio Descriptions because the app ships no audio or video.
 
 ## Web (food-recall-app)
 
@@ -24,7 +24,7 @@ Both targets are claimable for all 9 features: `food-recall-app` (Capacitor web 
 - `accessibilityReduceMotionAware()` zeros animations when `accessibilityReduceMotion` is true
 - `InformationBanner`, `EnforcementRow`, `NoticeRow`, save buttons all have `accessibilityElement(children:.combine)` + hints
 - List/ScrollView layouts flex for AX sizes; Dark Interface via asset catalog (`AccentColor`, colorScheme); contrast meets AA via system colors + `secondary` styles
-- Captions prepared via `CaptionedVideoPlayer` (AVPlayerViewController `closedCaptionDisplayEnabled` + WebVTT)
+- Captions and Audio Descriptions are **not** declared. `AccessibilitySupport.supportsCaptions` and `supportsAudioDescriptions` are false because no media ships.
 
 ## Verification checklist (iPhone)
 
