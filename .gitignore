@@ -4,6 +4,8 @@ dist/
 *.apk
 *.aab
 *.ap_
+*.jks
+*.keystore
 
 # Local agent runtime state, never source
 .claude-flow/
