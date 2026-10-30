@@ -6,7 +6,7 @@
 
 Beanstalk helps people search **FDA openFDA and USDA FSIS food recall records** by product, company, or hazard, with filters for distribution state, classification, status, source (All / FDA / USDA-FSIS), and dietary terms. It is a public-service project of [JACOBRAKAI FOUNDATION](https://jacobrakai.org/about/). Product details, lot codes, and links to original agency sources help readers investigate a record without treating a search result as a safety determination.
 
-[**Search food recall records**](https://jacobrakaifoundation.github.io/beanstalk/) · [**Read the funding brief**](docs/FUNDING.md) · [Support the Foundation](https://jacobrakai.org/donate/) · [Report a problem](https://github.com/jacobrakaiFoundation/beanstalk/issues)
+[**Search food recall records**](https://jacobrakaifoundation.github.io/beanstalk/) · [**Read the funding brief**](docs/FUNDING.md) · [FDA fetch recipe](docs/recipes/fda-fetch.md) · [Support the Foundation](https://jacobrakai.org/donate/) · [Report a problem](https://github.com/jacobrakaiFoundation/beanstalk/issues)
 
 > Notifications may be delayed or incomplete, and not every recall has a public announcement. A search with no result does not establish that a product is safe. Verify the original FDA notice before acting.
 
