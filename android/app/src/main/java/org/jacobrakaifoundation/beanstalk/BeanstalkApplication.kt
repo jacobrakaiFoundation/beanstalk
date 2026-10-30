@@ -4,6 +4,7 @@ import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
+import com.google.firebase.FirebaseApp
 import kotlinx.serialization.json.Json
 import org.jacobrakaifoundation.beanstalk.data.BeanstalkRepository
 import org.jacobrakaifoundation.beanstalk.data.local.BeanstalkDatabase
@@ -20,7 +21,9 @@ class BeanstalkApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        ensureRecallMatchesChannel()
+        if (FirebaseApp.getApps(this).isNotEmpty()) {
+            ensureRecallMatchesChannel()
+        }
         val json = Json {
             ignoreUnknownKeys = true
             encodeDefaults = true

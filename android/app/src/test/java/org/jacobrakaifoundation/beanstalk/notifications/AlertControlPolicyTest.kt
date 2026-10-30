@@ -37,6 +37,13 @@ class AlertControlPolicyTest {
     }
 
     @Test
+    fun `push off hides alert controls`() {
+        assertFalse(AlertControlPolicy.showsAlertControls(alertsEnabled = false, alertsAvailable = false))
+        assertTrue(AlertControlPolicy.showsAlertControls(alertsEnabled = false, alertsAvailable = true))
+        assertTrue(AlertControlPolicy.showsAlertControls(alertsEnabled = true, alertsAvailable = false))
+    }
+
+    @Test
     fun `unavailable copy is Coming soon not debug jargon`() {
         assertEquals("Coming soon", AlertControlPolicy.UNAVAILABLE_MESSAGE)
         assertFalse(AlertControlPolicy.UNAVAILABLE_MESSAGE.contains("debug", ignoreCase = true))

@@ -9,6 +9,26 @@ public enum AlertSettingsAction: Equatable, Sendable {
 public enum AlertControlPolicy {
     public static let unavailableMessage = "Coming soon"
 
+    /// Push-off builds must not mention alerts. The alert copy stays available
+    /// for a later build that turns `BEANSTALK_PUSH_CONFIGURED` on.
+    public static func showsAlertControls(alertsEnabled: Bool, alertsAvailable: Bool) -> Bool {
+        alertsEnabled || alertsAvailable
+    }
+
+    public static func freeAppDescription(alertsAvailable: Bool) -> String {
+        if alertsAvailable {
+            return "Beanstalk is free. Every search, saved record, watch term, and alert feature is available without payment."
+        }
+        return "Beanstalk is free. Every search, saved record, and watch term is available without payment."
+    }
+
+    public static func donationDescription(alertsAvailable: Bool) -> String {
+        if alertsAvailable {
+            return "Donations are optional. Donating unlocks nothing in Beanstalk and does not change recall results or alerts."
+        }
+        return "Donations are optional. Donating unlocks nothing in Beanstalk and does not change recall results."
+    }
+
     public static let enableFailedMessage =
         "Beanstalk couldn't turn alerts on. Watch terms stay on this device."
 

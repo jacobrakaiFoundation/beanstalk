@@ -21,7 +21,7 @@ struct RootView: View {
                 .accessibilityLabel("Saved")
 
             WatchlistView()
-                .tabItem { Label("Watchlist", systemImage: "bell") }
+                .tabItem { Label("Watchlist", systemImage: "eye") }
                 .tag(AppTab.watchlist)
                 .accessibilityLabel("Watchlist")
 

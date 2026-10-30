@@ -53,17 +53,22 @@ struct WatchlistView: View {
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(terms) { term in
-                            Label(term.normalizedTerm, systemImage: "bell")
+                            Label(term.normalizedTerm, systemImage: "eye")
                                 .accessibilityLabel("Watching for \(term.normalizedTerm)")
                         }
                         .onDelete(perform: deleteTerms)
                     }
                 }
 
-                Section("Alert status") {
-                    Text(notifications.statusMessage)
-                        .foregroundStyle(.secondary)
-                    if notifications.isWorking { ProgressView() }
+                if AlertControlPolicy.showsAlertControls(
+                    alertsEnabled: notifications.alertsEnabled,
+                    alertsAvailable: notifications.alertsAvailable
+                ) {
+                    Section("Alert status") {
+                        Text(notifications.statusMessage)
+                            .foregroundStyle(.secondary)
+                        if notifications.isWorking { ProgressView() }
+                    }
                 }
 
                 if !terms.isEmpty {
