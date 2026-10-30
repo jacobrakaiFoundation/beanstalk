@@ -81,6 +81,11 @@ struct SettingsView: View {
                     Text("Latest and Historical both use openFDA food-enforcement snapshots as published. The archive can lag fda.gov and is not a live FDA announcement feed.")
                     InformationBanner(
                         icon: "exclamationmark.shield",
+                        text: "Beanstalk is independent and is not affiliated with or endorsed by FDA or USDA FSIS. It is not medical advice.",
+                        color: .orange
+                    )
+                    InformationBanner(
+                        icon: "exclamationmark.shield",
                         text: "Beanstalk is not medical advice. No result means only that no matching record was found; it never means a product is safe.",
                         color: .orange
                     )
