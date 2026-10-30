@@ -1,6 +1,7 @@
 package org.jacobrakaifoundation.beanstalk
 
 import android.app.Application
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import com.google.firebase.FirebaseApp
 import kotlinx.coroutines.Dispatchers
@@ -22,6 +23,7 @@ import org.jacobrakaifoundation.beanstalk.data.network.BeanstalkApi
 import org.jacobrakaifoundation.beanstalk.notifications.NotificationCoordinator
 import org.jacobrakaifoundation.beanstalk.ui.BeanstalkViewModel
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -62,6 +64,7 @@ class ColdStartResilienceTest {
             PackageManager.GET_META_DATA,
         )
         val meta = requireNotNull(applicationInfo.metaData)
+        assertEquals(0, applicationInfo.flags and ApplicationInfo.FLAG_ALLOW_BACKUP)
         assertFalse(meta.getBoolean("firebase_messaging_auto_init_enabled", true))
         assertFalse(meta.getBoolean("firebase_analytics_collection_enabled", true))
         assertFalse(meta.getBoolean("firebase_data_collection_default_enabled", true))
@@ -79,6 +82,14 @@ class ColdStartResilienceTest {
         assertTrue(
             packageInfo.receivers.orEmpty().none { it.name.contains("FirebaseInstanceIdReceiver") },
         )
+        val requested = packageManager.getPackageInfo(
+            app.packageName,
+            PackageManager.GET_PERMISSIONS,
+        ).requestedPermissions.orEmpty().toSet()
+        assertTrue(requested.contains(android.Manifest.permission.INTERNET))
+        assertTrue(requested.contains(android.Manifest.permission.POST_NOTIFICATIONS))
+        assertFalse(requested.contains(android.Manifest.permission.WAKE_LOCK))
+        assertFalse(requested.contains("com.google.android.c2dm.permission.RECEIVE"))
     }
 
 }
