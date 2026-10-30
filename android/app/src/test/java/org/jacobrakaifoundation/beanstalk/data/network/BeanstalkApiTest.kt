@@ -5,6 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
+import org.jacobrakaifoundation.beanstalk.BuildConfig
 import org.jacobrakaifoundation.beanstalk.data.model.DeviceCredentials
 import org.jacobrakaifoundation.beanstalk.data.model.EnforcementSearch
 import org.junit.Assert.assertEquals
@@ -14,6 +15,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class BeanstalkApiTest {
+    @Test
+    fun `production backend base URL is the resolvable api host`() {
+        assertEquals("https://api.jacobrakai.org", BuildConfig.BACKEND_BASE_URL)
+    }
+
     @Test
     fun `sanitizeQuery strips quotes and backslashes`() {
         assertEquals("peanut butter", BeanstalkApi.sanitizeQuery("  peanut\" butter\\ "))
@@ -114,7 +120,7 @@ class BeanstalkApiTest {
                 ),
             )
             val api = BeanstalkApi(
-                "https://api.beanstalk.jacobrakai.org/",
+                BuildConfig.BACKEND_BASE_URL,
                 ioDispatcher = Dispatchers.Unconfined,
                 openFdaEnforcementUrl = server.url("/food/enforcement.json").toString(),
             )
