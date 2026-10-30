@@ -60,8 +60,8 @@ struct EnforcementDetailView: View {
                     color: .orange
                 )
 
-                Link(destination: record.sourceURL) {
-                    Label("Open raw openFDA source", systemImage: "arrow.up.right.square")
+                Link(destination: externalRecordURL) {
+                    Label(externalRecordLinkTitle, systemImage: "arrow.up.right.square")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
@@ -75,12 +75,20 @@ struct EnforcementDetailView: View {
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 EnforcementSaveButton(record: record)
-                ShareLink(item: record.sourceURL) {
+                ShareLink(item: externalRecordURL) {
                     Label("Share", systemImage: "square.and.arrow.up")
                 }
                 .accessibilityLabel("Share this historical openFDA record")
             }
         }
+    }
+
+    private var externalRecordURL: URL {
+        record.fdaEnforcementReportURL ?? record.sourceURL
+    }
+
+    private var externalRecordLinkTitle: String {
+        record.fdaEnforcementReportURL == nil ? "Open raw openFDA JSON" : "Open FDA enforcement report"
     }
 
     private func sourceValue(_ rawValue: String?, fallback: String) -> String {

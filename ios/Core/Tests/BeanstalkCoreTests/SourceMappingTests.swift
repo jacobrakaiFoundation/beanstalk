@@ -65,6 +65,22 @@ final class SourceMappingTests: XCTestCase {
         XCTAssertNil(notice.productDescription)
     }
 
+    func testEnforcementReportURLUsesNumericEventID() {
+        XCTAssertEqual(EnforcementRecord.enforcementReportEventID(" 100041 "), "100041")
+        let record = sampleRecord(eventID: "100041")
+        XCTAssertEqual(
+            record.fdaEnforcementReportURL?.absoluteString,
+            "https://www.accessdata.fda.gov/scripts/ires/index.cfm?Event=100041"
+        )
+    }
+
+    func testEnforcementReportURLRejectsIdsThatAreNotIRESEventIDs() {
+        XCTAssertNil(sampleRecord(eventID: "").fdaEnforcementReportURL)
+        XCTAssertNil(sampleRecord(eventID: "F-100-2026").fdaEnforcementReportURL)
+        XCTAssertNil(sampleRecord(eventID: "0100041").fdaEnforcementReportURL)
+        XCTAssertNil(sampleRecord(eventID: "1000410000000").fdaEnforcementReportURL)
+    }
+
     func testSourceDateFormatterParsesISO8601WithAndWithoutFractionalSeconds() throws {
         let wholeSeconds = try XCTUnwrap(SourceDateFormatter.date(from: "2026-09-13T18:00:00Z"))
         let fractionalSeconds = try XCTUnwrap(SourceDateFormatter.date(from: "2026-09-13T18:00:00.000Z"))
@@ -83,5 +99,11 @@ final class SourceMappingTests: XCTestCase {
 
         XCTAssertEqual(SourceDateFormatter.display("20260913"), "Sep 13, 2026")
         XCTAssertEqual(SourceDateFormatter.display("20260101"), "Jan 1, 2026")
+    }
+
+    private func sampleRecord(eventID: String) -> EnforcementRecord {
+        let payload = #"{"event_id":"\#(eventID)","product_description":"Milk"}"#
+        let source = try! JSONDecoder().decode(OpenFDARecordDTO.self, from: Data(payload.utf8))
+        return OpenFDAMapper.map(source, retrievedAt: Date(timeIntervalSince1970: 0))
     }
 }

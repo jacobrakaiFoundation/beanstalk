@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 import org.jacobrakaifoundation.beanstalk.data.model.EnforcementRecord
+import org.jacobrakaifoundation.beanstalk.domain.EnforcementReportLink
 import org.jacobrakaifoundation.beanstalk.domain.SourceDates
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -66,7 +67,10 @@ fun EnforcementDetailScreen(
                 SourceFact("Distribution", record.distributionPattern)
                 SourceFact("Lot or code", listOf(record.codeInfo, record.moreCodeInfo).filter { it.isNotBlank() }.joinToString(" "))
                 SourceFact("Published in openFDA", SourceDates.display(record.publicationDate))
-                TextButton(onClick = { uriHandler.openUri(record.sourceURL) }) { Text("Open openFDA source") }
+                val reportURL = EnforcementReportLink.url(record.eventID)
+                TextButton(onClick = { uriHandler.openUri(reportURL ?: record.sourceURL) }) {
+                    Text(if (reportURL == null) "Open raw openFDA JSON" else "Open FDA enforcement report")
+                }
                 TextButton(onClick = { onToggleSave(record) }) {
                     Text(if (saved) "Remove saved copy" else "Save a local copy")
                 }

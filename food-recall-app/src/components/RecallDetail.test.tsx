@@ -196,11 +196,11 @@ describe("RecallDetail", () => {
   });
 
   it("generates correct FDA deep link", () => {
-    render(<RecallDetail recall={makeRecall({ productDescription: "Organic Peanut Butter" })} onClose={() => {}} />);
+    render(<RecallDetail recall={makeRecall({ eventId: "100041" })} onClose={() => {}} />);
     const fdaLink = screen.getByText(/View on FDA Enforcement Reports/);
-    expect(fdaLink.getAttribute("href")).toContain("accessdata.fda.gov/scripts/ires/index.cfm");
-    expect(fdaLink.getAttribute("href")).toContain(encodeURIComponent("Organic Peanut Butter"));
+    expect(fdaLink.getAttribute("href")).toBe("https://www.accessdata.fda.gov/scripts/ires/index.cfm?Event=100041");
     expect(fdaLink.getAttribute("target")).toBe("_blank");
+    expect(screen.getByText("raw openFDA JSON").getAttribute("href")).toContain("api.fda.gov/food/enforcement.json");
   });
 
   it("generates correct openFDA raw JSON link", () => {
@@ -210,13 +210,17 @@ describe("RecallDetail", () => {
     expect(rawLink.getAttribute("href")).toContain("F-1234-2025");
   });
 
-  it("FDA deep link truncates long product descriptions", () => {
-    render(<RecallDetail recall={makeRecall({ productDescription: "A".repeat(200) })} onClose={() => {}} />);
-    const href = screen.getByText(/View on FDA Enforcement Reports/).getAttribute("href") ?? "";
-    const decoded = decodeURIComponent(href);
-    const productParam = decoded.match(/Product=([^&#]+)/)?.[1] ?? "";
-    expect(productParam.length).toBeGreaterThan(0);
-    expect(productParam.length).toBeLessThanOrEqual(80);
+  it("keeps the raw JSON link and omits the FDA page when the event id is not numeric", () => {
+    render(
+      <RecallDetail
+        recall={makeRecall({ eventId: "not-an-event", productDescription: "A".repeat(200) })}
+        onClose={() => {}}
+      />,
+    );
+    expect(screen.queryByText(/View on FDA Enforcement Reports/)).toBeNull();
+    const rawLink = screen.getByText("raw openFDA JSON");
+    expect(rawLink.getAttribute("href")).toContain("api.fda.gov/food/enforcement.json");
+    expect(rawLink.textContent).toBe("raw openFDA JSON");
   });
 
   it("renders code info dash when empty", () => {
