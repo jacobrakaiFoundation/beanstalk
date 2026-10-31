@@ -20,10 +20,6 @@ public enum NoticeRequestBuilder {
         return url
     }
 
-    public static func detailURL(baseURL: URL, id: String) -> URL {
-        baseURL.appendingPathComponent("v1/notices").appendingPathComponent(id)
-    }
-
     private static func sanitized(_ value: String?) -> String? {
         value?.replacingOccurrences(of: "\"", with: "")
             .replacingOccurrences(of: "\\", with: "")

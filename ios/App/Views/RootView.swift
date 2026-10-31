@@ -1,15 +1,17 @@
-import SwiftData
 import SwiftUI
 
+enum AppTab: Hashable {
+    case recalls
+    case saved
+    case watchlist
+    case settings
+}
+
 struct RootView: View {
-    @Environment(\.scenePhase) private var scenePhase
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @EnvironmentObject private var router: AppRouter
-    @EnvironmentObject private var notifications: NotificationRegistrationService
-    @Query(sort: \WatchTermEntity.createdAt) private var watchTerms: [WatchTermEntity]
+    @State private var selectedTab: AppTab = .recalls
 
     var body: some View {
-        TabView(selection: $router.selectedTab) {
+        TabView(selection: $selectedTab) {
             RecallsView()
                 .tabItem { Label("Recalls", systemImage: "exclamationmark.triangle") }
                 .tag(AppTab.recalls)
@@ -32,19 +34,5 @@ struct RootView: View {
         }
         .accessibilityReduceMotionAware()
         .supportsLargerText()
-        .task {
-            await notifications.synchronize(terms: watchTerms.map(\.normalizedTerm))
-        }
-        .onChange(of: scenePhase) { _, newPhase in
-            guard newPhase == .active else { return }
-            Task { await notifications.synchronize(terms: watchTerms.map(\.normalizedTerm)) }
-        }
-        .sheet(item: $router.pendingNotice) { pending in
-            RemoteNoticeDetailView(
-                noticeID: pending.noticeID,
-                matchedTerm: pending.matchedTerm,
-                matchedField: pending.matchedField
-            )
-        }
     }
 }

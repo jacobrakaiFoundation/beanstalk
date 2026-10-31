@@ -1,6 +1,6 @@
 # Native iPhone app
 
-SwiftUI client and portable core package for Beanstalk recall search, saved records, watchlists, and optional push alerts. **Minimum deployment target is iOS 17** (`deploymentTarget` in `project.yml`).
+SwiftUI client and portable core package for Beanstalk recall search, saved records, and on-device watchlists. **Minimum deployment target is iOS 17** (`deploymentTarget` in `project.yml`).
 
 ## Open in Xcode
 
@@ -12,7 +12,7 @@ xcodegen generate
 open Beanstalk.xcodeproj
 ```
 
-Simulator runs, signing, notification opt-in, and physical-device checks need a Foundation Apple Developer team and credentials that are not stored in this repository.
+Simulator runs, signing, and physical-device checks need a Foundation Apple Developer team and credentials that are not stored in this repository.
 
 ## Test the core package
 
