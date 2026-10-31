@@ -4,7 +4,6 @@ import SwiftUI
 
 struct WatchlistView: View {
     @Environment(\.modelContext) private var modelContext
-    @EnvironmentObject private var notifications: NotificationRegistrationService
     @Query(sort: \WatchTermEntity.createdAt) private var terms: [WatchTermEntity]
     @StateObject private var model = WatchlistViewModel()
     @State private var newTerm = ""
@@ -60,17 +59,6 @@ struct WatchlistView: View {
                     }
                 }
 
-                if AlertControlPolicy.showsAlertControls(
-                    alertsEnabled: notifications.alertsEnabled,
-                    alertsAvailable: notifications.alertsAvailable
-                ) {
-                    Section("Alert status") {
-                        Text(notifications.statusMessage)
-                            .foregroundStyle(.secondary)
-                        if notifications.isWorking { ProgressView() }
-                    }
-                }
-
                 if !terms.isEmpty {
                     Section("Matches in recent announcements") {
                         if let message = model.message {
@@ -108,7 +96,6 @@ struct WatchlistView: View {
 
     private func addTerm() {
         let normalized = WatchMatcher.normalizeTerm(newTerm)
-        let existingValues = values
         guard normalized.count >= 2, normalized.count <= 80 else {
             validationMessage = "Each term must contain 2–80 characters."
             return
@@ -122,7 +109,6 @@ struct WatchlistView: View {
             newTerm = ""
             return
         }
-        let wasEmpty = existingValues.isEmpty
         modelContext.insert(WatchTermEntity(normalizedTerm: normalized))
         do {
             try modelContext.save()
@@ -134,18 +120,6 @@ struct WatchlistView: View {
         newTerm = ""
         validationMessage = nil
         termFieldFocused = false
-        let updated = existingValues + [normalized]
-        Task {
-            if wasEmpty, AlertControlPolicy.shouldOfferEnable(
-                alertsEnabled: notifications.alertsEnabled,
-                alertsAvailable: notifications.alertsAvailable,
-                watchTermCount: updated.count
-            ) {
-                await notifications.requestAfterFirstWatchTerm(terms: updated)
-            } else {
-                await notifications.syncWatchlist(terms: updated)
-            }
-        }
     }
 
     private var termIsValidForSubmission: Bool {
@@ -155,8 +129,6 @@ struct WatchlistView: View {
 
     private func deleteTerms(at offsets: IndexSet) {
         let deleting = offsets.map { terms[$0] }
-        let deletingIDs = Set(deleting.map(\.persistentModelID))
-        let remaining = terms.filter { !deletingIDs.contains($0.persistentModelID) }.map(\.normalizedTerm)
         deleting.forEach(modelContext.delete)
         do {
             try modelContext.save()
@@ -166,7 +138,6 @@ struct WatchlistView: View {
             return
         }
         validationMessage = nil
-        Task { await notifications.syncWatchlist(terms: remaining) }
     }
 }
 

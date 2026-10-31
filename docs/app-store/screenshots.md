@@ -18,7 +18,7 @@ Check Apple's current [screenshot specifications](https://developer.apple.com/he
 | 3 | Notice detail with product, lot/code, hazard, dates, and FDA link visible | `See the details before you act` | `Products, lots, sources` |
 | 4 | Saved tab with two real notices | `Keep important notices close` | `Saved on your iPhone` |
 | 5 | Watchlist with visible matched words or phrases | `Watch for products and hazards` | `Your watchlist` |
-| 6 | Notification permission explainer or Settings privacy controls | `Optional alerts. Your choice.` | `Alerts you control` |
+| 6 | Settings privacy controls and local data | `Your data stays on your iPhone` | `Data on this iPhone` |
 | 7 | Historical Search with its archive label and date fields | `Search the FDA enforcement archive` | `Historical FDA records` |
 
 ## Capture rules
@@ -27,4 +27,4 @@ Check Apple's current [screenshot specifications](https://developer.apple.com/he
 - Keep the app's cream-and-forest branding visible; include at least one dark-appearance screenshot after the core light set if space allows.
 - Make captions readable without covering source fields, badges, or navigation. Do not place the FDA logo or imply government endorsement.
 - Show “Published,” “Initiated,” and “Retrieved” only where the source provides them; never substitute one date for another.
-- Export lossless PNGs, inspect at 100%, and verify no personal notification previews, device names, tokens, debug controls, or placeholder URLs appear.
+- Export lossless PNGs, inspect at 100%, and verify no personal notification previews, device names, debug controls, or placeholder URLs appear.

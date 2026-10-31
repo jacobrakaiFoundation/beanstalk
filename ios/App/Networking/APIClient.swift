@@ -10,7 +10,6 @@ struct LoadedValue<Value> {
 enum APIClientError: LocalizedError {
     case invalidResponse
     case requestFailed(Int, String)
-    case noticeNotFound
 
     var errorDescription: String? {
         switch self {
@@ -18,8 +17,6 @@ enum APIClientError: LocalizedError {
             return "The data source returned an unreadable response."
         case let .requestFailed(status, message):
             return message.isEmpty ? "The data source returned HTTP \(status)." : message
-        case .noticeNotFound:
-            return "This recall announcement is no longer available."
         }
     }
 }
@@ -54,9 +51,6 @@ actor APIClient {
             let page: RecallNoticePage = try await request(url)
             try Task.checkCancellation()
             try? await cache.write(page, key: cacheKey)
-            for notice in page.items {
-                try? await cache.write(notice, key: "notice|\(notice.id)")
-            }
             try Task.checkCancellation()
             return LoadedValue(value: page, isOfflineCopy: false, cachedAt: nil)
         } catch {
@@ -65,39 +59,6 @@ actor APIClient {
             let liveError = error
             if let hit = try? await cache.read(
                 RecallNoticePage.self,
-                key: cacheKey,
-                maxAge: 6 * 60 * 60,
-                allowExpired: true
-            ) {
-                try Task.checkCancellation()
-                return LoadedValue(value: hit.value, isOfflineCopy: true, cachedAt: hit.storedAt)
-            }
-            try Task.checkCancellation()
-            throw liveError
-        }
-    }
-
-    func notice(id: String) async throws -> LoadedValue<RecallNotice> {
-        let cacheKey = "notice|\(id)"
-        do {
-            let url = NoticeRequestBuilder.detailURL(baseURL: AppConfiguration.backendBaseURL, id: id)
-            let (data, response) = try await session.data(from: url)
-            guard let http = response as? HTTPURLResponse else { throw APIClientError.invalidResponse }
-            if http.statusCode == 404 { throw APIClientError.noticeNotFound }
-            guard (200..<300).contains(http.statusCode) else {
-                throw APIClientError.requestFailed(http.statusCode, responseMessage(from: data))
-            }
-            let notice = try decoder.decode(RecallNotice.self, from: data)
-            try Task.checkCancellation()
-            try? await cache.write(notice, key: cacheKey)
-            try Task.checkCancellation()
-            return LoadedValue(value: notice, isOfflineCopy: false, cachedAt: nil)
-        } catch {
-            try Self.rethrowIfCancelled(error)
-            try Task.checkCancellation()
-            let liveError = error
-            if let hit = try? await cache.read(
-                RecallNotice.self,
                 key: cacheKey,
                 maxAge: 6 * 60 * 60,
                 allowExpired: true
