@@ -6,9 +6,9 @@ Paste and update bracketed build-specific details before submission:
 
 > Beanstalk is a free, accountless food-recall information app from JACOBRAKAI FOUNDATION. No login or demo credentials are required.
 >
-> The Recalls tab displays FDA-published food recall announcements. Historical Search is separately labeled and uses openFDA food enforcement records; it is not presented as a live recall-lifecycle feed. Each record exposes its dates and original FDA source.
+> The Recalls tab shows recent and historical openFDA food-enforcement snapshots. Both modes are labeled as an archive, not a live FDA announcement feed. Historical mode offers classification and status filters. The Watchlist checks recent FDA-published food recall announcements for matching terms.
 >
-> To review notifications: open Watchlist and add `salmonella`. Adding the first watch term presents the iOS notification-permission prompt; allow it. The production service silently seeds existing notices and alerts only on a later, newly published matching notice; it does not generate a test alert from old or demo data. Reviewers may use [attach a review-only test procedure or temporary test notice if available].
+> To review the watchlist: open Watchlist and add `salmonella`, then inspect any matching recent announcements. Optional notifications depend on iOS permission and a newly published matching announcement; existing notices do not generate a test alert. Settings → Notifications contains the alert and removal controls. Confirm the permission flow and delivery on the selected signed build before submission.
 >
 > Settings → Notifications → Remove this device from Beanstalk alerts removes the server-side alert registration and local bearer credential. Saved recalls are local to the device and can be removed from the Saved tab.
 >
@@ -16,8 +16,8 @@ Paste and update bracketed build-specific details before submission:
 >
 > Beanstalk is independent and is not affiliated with or endorsed by FDA. It does not use the FDA logo.
 >
-> - Backend base URL: `[production HTTPS URL]`
-> - Review contact: `[enter the App Store Connect contact; do not publish it in repository files]`
+> - Backend base URL: `https://api.jacobrakai.org`
+> - Review contact: the App Store Connect review contact (not recorded in this repository)
 
 Do not submit with bracketed text. Attach a short video if the quiet initial seeding behavior makes notification review impractical.
 

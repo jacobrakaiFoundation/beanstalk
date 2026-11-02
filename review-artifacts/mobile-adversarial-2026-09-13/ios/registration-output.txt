@@ -1,0 +1,4 @@
+offline delete: 1 stored: true
+after online relaunch sync: 1 stored: true message: Beanstalk alerts are not active. Recall browsing still works.
+after later opt-out: false
+after earlier permission result: true registrations: 1

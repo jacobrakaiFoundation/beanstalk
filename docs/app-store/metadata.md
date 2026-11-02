@@ -23,40 +23,33 @@ Name and subtitle are within Apple's 30-character limits. Confirm name availabil
 
 ## Promotional text
 
-> Search food recall information, save notices, and create optional watchlists for matching FDA-published announcements—free and without an account.
+> Explore food recall records, save details on your iPhone, and check watch terms against FDA announcements. Free, with no account.
 
 ## Description
 
-> Understand what a food recall notice actually says.
+> Food recall information is easier to use when product details and sources are close together. Beanstalk helps you inspect FDA food recall records and announcements, save what matters, and check your own watch terms.
 >
-> Beanstalk is a calm, searchable way to browse food recall announcements published by the U.S. Food and Drug Administration. Save important notices on your iPhone, build a watchlist for products or hazards you care about, and choose whether to receive matching notifications.
+> BROWSE AND CHECK
 >
-> FEATURES
+> - Browse recent and historical openFDA food enforcement records.
+> - Search records by product, firm, or hazard. Filter historical results by classification and status.
+> - See product, lot or code, reason, date, distribution, and source details when available.
+> - Add words or phrases to a watchlist and see matches in recent FDA-published food recall announcements.
+> - Save records and announcements on your iPhone, share them, or open the original source.
 >
-> - Browse recent FDA-published food recall announcements
-> - Search historical food enforcement records from openFDA
-> - See product, lot, company, hazard, distribution, and source details
-> - Save recalls locally for quick access
-> - Create word- and phrase-based watchlists
-> - Open the original FDA source and share a notice
+> YOUR CHOICE
 >
-> PRIVATE BY DEFAULT
+> No account is required. Saved items stay on your device. If you enable alerts, Beanstalk sends your watch terms and an app-specific device token to the Foundation's service to match and deliver notifications. There are no ads or cross-app tracking.
 >
-> No account is required. Saved recalls stay on your device. If you enable alerts, Beanstalk sends your watch terms and an app-specific device token to the Foundation's service only to match and deliver recall notifications. There are no ads or cross-app tracking.
+> SAFETY LIMITS
 >
-> IMPORTANT LIMITS
+> The openFDA enforcement archive may lag FDA announcements and is not a live recall feed. FDA does not publish an announcement for every recall. Notifications may be delayed. A search with no results does not establish that a product is safe. Always verify the original notice and current instructions from FDA and the recalling firm. For meat, poultry, and processed egg products, also check USDA FSIS.
 >
-> Notifications are a convenience and may be delayed. FDA notes that not every recall has a public announcement. Historical openFDA enforcement records are a separate archive and should not be treated as a live recall-lifecycle feed. A search with no results does not establish that a product is safe. Always verify the original notice and follow current instructions from FDA and the recalling firm.
->
-> Beanstalk covers FDA-regulated food content. Also check USDA FSIS for meat, poultry, and processed egg product recalls.
->
-> Beanstalk is free, with no paid features. An optional donation link in Settings opens the Foundation's donation page in your browser and unlocks nothing.
->
-> Beanstalk is an independent public-service project of JACOBRAKAI FOUNDATION. It is not affiliated with or endorsed by FDA and does not provide medical advice.
+> Beanstalk is free. An optional donation link in Settings opens the Foundation's website and unlocks nothing. Beanstalk is an independent public-service project of JACOBRAKAI FOUNDATION. It is not affiliated with or endorsed by FDA and does not provide medical advice.
 
 ## Keywords
 
-`safety,allergy,allergen,grocery,product,lot,warning,consumer,hazard,outbreak,enforcement,unsafe`
+`allergy,allergen,salmonella,listeria,contamination,grocery,lot,batch,product,hazard,enforcement`
 
 The list is under Apple's 100-byte limit and does not repeat the app name or subtitle.
 

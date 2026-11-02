@@ -116,15 +116,6 @@ actor DeviceAPI {
         }
     }
 
-    func verifyRegistration() async throws -> Bool {
-        guard let credentials = loadCredentials() else { return false }
-        let request = try authenticatedURLRequest(path: "v1/devices/me", method: "GET", credentials: credentials)
-        let (_, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse else { throw DeviceAPIError.invalidResponse }
-        if http.statusCode == 401 || http.statusCode == 403 { throw DeviceAPIError.unauthorized }
-        guard (200..<300).contains(http.statusCode) else { throw DeviceAPIError.requestFailed(http.statusCode) }
-        return true
-    }
 
     func deleteRegistration() async throws -> DeviceDeletionResult {
         guard let credentials = loadCredentials() else {

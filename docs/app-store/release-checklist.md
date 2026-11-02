@@ -9,7 +9,7 @@ No item in this file is complete until current evidence is attached. Submission 
 - [ ] **Minimum supported iOS is 17** (`deploymentTarget` in `ios/project.yml`). **Build and archive require Xcode 26+** with the current App Store submission toolchain (same gate as CI on `macos-26`). The Release archive passes tests and contains the final app icon, privacy manifest, APNs entitlement, production endpoints, and no secrets.
 - [ ] Production notification service is isolated behind HTTPS, capacity-checked, monitored, and restore-tested; verify all delivery rows and inactive registrations expire within 30 days, the encrypted backup job runs at least daily with 14-day rotation, and neither the service nor HTTPS gateway retains search terms, authorization data, device tokens, or client IP addresses.
 - [ ] Set this repository's GitHub Pages source to **GitHub Actions**, publish the merged public pages, and verify the marketing, support, privacy, and privacy-choices URLs return 200 over HTTPS on mobile and desktop.
-- [ ] Route `api.beanstalk.jacobrakai.org` through the managed HTTPS tunnel to the isolated loopback service and verify DNS, TLS, rate limits, and health from outside Malachi.
+- [ ] Verify `https://api.jacobrakai.org` (the tunnel in front of the notification service) answers `/healthz` and `/v1/notices` over HTTPS from outside Malachi, that the archive's `BEANSTALK_BACKEND_BASE_URL` matches it, and that the running container was built from current `origin/main` (`git -C /opt/beanstalk rev-parse HEAD` on loam equals `origin/main`; the healthz body alone does not identify the deployed commit).
 
 ## App Store Connect
 

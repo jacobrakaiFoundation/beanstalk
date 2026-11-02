@@ -151,6 +151,18 @@ jobs:
           CODE_SIGNING_ALLOWED=NO
           build
 
+      - name: Assert the Release Info.plist enables alerts against the live backend
+        run: |
+          plist=$(find ~/Library/Developer/Xcode/DerivedData -path '*Release-iphonesimulator/Beanstalk.app/Info.plist' | head -1)
+          test -n "$plist" || { echo "::error::Release Info.plist not found"; exit 1; }
+          push=$(plutil -extract BEANSTALK_PUSH_CONFIGURED raw "$plist")
+          apns=$(plutil -extract APNS_ENVIRONMENT raw "$plist")
+          url=$(plutil -extract BEANSTALK_BACKEND_BASE_URL raw "$plist")
+          echo "push=$push apns=$apns url=$url"
+          [ "$push" = "true" ] || { echo "::error::BEANSTALK_PUSH_CONFIGURED must be true in a Release build"; exit 1; }
+          [ "$apns" = "production" ] || { echo "::error::APNS_ENVIRONMENT must be production in a Release build"; exit 1; }
+          [ "$url" = "https://api.jacobrakai.org" ] || { echo "::error::BEANSTALK_BACKEND_BASE_URL must be the live backend"; exit 1; }
+
   android:
     name: android sideload apk
     runs-on: ubuntu-latest

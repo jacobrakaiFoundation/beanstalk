@@ -1,0 +1,78 @@
+{
+  "wrappedTable": {
+    "sourceHasHazard": true,
+    "summaryHasHazard": false,
+    "sourceHasDisposal": true,
+    "summaryHasDisposal": false,
+    "extractedSummary": "Product Description | PLU | States | Best By Dates\nCabricharme Raw Milk Cheese | 57953 | California, New Jersey | Through 10/7/2026"
+  },
+  "updatedNotice": {
+    "codeInfo": "LOT-OLD",
+    "reasonForRecall": "Undeclared egg",
+    "retrievedAt": "2026-09-13T20:15:00.000Z"
+  },
+  "unchangedRssUrl": {
+    "result": {
+      "kind": "updated",
+      "newNoticeCount": 0,
+      "queuedCount": 0
+    },
+    "additionalAnnouncementFetches": 0,
+    "codeInfo": "Lot Code | Best By\nLOT-123 | 12/31/2026"
+  },
+  "in-flight-token-invalid": {
+    "currentToken": "b",
+    "active": false,
+    "disabledReason": "Unregistered",
+    "sentTokens": [
+      "a"
+    ],
+    "queue": [
+      {
+        "status": "permanent_failure",
+        "last_error_code": "Unregistered"
+      },
+      {
+        "status": "permanent_failure",
+        "last_error_code": "device_disabled"
+      }
+    ]
+  },
+  "remaining-batch-token": {
+    "currentToken": "b",
+    "active": true,
+    "disabledReason": null,
+    "sentTokens": [
+      "a",
+      "a"
+    ],
+    "queue": [
+      {
+        "status": "sent",
+        "last_error_code": null
+      },
+      {
+        "status": "sent",
+        "last_error_code": null
+      }
+    ]
+  },
+  "nonFoodCursorGap": {
+    "annualContainsCursor": true,
+    "results": [
+      {
+        "kind": "gap-paused",
+        "reason": "Official annual XML did not contain the previous RSS cursor"
+      },
+      {
+        "kind": "gap-paused",
+        "reason": "Official annual XML did not contain the previous RSS cursor"
+      },
+      {
+        "kind": "gap-paused",
+        "reason": "Official annual XML did not contain the previous RSS cursor"
+      }
+    ],
+    "gapStatus": "failed"
+  }
+}
