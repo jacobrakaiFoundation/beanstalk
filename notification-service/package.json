@@ -21,7 +21,7 @@
     "@fastify/rate-limit": "^11.2.0",
     "better-sqlite3": "^13.0.3",
     "cheerio": "^1.1.2",
-    "fast-xml-parser": "^5.2.5",
+    "fast-xml-parser": "^5.11.2",
     "fastify": "^5.12.6",
     "google-auth-library": "^11.0.2",
     "jose": "^6.1.0"
