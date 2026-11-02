@@ -23,6 +23,15 @@ enum APIClientError: LocalizedError {
 
 actor APIClient {
     static let shared = APIClient()
+    static let cacheDirectory: URL = {
+        let root = (try? FileManager.default.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        )) ?? FileManager.default.temporaryDirectory
+        return root.appendingPathComponent("Beanstalk/LastSuccessfulResults", isDirectory: true)
+    }()
 
     private let session: URLSession
     private let cache: JSONFileCache
@@ -30,13 +39,7 @@ actor APIClient {
 
     init(session: URLSession = .shared) {
         self.session = session
-        let root = (try? FileManager.default.url(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask,
-            appropriateFor: nil,
-            create: true
-        )) ?? FileManager.default.temporaryDirectory
-        cache = JSONFileCache(directory: root.appendingPathComponent("Beanstalk/LastSuccessfulResults", isDirectory: true))
+        cache = JSONFileCache(directory: Self.cacheDirectory)
     }
 
     func notices(query: String, cursor: String? = nil, limit: Int = 30) async throws -> LoadedValue<RecallNoticePage> {

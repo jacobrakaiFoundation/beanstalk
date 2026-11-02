@@ -47,12 +47,11 @@ flowchart LR
   Notify -->|"HTTPS RSS, XML, HTML"| FdaSite
   Notify -->|"HTTP/2"| Apns
   Notify -->|"HTTPS JSON"| Fcm
-  Apns -.->|"alert push"| iOS
   Fcm -.->|"alert push"| Android
   FsisApi -.->|"build-time GET only"| Pages
 ```
 
-Dotted edges are not on the request path of a running client. The FSIS API is fetched while `npm run build` writes `public/fsis-recalls.json`. Push edges run only after a device is registered and the matching provider credentials are present. With the flags in this tree, registration does not start. See [Build flags](#build-flags).
+Dotted edges are not on the request path of a running client. The FSIS API is fetched while `npm run build` writes `public/fsis-recalls.json`. Push edges run only after an Android device is registered and the matching provider credentials are present. With the flags in this tree, registration does not start. The iOS app has no push: it only reads notices from the service. See [Build flags](#build-flags).
 
 ## How data moves
 
@@ -62,7 +61,7 @@ There are three separate recall paths. They do not share a database.
 
 **USDA FSIS** exists only in the web app. Native Android and iOS have no FSIS client. A production web or APK build does not call USDA from the phone or the browser. `food-recall-app/scripts/fetch-fsis-recalls.ts` downloads the FSIS recall API at build time and writes `food-recall-app/public/fsis-recalls.json`. That file is gitignored (`food-recall-app/.gitignore`). The running app then `fetch`es the static file from its own origin. `vite dev` is the exception: it proxies `/api/fsis-recalls` to USDA (`food-recall-app/vite.config.ts`).
 
-**Alerts** start in notification-service. It polls an FDA RSS feed, fetches each linked announcement page on `www.fda.gov`, stores notices in SQLite, and matches them to device watch terms. Delivery is APNs or FCM. The web PWA does not call this service. Its "notifications" are the browser `Notification` constructor after a search, in `food-recall-app/src/App.tsx` and `food-recall-app/src/lib/notifications.ts`.
+**Alerts** start in notification-service. It polls an FDA RSS feed, fetches each linked announcement page on `www.fda.gov`, stores notices in SQLite, and matches them to device watch terms. Delivery is APNs or FCM; only native Android registers a device, and the iOS app only reads `/v1/notices`. The web PWA does not call this service. Its "notifications" are the browser `Notification` constructor after a search, in `food-recall-app/src/App.tsx` and `food-recall-app/src/lib/notifications.ts`.
 
 The web app also searches openFDA `food/event.json` (CAERS) for the Early Signals tab and for related events on a recall card (`food-recall-app/src/lib/events.ts`). That dataset is not used by the native apps or by notification-service.
 
@@ -137,23 +136,16 @@ Firebase Messaging is a Gradle dependency (`android/app/build.gradle.kts`). The 
 
 ### iOS
 
-`URLSession.shared` is used with no timeout set in app code (`ios/App/Networking/APIClient.swift`, `ios/App/Networking/DeviceAPI.swift`). Backend base is Info.plist `BEANSTALK_BACKEND_BASE_URL`, which is `https://api.beanstalk.jacobrakai.org` (`ios/App/Info.plist`). `AppConfiguration` falls back to that same URL if the plist string is missing or not a URL.
+`URLSession.shared` is used with no timeout set in app code (`ios/App/Networking/APIClient.swift`, `ios/App/Networking/LegacyRegistrationCleanup.swift`). Backend base is Info.plist `BEANSTALK_BACKEND_BASE_URL`, which is `https://api.jacobrakai.org` (`ios/App/Info.plist`). `AppConfiguration` falls back to that same URL if the plist string is missing or not a URL.
 
 | When | Protocol and host | What is sent | Auth |
 | --- | --- | --- | --- |
-| Notice list or detail | `GET` `{base}/v1/notices` or `/v1/notices/{id}` | `limit` (1–100, caller default 30), optional `cursor`, optional `query` (max 120). | None. Notice detail is a plain `GET`. Device calls set `cachePolicy` to reload and ignore local URL cache. |
+| Notice list | `GET` `{base}/v1/notices` | `limit` (1–100, caller default 30), optional `cursor`, optional `query` (max 120). The Watchlist tab requests 100 with no query and matches on the device. | None. |
 | Historical search | `GET` `https://api.fda.gov/food/enforcement.json` | Same shape as Android: `search`, `limit`, `skip`, `sort=report_date:desc`. Skip above 25000 throws before the request. HTTP 404 becomes an empty page. | None. |
-| Alerts enabled and `BEANSTALK_PUSH_CONFIGURED` is true | `POST` `{base}/v1/devices` | JSON `deviceToken` (hex APNs token) and `environment` (`production` only if Info.plist `APNS_ENVIRONMENT` is the string `production`, otherwise `sandbox`). | None on create. |
-| Stored credentials exist | `PUT` `/v1/devices/me/token` with the same body, then `PUT` `/v1/devices/me/watchlist` with `terms` | | `Authorization: Bearer {deviceID}.{clientSecret}`. |
-| Sync or verify | `GET` `/v1/devices/me` | | Same bearer. |
-| Disable | `DELETE` `/v1/devices/me` | | Same bearer. |
+| Launch, while a credential from test builds 2-3 remains in Keychain service `org.jacobrakaifoundation.beanstalk.notifications` | `DELETE` `{base}/v1/devices/me` | | `Authorization: Bearer {deviceID}.{clientSecret}`. 2xx, 401, 403, and 404 delete the Keychain items; anything else keeps them for the next launch. |
 | User opens a link | `www.fda.gov` recall index, `www.fsis.usda.gov/recalls`, the notice `sourceURL`, the synthesized openFDA `sourceURL`, `jacobrakaifoundation.github.io` privacy and support pages, `https://jacobrakai.org/donate/` (`ios/App/Views/SettingsView.swift`, detail views) | | |
 
-`BEANSTALK_PUSH_CONFIGURED` is `false` in `ios/App/Info.plist`. `AlertControlPolicy.isPushConfigured` treats missing, false, and any string other than `1`, `true`, or `yes` as off. `NotificationRegistrationService` then does not call `registerForRemoteNotifications` or `DeviceAPI`. The device rows in the table are present in code and inactive in this tree.
-
-`aps-environment` is `$(APNS_ENVIRONMENT)` (`ios/App/Beanstalk.entitlements`). XcodeGen sets that build setting to `development` for Debug and `production` for Release (`ios/project.yml`). Those are Apple entitlement values. The string sent to notification-service is a different vocabulary: only `production` stays `production`, and `development` becomes `sandbox` (`ios/App/AppConfiguration.swift`).
-
-Registering for remote notifications is an Apple API. This repo does not name an APNs host in the iOS client. The service is the component that opens a connection to Apple.
+The iOS app has no push code, no entitlements, and no Info.plist feature switches; `NoHiddenFeatureConfigurationTests` fails if `CODE_SIGN_ENTITLEMENTS`, `aps-environment`, a `*_CONFIGURED` key, or `APNS_ENVIRONMENT` returns.
 
 ### notification-service
 
@@ -227,8 +219,8 @@ sequenceDiagram
   participant FDA as www.fda.gov
   participant DB as SQLite
   participant Queue as NotificationQueue
-  participant Push as APNs or FCM
-  participant Phone as iOS or Android
+  participant Push as FCM or APNs
+  participant Phone as Android
   loop Every POLL_INTERVAL_MS and once at startup
     Poll->>FDA: GET RSS
     FDA-->>Poll: Feed
@@ -247,9 +239,9 @@ sequenceDiagram
   end
 ```
 
-What the phone receives depends on the provider. APNs gets the notice title, a short reason or summary, `noticeId`, `matchedTerm`, and `matchedField`. FCM gets a fixed title and body and `data.noticeId` only. The queue still stores `matched_term` and `matched_field` for both. iOS reads those keys in `BeanstalkAppDelegate`. Android's FCM data payload, as built in `notification-service/src/fcm.ts`, has no match fields to read.
+What the phone receives depends on the provider. APNs gets the notice title, a short reason or summary, `noticeId`, `matchedTerm`, and `matchedField`. FCM gets a fixed title and body and `data.noticeId` only. The queue still stores `matched_term` and `matched_field` for both. No current client reads the APNs payload; the iOS app has no push. Android's FCM data payload, as built in `notification-service/src/fcm.ts`, has no match fields to read.
 
-Device registration is not in the diagram because the current flags do not start it. When they do, the phone `POST`s `/v1/devices`, stores the returned secret, and `PUT`s `/v1/devices/me/watchlist`. iOS sends an APNs token. Android sends an FCM registration token with `identifierKind` `"token"`.
+Device registration is not in the diagram because the current flags do not start it. When they do, the Android app `POST`s `/v1/devices`, stores the returned secret, and `PUT`s `/v1/devices/me/watchlist`, sending an FCM registration token with `identifierKind` `"token"`. The iOS app never registers.
 
 ## Local storage
 
@@ -288,15 +280,9 @@ Device credentials live in SharedPreferences file `encrypted_device_credentials`
 
 SwiftData models `SavedRecallItem` and `WatchTermEntity` (`ios/App/Models/PersistenceModels.swift`, container in `ios/App/BeanstalkApp.swift`). Saved payloads are encoded notices or enforcement records.
 
-Keychain service `org.jacobrakaifoundation.beanstalk.notifications` (`ios/App/Networking/DeviceAPI.swift`, `KeychainStore.swift`):
+The app writes nothing to the Keychain. `LegacyRegistrationCleanup` only deletes items left under service `org.jacobrakaifoundation.beanstalk.notifications` by test builds 2-3.
 
-| Account | Contents |
-| --- | --- |
-| `device-credentials` | JSON `deviceID` and `clientSecret`. |
-| `apns-token` | Hex device token. |
-| `alerts-enabled` | `true` or `false`. |
-
-Last successful notice and enforcement responses are JSON files under Application Support `Beanstalk/LastSuccessfulResults`, falling back to the temp directory (`APIClient.swift`). On a network error the client returns them even when older than 6 hours (`allowExpired: true`). A one-item file `Beanstalk/pending-notification.json` holds a notification tap that arrived before the UI subscribed (`ios/Core/Sources/BeanstalkCore/PendingNotificationBuffer.swift`).
+Last successful notice-list and enforcement responses are JSON files under Application Support `Beanstalk/LastSuccessfulResults`, falling back to the temp directory (`APIClient.swift`). Filenames are FNV-1a hashes of the cache key. On a network error the client returns them even when older than 6 hours (`allowExpired: true`). At launch `LegacyRegistrationCleanup` deletes single-notice files left by earlier builds, identified by content (a value with `id` and no `items`).
 
 ### notification-service
 
@@ -364,13 +350,11 @@ Android release signing, unused unless all four are set in the Gradle environmen
 
 ## Build flags
 
-**`BEANSTALK_PUSH_CONFIGURED`** is an iOS Info.plist boolean, currently `false` (`ios/App/Info.plist`). It is not an Xcode build setting and `ios/project.yml` does not parameterize it. `AppConfiguration.isPushConfigured` passes the plist value to `AlertControlPolicy.isPushConfigured`. While it is false, Settings hides enable, and `NotificationRegistrationService` does not register with APNs or with notification-service. Watch terms still save in SwiftData.
-
-**`APNS_ENVIRONMENT`** is the Xcode setting described above. It fills both the `aps-environment` entitlement and the Info.plist key of the same name. It does not turn push on. `BEANSTALK_PUSH_CONFIGURED` does that.
+**iOS** has no feature flags. The only app Info.plist custom key is the backend base URL below.
 
 **`BEANSTALK_BACKEND_BASE_URL`** is an Info.plist string, not a build setting. Android's equivalent is the Gradle `buildConfigField` `BACKEND_BASE_URL`, also a literal, not an environment variable.
 
-**Android push** has no `BEANSTALK_PUSH_CONFIGURED`. Availability is `FirebaseApp.getApps(context).isNotEmpty()` (`NotificationCoordinator.kt`). The manifest strips Firebase startup, and `google-services.json` is absent, so a build of this tree reports alerts unavailable (`AlertControlPolicy.UNAVAILABLE_MESSAGE`, the string `Coming soon`).
+**Android push** availability is `FirebaseApp.getApps(context).isNotEmpty()` (`NotificationCoordinator.kt`). The manifest strips Firebase startup, and `google-services.json` is absent, so a build of this tree reports alerts unavailable (`AlertControlPolicy.UNAVAILABLE_MESSAGE`, the string `Coming soon`).
 
 **`VITE_BASE`** defaults to `/beanstalk/` for Pages. The sideload script sets it to `/` so asset URLs work at the WebView origin.
 
@@ -384,7 +368,7 @@ Android release signing, unused unless all four are set in the Gradle environmen
 
 - Native clients never call USDA. The web client calls USDA only under `vite dev`. Production FSIS data is a build artifact.
 - `VITE_OPENFDA_KEY` is unused by client fetches. `DEFAULT_OPENFDA_PROXY` is unused as a fallback.
-- iOS push registration and Android FCM registration do not run for the files as committed.
+- Android FCM registration does not run for the files as committed. The iOS app has no push registration.
 - notification-service has no reference to `api.beanstalk.jacobrakai.org`. Whether that name reaches the Compose port is outside this repository.
 - The openFDA Worker has no deploy workflow. Pages assumes the `workers.dev` host is already deployed.
 - `FdaPoller` refetches every current RSS announcement on each poll. The service README says the opposite.

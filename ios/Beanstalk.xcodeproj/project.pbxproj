@@ -15,6 +15,7 @@
 		2C13C7E357F53724BAEDC291 /* AccessibilitySupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F8004E237149289CDEE1421 /* AccessibilitySupport.swift */; };
 		2DD3DCEC659A3CC9636D4117 /* WatchlistViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEAC5FBEB405CE0B5A4234F8 /* WatchlistViewModel.swift */; };
 		4C80EA0EA77F28B98980B388 /* AppIcon.svg in Resources */ = {isa = PBXBuildFile; fileRef = A7C694E9C1C1CEAA600B4D4D /* AppIcon.svg */; };
+		599E033E3F1FB2E735F383CF /* LegacyRegistrationCleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8438A8F334D545ABD372879A /* LegacyRegistrationCleanup.swift */; };
 		5C30731CD4E3466A6467FB45 /* RecallsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 858CFE30388819BD6A97819B /* RecallsView.swift */; };
 		5CC35D82E35A43340387F850 /* BeanstalkCore in Frameworks */ = {isa = PBXBuildFile; productRef = D9DD524980FC2FCB5B06F687 /* BeanstalkCore */; };
 		66754F2D50F9669E351C8893 /* NoticeDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B6BBA7B626A70E1AA8468F0 /* NoticeDetailView.swift */; };
@@ -36,6 +37,7 @@
 		5DC13A6BADE10E1DAF9C99BB /* SavedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedView.swift; sourceTree = "<group>"; };
 		6F932EED3F7BE898EA65A52D /* SharedComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedComponents.swift; sourceTree = "<group>"; };
 		7B6BBA7B626A70E1AA8468F0 /* NoticeDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoticeDetailView.swift; sourceTree = "<group>"; };
+		8438A8F334D545ABD372879A /* LegacyRegistrationCleanup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyRegistrationCleanup.swift; sourceTree = "<group>"; };
 		858CFE30388819BD6A97819B /* RecallsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecallsView.swift; sourceTree = "<group>"; };
 		86026D0DCBAB208CACFEE4B5 /* Core */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Core; path = Core; sourceTree = SOURCE_ROOT; };
 		8F77F2DB95FB85C81BBE5DBB /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -116,6 +118,7 @@
 			isa = PBXGroup;
 			children = (
 				30156D4995C36E6E7C80EC31 /* APIClient.swift */,
+				8438A8F334D545ABD372879A /* LegacyRegistrationCleanup.swift */,
 			);
 			path = Networking;
 			sourceTree = "<group>";
@@ -234,6 +237,7 @@
 				079E21640952549B1BCF5B99 /* AppConfiguration.swift in Sources */,
 				EB518A90E6CC8F0E052EAD2D /* BeanstalkApp.swift in Sources */,
 				259545D8395A71668AE7F8E9 /* EnforcementDetailView.swift in Sources */,
+				599E033E3F1FB2E735F383CF /* LegacyRegistrationCleanup.swift in Sources */,
 				66754F2D50F9669E351C8893 /* NoticeDetailView.swift in Sources */,
 				EC6666EDF2BBBFCD69401B04 /* PersistenceModels.swift in Sources */,
 				5C30731CD4E3466A6467FB45 /* RecallsView.swift in Sources */,
