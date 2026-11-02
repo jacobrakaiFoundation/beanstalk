@@ -1,0 +1,15 @@
+{
+  "$schema_comment": "Public hostnames clients use. Code owns the values; docs must match. scripts/check-docs-alignment.mjs verifies.",
+  "backendBaseUrl": "https://api.jacobrakai.org",
+  "backendBaseUrlSources": [
+    "android/app/build.gradle.kts (BACKEND_BASE_URL)",
+    "ios/App/Info.plist (BEANSTALK_BACKEND_BASE_URL)",
+    "ios/App/AppConfiguration.swift fallback"
+  ],
+  "openFdaApi": "https://api.fda.gov",
+  "githubPages": "https://jacobrakaifoundation.github.io/beanstalk/",
+  "staleHostnames": [
+    "https://api.beanstalk.jacobrakai.org"
+  ],
+  "staleHostnameNote": "api.beanstalk.jacobrakai.org is not the current client base URL. Universal SSL covers one label only; see docs/app-store/release-checklist.md."
+}

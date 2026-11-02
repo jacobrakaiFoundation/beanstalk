@@ -7,6 +7,7 @@ check drift without scraping every README by hand.
 | File | What it locks |
 | --- | --- |
 | [`identity.json`](identity.json) | Android `applicationId`s, Capacitor `appId`, iOS bundle id, package paths |
+| [`hosts.json`](hosts.json) | Backend base URL and related public hosts |
 | [`ci.json`](ci.json) | Node/Java versions, protected status context names, CI job ids, alignment job |
 
 ## How updates propagate

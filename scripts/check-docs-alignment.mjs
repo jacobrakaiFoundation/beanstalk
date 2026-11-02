@@ -130,6 +130,50 @@ if (identity.capacitorSideload?.applicationId) {
   );
 }
 
+// --- Hosts contract ---
+const hostsRaw = read("shared/contracts/hosts.json");
+let hosts = null;
+if (hostsRaw) {
+  try {
+    hosts = JSON.parse(hostsRaw);
+  } catch (e) {
+    errors.push(`shared/contracts/hosts.json is not valid JSON: ${e.message}`);
+  }
+}
+
+const iosPlist = read("ios/App/Info.plist") || "";
+if (hosts?.backendBaseUrl) {
+  const backend = hosts.backendBaseUrl;
+  if (androidGradle && !androidGradle.includes(backend)) {
+    errors.push(`android BACKEND_BASE_URL must be ${backend} (hosts.json)`);
+  }
+  if (iosPlist && !iosPlist.includes(backend)) {
+    errors.push(`ios Info.plist BEANSTALK_BACKEND_BASE_URL must be ${backend} (hosts.json)`);
+  }
+  mustInclude("docs/practices/release.md", [backend, "shared/contracts/hosts.json"], "release guide hosts");
+  mustInclude("docs/architecture.md", [backend], "architecture backend host");
+  mustInclude("SECURITY.md", [backend.replace(/^https:\/\//, "")], "SECURITY.md backend host");
+
+  const staleDocs = [
+    "docs/architecture.md",
+    "docs/release/play-data-safety.md",
+    "docs/release/play-permissions.md",
+    "docs/practices/release.md",
+  ];
+  const staleList = Array.isArray(hosts.staleHostnames) ? hosts.staleHostnames : [];
+  for (const rel of staleDocs) {
+    const text = read(rel);
+    if (text === null) continue;
+    for (const stale of staleList) {
+      if (text.includes(stale)) {
+        errors.push(`${rel} still cites stale hostname ${stale}; use ${backend}`);
+      }
+    }
+  }
+}
+
+mustInclude("docs/README.md", ["practices/", "shared/contracts/"], "docs index");
+
 // --- CI contract (additive; identity checks above are unchanged) ---
 const ciRaw = read("shared/contracts/ci.json");
 let ci = null;

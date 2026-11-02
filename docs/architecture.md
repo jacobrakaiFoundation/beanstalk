@@ -119,7 +119,7 @@ A non-200, a non-JSON body, or a thrown fetch writes an empty snapshot with an `
 
 ### Native Android
 
-OkHttp timeouts are 15 seconds connect and 15 seconds read (`android/app/src/main/java/org/jacobrakaifoundation/beanstalk/data/network/BeanstalkApi.kt`). Base URL is the build-config field `BACKEND_BASE_URL`, set to `https://api.beanstalk.jacobrakai.org` in `android/app/build.gradle.kts`. Enforcement calls ignore that base and use `https://api.fda.gov/food/enforcement.json`.
+OkHttp timeouts are 15 seconds connect and 15 seconds read (`android/app/src/main/java/org/jacobrakaifoundation/beanstalk/data/network/BeanstalkApi.kt`). Base URL is the build-config field `BACKEND_BASE_URL`, set to `https://api.jacobrakai.org` in `android/app/build.gradle.kts` (locked in [`shared/contracts/hosts.json`](../shared/contracts/hosts.json)). Enforcement calls ignore that base and use `https://api.fda.gov/food/enforcement.json`.
 
 | When | Protocol and host | What is sent | Auth |
 | --- | --- | --- | --- |
@@ -137,7 +137,7 @@ Firebase Messaging is a Gradle dependency (`android/app/build.gradle.kts`). The 
 
 ### iOS
 
-`URLSession.shared` is used with no timeout set in app code (`ios/App/Networking/APIClient.swift`, `ios/App/Networking/DeviceAPI.swift`). Backend base is Info.plist `BEANSTALK_BACKEND_BASE_URL`, which is `https://api.beanstalk.jacobrakai.org` (`ios/App/Info.plist`). `AppConfiguration` falls back to that same URL if the plist string is missing or not a URL.
+`URLSession.shared` is used with no timeout set in app code (`ios/App/Networking/APIClient.swift`, `ios/App/Networking/DeviceAPI.swift`). Backend base is Info.plist `BEANSTALK_BACKEND_BASE_URL`, which is `https://api.jacobrakai.org` (`ios/App/Info.plist`; same value as [`shared/contracts/hosts.json`](../shared/contracts/hosts.json)). `AppConfiguration` falls back to that same URL if the plist string is missing or not a URL.
 
 | When | Protocol and host | What is sent | Auth |
 | --- | --- | --- | --- |
@@ -157,7 +157,7 @@ Registering for remote notifications is an Apple API. This repo does not name an
 
 ### notification-service
 
-The process listens on `HOST` and `PORT` (`notification-service/src/config.ts`, `notification-service/src/index.ts`). It does not contain the string `api.beanstalk.jacobrakai.org`. Clients assume that name. This repo does not contain DNS, TLS, or tunnel config that attaches it.
+The process listens on `HOST` and `PORT` (`notification-service/src/config.ts`, `notification-service/src/index.ts`). It does not contain the public client hostname. Native clients call `https://api.jacobrakai.org` (see [`shared/contracts/hosts.json`](../shared/contracts/hosts.json)). This repo does not contain DNS, TLS, or tunnel config that attaches that name to the Compose port.
 
 FDA fetches require `https`, host `fda.gov` or `www.fda.gov`, no userinfo, and no explicit port (`validatedFdaHttpsUrl` in `notification-service/src/sources.ts`). Redirects are followed manually, at most four, and each target is checked again. Header `user-agent` is `BeanstalkRecallService/0.1 (+https://jacobrakai.org/)`. The `jacobrakai.org` token is only inside that header. The service does not request that site.
 
@@ -385,7 +385,7 @@ Android release signing, unused unless all four are set in the Gradle environmen
 - Native clients never call USDA. The web client calls USDA only under `vite dev`. Production FSIS data is a build artifact.
 - `VITE_OPENFDA_KEY` is unused by client fetches. `DEFAULT_OPENFDA_PROXY` is unused as a fallback.
 - iOS push registration and Android FCM registration do not run for the files as committed.
-- notification-service has no reference to `api.beanstalk.jacobrakai.org`. Whether that name reaches the Compose port is outside this repository.
+- notification-service has no reference to `api.jacobrakai.org`. Whether that public name reaches the Compose port is outside this repository.
 - The openFDA Worker has no deploy workflow. Pages assumes the `workers.dev` host is already deployed.
 - `FdaPoller` refetches every current RSS announcement on each poll. The service README says the opposite.
 - The FCM sender ignores the notice title, body, and match fields that the queue computed.

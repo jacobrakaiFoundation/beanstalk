@@ -5,7 +5,9 @@ Canonical gates for shipping Beanstalk. Detail checklists live under
 guide is the entry point and the place package ids are stated once.
 
 Machine-checked identity: [`shared/contracts/identity.json`](../../shared/contracts/identity.json).
-After any id change, run `node scripts/check-docs-alignment.mjs`.
+Public client hosts: [`shared/contracts/hosts.json`](../../shared/contracts/hosts.json)
+(`https://api.jacobrakai.org` for native backend calls).
+After any id or host change, run `node scripts/check-docs-alignment.mjs`.
 
 ## Approval rule
 
