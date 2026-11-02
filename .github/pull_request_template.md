@@ -29,7 +29,8 @@ Closes #
 - [ ] Conventional Commits title (e.g. `feat: add recall filters`)
 - [ ] No unrelated reformatting; focused diff
 - [ ] No secrets / API keys committed
-- [ ] Docs updated (`README.md` if user-facing)
+- [ ] Docs updated (`README.md` if user-facing; practices under `docs/practices/`)
+- [ ] Docs/identity PRs: `node scripts/check-docs-alignment.mjs` passes locally
 - [ ] Self-reviewed
 
 ## Breaking changes

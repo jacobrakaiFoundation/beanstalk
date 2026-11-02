@@ -6,7 +6,7 @@
     {
       "name": "dev",
       "command": "export NVM_DIR=\"$HOME/.nvm\"; . \"$NVM_DIR/nvm.sh\"; export PATH=\"$NVM_DIR/versions/node/$(nvm version default)/bin:$PATH\"; cd food-recall-app && npm run dev",
-      "description": "Vite dev server for the Beanstalk food-recall-app, served at http://localhost:5173/beanstalk/ (append ?demo=1 for fictional demo data). Uses the nvm default Node (>= 22.22) to satisfy jsdom/undici engine requirements."
+      "description": "Default first-run surface only (see docs/practices/onboarding.md). Vite for food-recall-app at http://localhost:5173/beanstalk/ (append ?demo=1 for fictional demo data). Uses nvm default Node 22.x. Other packages (notification-service, openfda-proxy, android, ios) are installed on demand."
     }
   ]
 }

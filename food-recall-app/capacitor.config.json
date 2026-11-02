@@ -1,5 +1,5 @@
 {
-  "appId": "org.jacobrakaifoundation.beanstalk",
+  "appId": "org.jacobrakaifoundation.beanstalk.sideload",
   "appName": "Beanstalk",
   "webDir": "dist",
   "backgroundColor": "#f8f6ee",

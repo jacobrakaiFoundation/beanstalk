@@ -11,9 +11,10 @@
 # with nothing to strip is left byte-identical. Trailing blank lines left
 # behind by the removal are trimmed; git's own cleanup collapses the rest.
 #
-# Installed by tools/commit-cleaner/install.sh (see README.md). Safe under
-# `set -e`: every failure path exits 0 with the original message intact, so
-# the hook can never block a commit.
+# Enabled by `git config core.hooksPath .githooks` (Claude Code SessionStart
+# in `.claude/settings.json` does this for agent sessions; humans set it once
+# locally). Safe under `set -e`: every failure path exits 0 with the original
+# message intact, so the hook can never block a commit.
 
 msg_file="$1"
 [ -n "$msg_file" ] && [ -f "$msg_file" ] || exit 0

@@ -2,7 +2,9 @@
 
 This review is for the native Compose app in `android/` (`applicationId`
 `org.jacobrakaifoundation.beanstalk`). It is not the Capacitor sideload project
-in `android-apk/`.
+in `android-apk/` (`org.jacobrakaifoundation.beanstalk.sideload`). Release gates
+and identity: [`docs/practices/release.md`](../practices/release.md),
+[`shared/contracts/identity.json`](../../shared/contracts/identity.json).
 
 The list is the release merged manifest from
 `:app:processReleaseMainManifest`, after the removals in this change. Library

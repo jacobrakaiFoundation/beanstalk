@@ -14,7 +14,7 @@ This note describes the tree on `main`: what each program does, which hosts it c
 | iOS | SwiftUI app in `ios/`, bundle id `org.jacobrakaifoundation.beanstalk`, deployment target iOS 17 (`ios/project.yml`). |
 | notification-service | Node 22 Fastify process in `notification-service/`. It is the only server the native apps call for notices and device registration. |
 
-The native Android application id and the Capacitor `appId` are both `org.jacobrakaifoundation.beanstalk` (`android/app/build.gradle.kts`, `food-recall-app/capacitor.config.json`). The two APKs are different programs that would claim the same package name.
+Native Android uses `applicationId` `org.jacobrakaifoundation.beanstalk` (`android/app/build.gradle.kts`). The Capacitor sideload uses `org.jacobrakaifoundation.beanstalk.sideload` (`food-recall-app/capacitor.config.json`, `android-apk/app/build.gradle`) so both APKs can install on one device. Canonical values: [`shared/contracts/identity.json`](../shared/contracts/identity.json). Release gates: [`docs/practices/release.md`](practices/release.md).
 
 ```mermaid
 flowchart LR
