@@ -1,0 +1,21 @@
+{
+  "$schema_comment": "Canonical product identity. Code is the source of truth for values; docs must match. scripts/check-docs-alignment.mjs verifies.",
+  "nativeAndroid": {
+    "applicationId": "org.jacobrakaifoundation.beanstalk",
+    "path": "android/",
+    "artifact": "Play / native Compose client"
+  },
+  "capacitorSideload": {
+    "applicationId": "org.jacobrakaifoundation.beanstalk.sideload",
+    "capacitorAppId": "org.jacobrakaifoundation.beanstalk.sideload",
+    "path": "android-apk/",
+    "webConfig": "food-recall-app/capacitor.config.json",
+    "artifact": "Debug-signed Capacitor sideload APK (not Play)"
+  },
+  "ios": {
+    "bundleId": "org.jacobrakaifoundation.beanstalk",
+    "path": "ios/",
+    "minDeployment": "iOS 17"
+  },
+  "collisionNote": "nativeAndroid.applicationId and capacitorSideload.applicationId must differ so installs do not collide."
+}

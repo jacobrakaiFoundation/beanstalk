@@ -2,8 +2,11 @@
 
 Inputs for the Play Console Data safety form for the native Compose app in
 `android/` (`applicationId` `org.jacobrakaifoundation.beanstalk`). This is not
-the Capacitor sideload in `android-apk/`, which does not call the Foundation
-API.
+the Capacitor sideload in `android-apk/`
+(`org.jacobrakaifoundation.beanstalk.sideload`), which does not call the
+Foundation API. Release gates and identity:
+[`docs/practices/release.md`](../practices/release.md),
+[`shared/contracts/identity.json`](../../shared/contracts/identity.json).
 
 Form questions follow [Provide information for Google Play's Data safety
 section](https://support.google.com/googleplay/android-developer/answer/10787469).
@@ -36,14 +39,15 @@ marked "alerts build".
 
 **Is all of the user data collected by your app encrypted in transit?** Yes,
 for the requests this app makes. `BeanstalkApi` uses only `https://` URLs
-(`https://api.beanstalk.jacobrakai.org` and
-`https://api.fda.gov/food/enforcement.json`). There is no
+(`https://api.jacobrakai.org` and
+`https://api.fda.gov/food/enforcement.json`; see
+[`shared/contracts/hosts.json`](../shared/contracts/hosts.json)). There is no
 `networkSecurityConfig`, no `usesCleartextTraffic`, and no custom trust
 manager. `targetSdk` 36 blocks cleartext by default. OkHttp uses the platform
 TLS stack.
 
 **UNVERIFIED:** TLS configuration of the production host in front of
-`api.beanstalk.jacobrakai.org` (certificate, proxy, whether it accepts
+`api.jacobrakai.org` (certificate, proxy, whether it accepts
 anything other than HTTPS). The app never requests a cleartext URL.
 
 **Do you provide a way for users to request that their data is deleted?** Yes.

@@ -2,24 +2,32 @@ name: ci
 
 # The workflow that runs on every push and pull request:
 #
-#   checks  — lint, build and test the existing React/PWA, plus openFDA proxy
-#             helper tests. The job name is a protected-branch status context
-#             and must remain stable.
-#   service — lint, test and build the notification service on Node 22.
-#   native  — run the Swift tests and compile the Release app with the current
-#             App Store submission toolchain.
-#   android — build the Capacitor-wrapped Vite SPA and upload a debug-signed
-#             sideload APK. Uses the Android debug keystore; Play upload
-#             signing is not configured.
-#   pr      — pull requests only. Title format, the `Closes #N` reference, the
-#             template's Summary section, auto-labels, CODEOWNERS validity and
-#             a grep for hardcoded secrets in the diff. No Node, no install:
-#             it finishes in seconds.
+#   checks         — lint, build and test the React/PWA, plus openFDA proxy
+#                    helper tests. Job `name:` values below are protected-branch
+#                    status contexts and must remain stable (see
+#                    docs/practices/ci.md and shared/contracts/ci.json).
+#   service        — lint, test and build the notification service on Node 22
+#                    (`name: notification service checks`).
+#   native         — Swift tests + Release iPhone build on Xcode 26+
+#                    (`name: native release checks`).
+#   android        — Capacitor-wrapped Vite SPA → debug-signed sideload APK
+#                    (`name: android sideload apk`). Debug keystore only; Play
+#                    upload signing is not configured.
+#   android-native — native Compose assembleDebug + selected JVM unit tests
+#                    (`name: android native assemble`).
+#   pr             — pull requests only, including drafts (`name: pull request
+#                    hygiene`). Conventional Commits title, `Closes #N`,
+#                    Summary warning, auto-labels, CODEOWNERS, docs/contracts
+#                    alignment (`scripts/check-docs-alignment.mjs`), and a grep
+#                    for hardcoded secrets. No npm install: finishes in seconds.
+#
+# Draft PRs skip checks/service/native/android/android-native; hygiene still
+# runs. Security scanning (CodeQL, dependency review) lives in security.yml
+# (org reusable workflow), not here.
 #
 # This replaces three workflows (ci, pr-review, Adversarial Verify) that
 # together ran thirteen jobs and five `npm ci` per push, most of them repeating
-# each other byte for byte. Security scanning (CodeQL, dependency review) now
-# lives in security.yml, which calls the organization's reusable workflow.
+# each other byte for byte.
 #
 # Actions are pinned to full commit SHAs with the version in a trailing comment,
 # per the org's docs/MONITORING.md. Dependabot keeps the pins current.
@@ -328,6 +336,12 @@ jobs:
             exit 1
           fi
           echo "CODEOWNERS: no errors"
+
+      - name: Docs and contracts alignment
+        working-directory: .
+        # Keeps docs/practices/* and shared/contracts/* honest against code.
+        # See docs/practices/README.md. Uses the runner's Node; no npm ci.
+        run: node scripts/check-docs-alignment.mjs
 
       - name: No hardcoded secrets in the diff
         working-directory: .

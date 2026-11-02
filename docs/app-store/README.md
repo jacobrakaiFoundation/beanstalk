@@ -2,6 +2,12 @@
 
 Prepared 2026-09-13 for the first U.S. iPhone release by **JACOBRAKAI FOUNDATION**.
 
+Canonical release gates and product identity:
+[`docs/practices/release.md`](../practices/release.md) and
+[`shared/contracts/identity.json`](../../shared/contracts/identity.json)
+(iOS bundle id `org.jacobrakaifoundation.beanstalk`). Jacob must approve any
+App Store Connect submission or public release.
+
 ## Current state
 
 This is a draft package for release preparation. Complete the screenshots, public URLs, age-rating audit, review procedure, and bracketed build/contact fields from the signed Release build before copying it into App Store Connect. It does **not** prove that Apple Developer Program enrollment, the fee waiver, App Store Connect setup, TestFlight, device testing, App Review submission, or release has occurred.

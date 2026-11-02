@@ -1,9 +1,13 @@
 # Native Android app
 
 Compose sources for the Beanstalk recall client (`applicationId`
-`org.jacobrakaifoundation.beanstalk`). This is the project #144 started. The
-sideloadable web-wrap APK lives in [`../android-apk`](../android-apk) and is
-what CI uploads as `beanstalk-debug-apk`.
+`org.jacobrakaifoundation.beanstalk`). This is the Play / native Compose client
+started in #144. The Capacitor sideload APK lives in
+[`../android-apk`](../android-apk) under a **different** id
+(`org.jacobrakaifoundation.beanstalk.sideload`) and is what CI uploads as
+`beanstalk-debug-apk`. Identity contract:
+[`../shared/contracts/identity.json`](../shared/contracts/identity.json).
+Release gates: [`../docs/practices/release.md`](../docs/practices/release.md).
 
 `assembleDebug` uses the Android debug keystore.
 

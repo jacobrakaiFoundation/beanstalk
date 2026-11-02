@@ -1,0 +1,52 @@
+{
+  "$schema_comment": "CI facts mirrored from .github/workflows/ci.yml. Job name values are protected-branch status contexts and must stay stable. scripts/check-docs-alignment.mjs verifies.",
+  "nodeVersion": 22,
+  "javaVersion": 21,
+  "workflow": ".github/workflows/ci.yml",
+  "securityWorkflow": ".github/workflows/security.yml",
+  "pagesWorkflow": ".github/workflows/pages.yml",
+  "alignmentScript": "scripts/check-docs-alignment.mjs",
+  "alignmentJobId": "pr",
+  "alignmentJobName": "pull request hygiene",
+  "draftSkipsHeavyJobs": true,
+  "protectedStatusContexts": [
+    "checks",
+    "notification service checks",
+    "native release checks",
+    "android sideload apk",
+    "android native assemble",
+    "pull request hygiene"
+  ],
+  "jobs": [
+    {
+      "id": "checks",
+      "name": "checks",
+      "skipsDraft": true
+    },
+    {
+      "id": "service",
+      "name": "notification service checks",
+      "skipsDraft": true
+    },
+    {
+      "id": "native",
+      "name": "native release checks",
+      "skipsDraft": true
+    },
+    {
+      "id": "android",
+      "name": "android sideload apk",
+      "skipsDraft": true
+    },
+    {
+      "id": "android-native",
+      "name": "android native assemble",
+      "skipsDraft": true
+    },
+    {
+      "id": "pr",
+      "name": "pull request hygiene",
+      "skipsDraft": false
+    }
+  ]
+}

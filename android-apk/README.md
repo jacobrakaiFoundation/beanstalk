@@ -1,8 +1,16 @@
 # Beanstalk Android sideload APK
 
 This directory is the Capacitor Android project that packages the existing
-Vite/PWA (`food-recall-app`) as a sideloadable APK. It is not the incomplete
-native Compose sources in [`../android`](../android).
+Vite/PWA (`food-recall-app`) as a sideloadable APK. It is not the native
+Compose Play client in [`../android`](../android).
+
+`applicationId` / Capacitor `appId`: `org.jacobrakaifoundation.beanstalk.sideload`
+(must differ from native `org.jacobrakaifoundation.beanstalk`). Contract:
+[`../shared/contracts/identity.json`](../shared/contracts/identity.json).
+Release / install gates: [`../docs/practices/release.md`](../docs/practices/release.md).
+The Java `namespace` / `MainActivity` package may remain
+`org.jacobrakaifoundation.beanstalk`; install collision is decided by
+`applicationId`.
 
 The APK is **debug-signed** with the Android debug keystore. Play Store upload
 signing is not configured.

@@ -139,6 +139,14 @@ The repository contains the implementation and a draft release package. Its App 
 
 [Donate to JACOBRAKAI FOUNDATION](https://jacobrakai.org/donate/), a 501(c)(3) public charity (legal name JACOBRAKAI FOUNDATION; EIN 33-3382083). Donations are optional and unlock no app feature.
 
+## Contributing / practices
+
+New contributors and agents: start with
+[`docs/practices/onboarding.md`](docs/practices/onboarding.md) (clone → Node 22 →
+web demo → optional packages). Humans also read [`CONTRIBUTING.md`](CONTRIBUTING.md);
+agents read [`AGENTS.md`](AGENTS.md). CI, release, and identity contracts live under
+[`docs/practices/`](docs/practices/) and [`shared/contracts/`](shared/contracts/).
+
 ## License
 
 MIT. See [LICENSE](LICENSE).

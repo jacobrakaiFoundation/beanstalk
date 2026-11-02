@@ -1,6 +1,7 @@
 name: Beanstalk Pages
 
 # Publishes the live app at https://jacobrakaifoundation.github.io/beanstalk/.
+# Release gates for Pages vs stores/sideload: docs/practices/release.md.
 #
 # Every push to main that touches the app rebuilds food-recall-app/ and hands
 # dist/ to GitHub Pages through the Actions deployment path. There is no
