@@ -27,7 +27,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.13",
-    "@capacitor/android": "^8.5.2",
+    "@capacitor/android": "^8.6.0",
     "@capacitor/cli": "^8.5.2",
     "@capacitor/core": "^8.5.2",
     "@tailwindcss/postcss": "^4.3.3",
