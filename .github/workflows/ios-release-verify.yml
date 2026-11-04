@@ -380,6 +380,7 @@ jobs:
             ios-release-verify-artifacts/Beanstalk-unsigned.xcarchive.zip
             ios-release-verify-artifacts/sha-version.txt
           if-no-files-found: error
+          retention-days: 30
 
       - name: Upload network log
         if: ${{ !cancelled() }}
@@ -388,6 +389,7 @@ jobs:
           name: ios-network-log
           path: ios-release-verify-artifacts/network.log
           if-no-files-found: error
+          retention-days: 30
 
       - name: Upload screenshots
         if: ${{ !cancelled() }}
@@ -396,6 +398,7 @@ jobs:
           name: ios-screenshots
           path: ios-release-verify-artifacts/screenshots/
           if-no-files-found: error
+          retention-days: 30
 
       - name: Write job summary
         if: ${{ !cancelled() }}
@@ -403,3 +406,66 @@ jobs:
           set -euo pipefail
           set -o pipefail
           python3 scripts/ios-release-verify/summarize.py "$RESULTS" | tee "$GITHUB_STEP_SUMMARY"
+
+      - name: Record run evidence
+        if: always()
+        run: |
+          set -euo pipefail
+          count_url_needle() {
+            needle="$1"
+            if [ ! -f "$VERIFY_DIR/network.log" ]; then
+              printf 'missing'
+              return
+            fi
+            grep -F 'url:' "$VERIFY_DIR/network.log" | grep -F -c "$needle" || true
+          }
+          {
+            echo ""
+            echo "## Run evidence"
+            echo ""
+            echo "- github.sha: \`${GITHUB_SHA}\`"
+            if head_sha="$(git rev-parse HEAD 2>/dev/null)"; then
+              echo "- checked-out HEAD: \`${head_sha}\`"
+            else
+              echo "- checked-out HEAD: missing"
+            fi
+            if [ -f "$VERIFY_DIR/sha-version.txt" ]; then
+              short="$(grep '^CFBundleShortVersionString: ' "$VERIFY_DIR/sha-version.txt" | sed 's/^CFBundleShortVersionString: //')"
+              build="$(grep '^CFBundleVersion: ' "$VERIFY_DIR/sha-version.txt" | sed 's/^CFBundleVersion: //')"
+              echo "- CFBundleShortVersionString: ${short:-missing}"
+              echo "- CFBundleVersion: ${build:-missing}"
+            else
+              echo "- CFBundleShortVersionString: missing"
+              echo "- CFBundleVersion: missing"
+            fi
+            if [ -f "$VERIFY_DIR/network.log" ]; then
+              positive="$(grep -F 'url:' "$VERIFY_DIR/network.log" | grep -F 'api.fda.gov/food/enforcement.json' | head -n 1 || true)"
+              echo "- positive-control line:"
+              echo ""
+              echo '```'
+              printf '%s\n' "${positive:-missing}"
+              echo '```'
+            else
+              echo "- positive-control line: missing"
+            fi
+            echo "- zero-hit \`/v1/devices\` url: lines: $(count_url_needle '/v1/devices')"
+            echo "- zero-hit \`jacobrakai.org\` url: lines: $(count_url_needle 'jacobrakai.org')"
+            echo "- zero-hit \`PUT\` url: lines: $(count_url_needle 'PUT')"
+            hash_file="$VERIFY_DIR/screenshots/sha256.txt"
+            for name in 01-recall-list.png 02-recall-detail.png 03-settings-disclaimer.png; do
+              shot="$VERIFY_DIR/screenshots/${name}"
+              digest="missing"
+              if [ -f "$hash_file" ]; then
+                found="$(grep -F "  ${name}" "$hash_file" | awk '{ print $1 }' | head -n 1 || true)"
+                if [ -n "$found" ]; then
+                  digest="$found"
+                fi
+              fi
+              if [ -f "$shot" ]; then
+                bytes="$(wc -c < "$shot" | tr -d '[:space:]')"
+              else
+                bytes="missing"
+              fi
+              echo "- ${name}: sha256 \`${digest}\` bytes ${bytes}"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
