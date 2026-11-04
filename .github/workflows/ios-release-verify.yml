@@ -300,13 +300,14 @@ jobs:
             log_pid=$!
             waited=0
             while [ "$waited" -lt 30 ]; do
-              if grep -F -q 'Filtering the log data' "$log_path" 2>/dev/null; then
-                if kill -0 "$log_pid" 2>/dev/null; then
-                  echo "log stream is filtering after ${waited}s"
-                  return 0
+              if grep -F 'Filtering the log data' "$log_path" && kill -0 "$log_pid"; then
+                sleep 1
+                if ! kill -0 "$log_pid"; then
+                  echo "log stream died after Filtering the log data"
+                  return 1
                 fi
-                echo "log stream exited after printing Filtering the log data"
-                return 1
+                echo "log stream is filtering after ${waited}s"
+                return 0
               fi
               if ! kill -0 "$log_pid" 2>/dev/null; then
                 echo "log stream exited before Filtering the log data"
