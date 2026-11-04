@@ -15,10 +15,6 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-  pull_request:
-    paths:
-      - '.github/workflows/ios-release-verify.yml'
-      - 'scripts/ios-release-verify/**'
 
 permissions:
   contents: read
