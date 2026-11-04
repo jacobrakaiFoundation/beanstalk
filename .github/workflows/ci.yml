@@ -300,12 +300,16 @@ jobs:
         if: always()
         working-directory: android
         run: |
+          # Raise MIN_NATIVE_JVM_TESTS when Native JVM unit tests are added.
+          MIN_NATIVE_JVM_TESTS=55
+          export MIN_NATIVE_JVM_TESTS
           python3 - <<'PY'
           import glob
           import os
           import sys
           import xml.etree.ElementTree as ET
 
+          minimum = int(os.environ["MIN_NATIVE_JVM_TESTS"])
           paths = sorted(glob.glob("app/build/test-results/testDebugUnitTest/TEST-*.xml"))
           if not paths:
               print("Native JVM unit tests: no results")
@@ -327,7 +331,7 @@ jobs:
           print(f"Native JVM unit tests: {total} run, {failed} failed, {skipped} skipped")
           for name, tests, failures, skips in rows:
               print(f"{name}: tests={tests} failures={failures} skipped={skips}")
-          if total != 55 or failed != 0 or skipped != 0:
+          if total < minimum or failed != 0 or skipped != 0:
               sys.exit(1)
           PY
 
