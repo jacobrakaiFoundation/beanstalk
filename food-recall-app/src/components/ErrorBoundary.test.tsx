@@ -6,6 +6,15 @@ function ThrowOnRender({ message = "Test error" }: { message?: string }): React.
   throw new Error(message);
 }
 
+// Mutable so the retry test can stop throwing on the next render without
+// defining a component inside the test (noComponentHookFactories).
+const retryProbe = { shouldThrow: false };
+
+function MaybeThrow(): React.ReactElement {
+  if (retryProbe.shouldThrow) throw new Error("Oops");
+  return <div>Recovered</div>;
+}
+
 describe("ErrorBoundary", () => {
   it("renders children when no error", () => {
     render(
@@ -41,18 +50,14 @@ describe("ErrorBoundary", () => {
 
   it("retries rendering when retry button clicked", () => {
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
-    let shouldThrow = true;
-    function MaybeThrow(): React.ReactElement {
-      if (shouldThrow) throw new Error("Oops");
-      return <div>Recovered</div>;
-    }
+    retryProbe.shouldThrow = true;
     render(
       <ErrorBoundary>
         <MaybeThrow />
       </ErrorBoundary>,
     );
     expect(screen.getByText("Something went wrong")).toBeTruthy();
-    shouldThrow = false;
+    retryProbe.shouldThrow = false;
     fireEvent.click(screen.getByText("Try again"));
     expect(screen.getByText("Recovered")).toBeTruthy();
     spy.mockRestore();
