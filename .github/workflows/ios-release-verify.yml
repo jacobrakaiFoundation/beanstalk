@@ -300,7 +300,21 @@ jobs:
           predicate='process == "Beanstalk" OR processImagePath CONTAINS "Beanstalk"'
           script -q "$log_path" xcrun simctl spawn "$udid" log stream --level debug --style compact --predicate "$predicate" &
           log_pid=$!
-          sleep 2
+          ready=0
+          attempt=1
+          while [ "$attempt" -le 30 ]; do
+            if grep -F 'Filtering the log data' "$log_path" >/dev/null; then
+              ready=1
+              break
+            fi
+            sleep 1
+            attempt=$((attempt + 1))
+          done
+          if [ "$ready" -ne 1 ]; then
+            echo "::error::unified log stream was not filtering before launch"
+            exit 1
+          fi
+          sleep 1
           if ! kill -0 "$log_pid" 2>/dev/null; then
             echo "::error::unified log stream exited before launch"
             exit 1
