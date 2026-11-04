@@ -91,13 +91,48 @@ android {
 
     testOptions {
         unitTests.isIncludeAndroidResources = true
-        unitTests.all { it.useJUnit() }
+        unitTests.all {
+            it.useJUnit()
+            // Robolectric must not download android-all at test time (#300).
+            // Prefetch via Gradle (retry + setup-gradle cache), then force local dir.
+            it.systemProperty(
+                "robolectric.dependency.dir",
+                layout.buildDirectory.dir("robolectric-offline").get().asFile.absolutePath,
+            )
+            it.systemProperty("robolectric.offline", "true")
+            it.dependsOn("prepareRobolectricOffline")
+        }
     }
 }
 
 kotlin {
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+    }
+}
+
+// SDK 35 only: every Robolectric @Config in this module uses sdk = [35].
+// Artifact version from Robolectric 4.16.1 DefaultSdkProvider (V / i7).
+val robolectricInstrumentedSdk35 = "15-robolectric-13954326-i7"
+val robolectricOfflineJars by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+    isVisible = false
+}
+
+val prepareRobolectricOffline by tasks.registering(Copy::class) {
+    from(robolectricOfflineJars)
+    into(layout.buildDirectory.dir("robolectric-offline"))
+    doLast {
+        val jars = destinationDir.listFiles()?.filter { it.extension == "jar" }.orEmpty()
+        require(jars.isNotEmpty()) {
+            "prepareRobolectricOffline produced no jars under $destinationDir"
+        }
+        logger.lifecycle(
+            "Robolectric offline jars ready ({}): {}",
+            jars.size,
+            jars.joinToString { it.name },
+        )
     }
 }
 
@@ -132,6 +167,8 @@ dependencies {
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.16.1")
+    // Pre-resolved for offline Robolectric (see prepareRobolectricOffline).
+    robolectricOfflineJars("org.robolectric:android-all-instrumented:$robolectricInstrumentedSdk35")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
     testImplementation("com.squareup.okhttp3:mockwebserver:5.4.0")
     testImplementation("androidx.compose.ui:ui-test-junit4")
