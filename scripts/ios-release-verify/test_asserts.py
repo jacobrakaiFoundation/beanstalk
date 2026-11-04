@@ -12,7 +12,6 @@ from pathlib import Path
 from assert_screenshots import evaluate as evaluate_screenshots
 from assert_url_log import evaluate as evaluate_url_log
 from assert_url_log import main as assert_url_log_main
-from expect_negative_control import matches as negative_control_matches
 from summarize import REQUIRED, summarize
 
 WORKFLOW = Path(__file__).resolve().parents[2] / ".github" / "workflows" / "ios-release-verify.yml"
@@ -150,11 +149,9 @@ class WorkflowContractTests(unittest.TestCase):
         text = WORKFLOW.read_text(encoding="utf-8")
         self.assertIn("branches: [main]", text)
         self.assertIn("workflow_dispatch:", text)
-        self.assertIn("pull_request:", text)
+        self.assertNotIn("pull_request:", text)
         self.assertNotIn("pull_request_target:", text)
-        self.assertIn("ios/UITests/**", text)
-        self.assertIn("scripts/ios-release-verify/**", text)
-        self.assertIn("-BeanstalkNegativeControl", text)
+        self.assertNotIn("-BeanstalkNegativeControl", text)
         self.assertNotIn("${{ secrets", text)
         self.assertNotRegex(text, r"secrets\.[A-Za-z0-9_]+")
         self.assertIn("contents: read", text)
@@ -169,32 +166,6 @@ class WorkflowContractTests(unittest.TestCase):
                 self.assertIn("SIMCTL_CHILD_CFNETWORK_DIAGNOSTICS", line)
             if line.strip().startswith("uses:"):
                 self.assertRegex(line, r"@[0-9a-f]{40}")
-
-
-class NegativeControlTests(unittest.TestCase):
-    def test_nonzero_exit_that_names_the_path_is_accepted(self) -> None:
-        output = "\n".join(
-            [
-                "url: https://jacobrakai.org/v1/devices",
-                "FAIL\turl-zero-v1-devices",
-            ]
-        )
-        ok, _message = negative_control_matches(1, output)
-        self.assertTrue(ok)
-
-    def test_zero_exit_is_rejected_even_when_the_path_is_named(self) -> None:
-        ok, _message = negative_control_matches(0, "url: https://jacobrakai.org/v1/devices\n")
-        self.assertFalse(ok)
-
-    def test_check_label_without_the_path_is_rejected(self) -> None:
-        output = "\n".join(
-            [
-                "FAIL\turl-positive-control",
-                "FAIL\turl-zero-v1-devices",
-            ]
-        )
-        ok, _message = negative_control_matches(1, output)
-        self.assertFalse(ok)
 
 
 class SummaryTests(unittest.TestCase):

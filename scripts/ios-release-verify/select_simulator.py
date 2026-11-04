@@ -53,9 +53,6 @@ def create_device(name: str) -> str:
 
 
 def main() -> int:
-    if "--create" in sys.argv[1:]:
-        print(create_device("Beanstalk Negative Control"))
-        return 0
     devices = simctl("devices").get("devices", {})
     candidates: list[tuple[str, dict]] = []
     for runtime, entries in devices.items():
