@@ -26,6 +26,9 @@ struct BeanstalkApp: App {
     private func runNegativeControlIfRequested() async {
         #if DEBUG
         guard ProcessInfo.processInfo.arguments.contains("-BeanstalkNegativeControl") else { return }
+        // Let the separate simulator's log stream attach before the connection
+        // opens. The unredacted path is only on the connection's url: line.
+        try? await Task.sleep(for: .seconds(3))
         guard let url = URL(string: "https://jacobrakai.org/v1/devices") else { return }
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
