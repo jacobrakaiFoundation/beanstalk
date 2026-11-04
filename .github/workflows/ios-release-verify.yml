@@ -1,0 +1,391 @@
+name: iOS release verify
+
+# Unsigned release check for the commit that landed on main.
+#
+# Triggers are push to main and workflow_dispatch. The checkout ref is
+# github.sha, which on a main push is the merge commit. This file has no
+# pull_request trigger and does not read a pull request head ref.
+#
+# No secrets. No signing identity. Archive and simulator builds pass
+# CODE_SIGNING_ALLOWED=NO, and that assignment is printed in the log.
+# Actions are pinned to full commit SHAs. The runner is the repo's macOS 26
+# image, which carries Xcode 26.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-release-verify-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: unsigned release verify
+    runs-on: macos-26
+    timeout-minutes: 50
+    env:
+      VERIFY_DIR: ${{ github.workspace }}/ios-release-verify-artifacts
+      RESULTS: ${{ github.workspace }}/ios-release-verify-artifacts/results.tsv
+    steps:
+      - name: Check out github.sha
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Assert checkout is github.sha
+        run: |
+          source scripts/ios-release-verify/record.sh
+          set -euo pipefail
+          mkdir -p "$VERIFY_DIR"
+          echo "github.sha=${GITHUB_SHA}"
+          head_sha="$(git rev-parse HEAD)"
+          echo "HEAD=${head_sha}"
+          if [ -n "${GITHUB_HEAD_REF:-}" ]; then
+            echo "::error::refusing pull request head ref ${GITHUB_HEAD_REF}"
+            record FAIL "checkout-github-sha" || exit 1
+          fi
+          if [ "$head_sha" != "$GITHUB_SHA" ]; then
+            echo "::error::checked out ${head_sha}, expected github.sha ${GITHUB_SHA}"
+            record FAIL "checkout-github-sha" || exit 1
+          fi
+          record PASS "checkout-github-sha"
+
+      - name: Assert Xcode 26 toolchain
+        if: ${{ !cancelled() }}
+        run: |
+          source scripts/ios-release-verify/record.sh
+          set -euo pipefail
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+          version="$(xcodebuild -version | awk '/^Xcode / { print $2 }')"
+          major="${version%%.*}"
+          echo "Xcode major=${major}"
+          if [ -z "$major" ] || [ "$major" -lt 26 ]; then
+            echo "::error::App Store builds require Xcode 26 or later"
+            record FAIL "toolchain-xcode-26" || exit 1
+          fi
+          record PASS "toolchain-xcode-26"
+
+      - name: Archive unsigned Release app
+        if: ${{ !cancelled() }}
+        run: |
+          source scripts/ios-release-verify/record.sh
+          set -euo pipefail
+          ARCHIVE="${RUNNER_TEMP}/Beanstalk.xcarchive"
+          trap 'record FAIL "unsigned-archive" || true' ERR
+          echo "CODE_SIGNING_ALLOWED=NO"
+          echo "signing identity: none"
+          rm -rf "$ARCHIVE"
+          xcodebuild archive \
+            -project ios/Beanstalk.xcodeproj \
+            -scheme Beanstalk \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$ARCHIVE" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=
+          test -d "$ARCHIVE"
+          app=""
+          while IFS= read -r candidate; do
+            app="$candidate"
+            break
+          done < <(find "$ARCHIVE/Products" -type d -name 'Beanstalk.app')
+          test -n "$app"
+          test -f "$app/Beanstalk"
+          sign_report="$VERIFY_DIR/archive-codesign.txt"
+          codesign -dv "$app" >"$sign_report" 2>&1 || true
+          echo "codesign -dv:"
+          cat "$sign_report"
+          if grep -Eq 'Authority=|TeamIdentifier=[A-Za-z0-9]' "$sign_report"; then
+            echo "::error::archive carries a signing identity"
+            exit 1
+          fi
+          if ! grep -Eq 'not signed|code object is not signed' "$sign_report"; then
+            echo "::error::archive was not confirmed unsigned"
+            exit 1
+          fi
+          provision=""
+          while IFS= read -r candidate; do
+            provision="$candidate"
+            break
+          done < <(find "$ARCHIVE" -name 'embedded.mobileprovision' -print)
+          if [ -n "$provision" ]; then
+            echo "::error::archive contains an embedded provisioning profile: ${provision}"
+            exit 1
+          fi
+          printf '%s\n' "$app" > "$VERIFY_DIR/app-path.txt"
+          trap - ERR
+          record PASS "unsigned-archive"
+
+      - name: Assert archive zip, hashes, and versions
+        if: ${{ !cancelled() }}
+        run: |
+          source scripts/ios-release-verify/record.sh
+          set -euo pipefail
+          ARCHIVE="${RUNNER_TEMP}/Beanstalk.xcarchive"
+          trap 'record FAIL "archive-zip-sha-version" || true' ERR
+          app="$(cat "$VERIFY_DIR/app-path.txt")"
+          test -f "$app/Beanstalk"
+          short="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Info.plist")"
+          build="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$app/Info.plist")"
+          echo "CFBundleShortVersionString=${short}"
+          echo "CFBundleVersion=${build}"
+          if printf '%s' "${short}${build}" | grep -F "$(printf '\044')(" >/dev/null; then
+            echo "::error::Info.plist version was not resolved"
+            exit 1
+          fi
+          test -n "$short"
+          test -n "$build"
+          zip_path="$VERIFY_DIR/Beanstalk-unsigned.xcarchive.zip"
+          ditto -c -k --keepParent "$ARCHIVE" "$zip_path"
+          bin_hash="$(shasum -a 256 "$app/Beanstalk" | awk '{ print $1 }')"
+          zip_hash="$(shasum -a 256 "$zip_path" | awk '{ print $1 }')"
+          echo "app_binary_sha256=${bin_hash}"
+          echo "archive_zip_sha256=${zip_hash}"
+          printf '%s\n' "$bin_hash" | grep -Eq '^[0-9a-f]{64}$'
+          printf '%s\n' "$zip_hash" | grep -Eq '^[0-9a-f]{64}$'
+          {
+            echo "CODE_SIGNING_ALLOWED=NO"
+            echo "CFBundleShortVersionString: ${short}"
+            echo "CFBundleVersion: ${build}"
+            echo "app_binary_sha256: ${bin_hash}"
+            echo "archive_zip_sha256: ${zip_hash}"
+          } > "$VERIFY_DIR/sha-version.txt"
+          echo "sha-version summary:"
+          cat "$VERIFY_DIR/sha-version.txt"
+          trap - ERR
+          record PASS "archive-zip-sha-version"
+
+      - name: Assert entitlements omit aps-environment
+        if: ${{ !cancelled() }}
+        run: |
+          source scripts/ios-release-verify/record.sh
+          set -euo pipefail
+          ARCHIVE="${RUNNER_TEMP}/Beanstalk.xcarchive"
+          trap 'record FAIL "entitlements-no-aps-environment" || true' ERR
+          if [ ! -f "$VERIFY_DIR/app-path.txt" ]; then
+            echo "::error::archived app path is missing"
+            exit 1
+          fi
+          test -d "$ARCHIVE"
+          app="$(cat "$VERIFY_DIR/app-path.txt")"
+          test -d "$app"
+          ent_dir="$VERIFY_DIR/entitlements"
+          mkdir -p "$ent_dir"
+          codesign -d --entitlements :- "$app" >"$ent_dir/codesign.plist" 2>"$ent_dir/codesign.err" || true
+          echo "codesign entitlements stdout:"
+          cat "$ent_dir/codesign.plist" || true
+          echo "codesign entitlements stderr:"
+          cat "$ent_dir/codesign.err" || true
+          if [ -s "$ent_dir/codesign.err" ] && ! grep -Eq 'not signed|code object is not signed' "$ent_dir/codesign.err"; then
+            if ! grep -q 'aps-environment' "$ent_dir/codesign.plist"; then
+              echo "::error::codesign failed while reading entitlements"
+              exit 1
+            fi
+          fi
+          if grep -q 'aps-environment' "$ent_dir/codesign.plist" "$ent_dir/codesign.err"; then
+            echo "::error::aps-environment is present in the codesign entitlements"
+            exit 1
+          fi
+          while IFS= read -r -d '' extra; do
+            echo "checking ${extra}"
+            if grep -a -q 'aps-environment' "$extra"; then
+              echo "::error::aps-environment is present in ${extra}"
+              exit 1
+            fi
+          done < <(find "$ARCHIVE" \( -name '*.xcent' -o -name '*.entitlements' -o -name 'embedded.mobileprovision' \) -print0)
+          echo "entitlements contain no aps-environment"
+          trap - ERR
+          record PASS "entitlements-no-aps-environment"
+
+      - name: Assert registerForRemoteNotifications is absent
+        if: ${{ !cancelled() }}
+        run: |
+          source scripts/ios-release-verify/record.sh
+          set -euo pipefail
+          if grep -R -n -F \
+            --include='*.swift' \
+            --include='*.m' \
+            --include='*.h' \
+            --include='*.mm' \
+            --include='*.plist' \
+            --include='*.entitlements' \
+            --include='*.pbxproj' \
+            --include='*.yml' \
+            registerForRemoteNotifications ios; then
+            record FAIL "source-no-registerForRemoteNotifications" || exit 1
+          fi
+          echo "registerForRemoteNotifications is absent from ios/"
+          record PASS "source-no-registerForRemoteNotifications"
+
+      - name: Boot simulator and capture CFNetwork url log
+        if: ${{ !cancelled() }}
+        run: |
+          source scripts/ios-release-verify/record.sh
+          set -euo pipefail
+          DERIVED="${RUNNER_TEMP}/DerivedData"
+          log_pid=""
+          stop_log() {
+            if [ -z "$log_pid" ]; then
+              return 0
+            fi
+            if kill -0 "$log_pid" 2>/dev/null; then
+              children="$(pgrep -P "$log_pid" || true)"
+              # PIDs are decimal. Kill the log stream and the process script started.
+              # shellcheck disable=SC2086
+              for child in $children; do
+                kill "$child" 2>/dev/null || true
+                grandchildren="$(pgrep -P "$child" || true)"
+                # shellcheck disable=SC2086
+                for grandchild in $grandchildren; do
+                  kill "$grandchild" 2>/dev/null || true
+                done
+              done
+              kill "$log_pid" 2>/dev/null || true
+              sleep 1
+              if kill -0 "$log_pid" 2>/dev/null; then
+                kill -9 "$log_pid" 2>/dev/null || true
+              fi
+              wait "$log_pid" 2>/dev/null || true
+            fi
+            log_pid=""
+          }
+          trap 'stop_log || true; record FAIL "simulator-launch-diagnostics" || true' ERR
+          udid="$(python3 scripts/ios-release-verify/select_simulator.py)"
+          echo "simulator=${udid}"
+          xcrun simctl boot "$udid" || true
+          xcrun simctl bootstatus "$udid" -b
+          echo "CODE_SIGNING_ALLOWED=NO"
+          xcodebuild build-for-testing \
+            -project ios/Beanstalk.xcodeproj \
+            -scheme Beanstalk \
+            -configuration Debug \
+            -destination "platform=iOS Simulator,id=${udid}" \
+            -derivedDataPath "$DERIVED" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=
+          app=""
+          while IFS= read -r candidate; do
+            case "$candidate" in
+              *iphonesimulator*)
+                app="$candidate"
+                break
+                ;;
+            esac
+          done < <(find "$DERIVED/Build/Products" -type d -name 'Beanstalk.app')
+          test -n "$app"
+          test -d "$app"
+          xcrun simctl install "$udid" "$app"
+          log_path="$VERIFY_DIR/network.log"
+          : > "$log_path"
+          predicate='process == "Beanstalk" OR processImagePath CONTAINS "Beanstalk"'
+          script -q "$log_path" xcrun simctl spawn "$udid" log stream --level debug --style compact --predicate "$predicate" &
+          log_pid=$!
+          sleep 2
+          if ! kill -0 "$log_pid" 2>/dev/null; then
+            echo "::error::unified log stream exited before launch"
+            exit 1
+          fi
+          echo "SIMCTL_CHILD_CFNETWORK_DIAGNOSTICS=3"
+          SIMCTL_CHILD_CFNETWORK_DIAGNOSTICS=3 xcrun simctl launch --terminate-running-process "$udid" org.jacobrakaifoundation.beanstalk
+          printf '%s\n' "$udid" > "$VERIFY_DIR/simulator-udid.txt"
+          seen=0
+          attempt=1
+          while [ "$attempt" -le 45 ]; do
+            if grep -F 'url:' "$log_path" | grep -F 'api.fda.gov/food/enforcement.json' >/dev/null; then
+              seen=1
+              echo "positive-control url: line seen on attempt ${attempt}"
+              break
+            fi
+            sleep 2
+            attempt=$((attempt + 1))
+          done
+          if [ "$seen" -ne 1 ]; then
+            echo "positive-control url: line was not seen before the extra settle window"
+          fi
+          sleep 8
+          stop_log
+          trap - ERR
+          record PASS "simulator-launch-diagnostics"
+
+      - name: Assert url log positive control and zero hits
+        if: ${{ !cancelled() }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$VERIFY_DIR"
+          python3 scripts/ios-release-verify/assert_url_log.py "$VERIFY_DIR/network.log" | tee -a "$RESULTS"
+
+      - name: Capture recall, detail, and Settings screenshots
+        if: ${{ !cancelled() }}
+        run: |
+          set -euo pipefail
+          DERIVED="${RUNNER_TEMP}/DerivedData"
+          udid="$(cat "$VERIFY_DIR/simulator-udid.txt")"
+          xctestrun=""
+          while IFS= read -r candidate; do
+            xctestrun="$candidate"
+            break
+          done < <(find "$DERIVED/Build/Products" -name '*.xctestrun' -type f)
+          test -n "$xctestrun"
+          rm -rf /tmp/beanstalk-screenshots
+          mkdir -p /tmp/beanstalk-screenshots "$VERIFY_DIR/screenshots"
+          set +e
+          xcodebuild test-without-building \
+            -xctestrun "$xctestrun" \
+            -destination "platform=iOS Simulator,id=${udid}" \
+            -only-testing:BeanstalkUITests/ReleaseVerifyUITests/testRecallListDetailAndSettingsDisclaimer \
+            -resultBundlePath "$VERIFY_DIR/uitest.xcresult"
+          test_status=$?
+          set -e
+          if [ -d /tmp/beanstalk-screenshots ]; then
+            cp -R /tmp/beanstalk-screenshots/. "$VERIFY_DIR/screenshots/"
+          fi
+          exit "$test_status"
+
+      - name: Assert screenshot files are distinct
+        if: ${{ !cancelled() }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$VERIFY_DIR/screenshots"
+          python3 scripts/ios-release-verify/assert_screenshots.py "$VERIFY_DIR/screenshots" | tee -a "$RESULTS"
+
+      - name: Upload unsigned archive
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ios-unsigned-xcarchive
+          path: |
+            ios-release-verify-artifacts/Beanstalk-unsigned.xcarchive.zip
+            ios-release-verify-artifacts/sha-version.txt
+          if-no-files-found: error
+
+      - name: Upload network log
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ios-network-log
+          path: ios-release-verify-artifacts/network.log
+          if-no-files-found: error
+
+      - name: Upload screenshots
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ios-screenshots
+          path: ios-release-verify-artifacts/screenshots/
+          if-no-files-found: error
+
+      - name: Write job summary
+        if: ${{ !cancelled() }}
+        run: |
+          set -euo pipefail
+          set -o pipefail
+          python3 scripts/ios-release-verify/summarize.py "$RESULTS" | tee "$GITHUB_STEP_SUMMARY"
