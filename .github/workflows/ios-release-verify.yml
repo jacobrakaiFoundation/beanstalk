@@ -300,22 +300,22 @@ jobs:
             log_pid=$!
             waited=0
             while [ "$waited" -lt 30 ]; do
-              if [ -s "$log_path" ] && grep -q '[^[:space:]]' "$log_path"; then
+              if grep -F -q 'Filtering the log data' "$log_path" 2>/dev/null; then
                 if kill -0 "$log_pid" 2>/dev/null; then
-                  echo "log stream has a line after ${waited}s"
+                  echo "log stream is filtering after ${waited}s"
                   return 0
                 fi
-                echo "log stream exited after writing a line"
+                echo "log stream exited after printing Filtering the log data"
                 return 1
               fi
               if ! kill -0 "$log_pid" 2>/dev/null; then
-                echo "log stream exited before the log file had a line"
+                echo "log stream exited before Filtering the log data"
                 return 1
               fi
               sleep 1
               waited=$((waited + 1))
             done
-            echo "log file had no line within 30s"
+            echo "log stream did not print Filtering the log data within 30s"
             return 1
           }
           if ! ready_once; then
