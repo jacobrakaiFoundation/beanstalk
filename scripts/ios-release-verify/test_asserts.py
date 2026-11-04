@@ -9,6 +9,7 @@ from pathlib import Path
 
 from assert_screenshots import evaluate as evaluate_screenshots
 from assert_url_log import evaluate as evaluate_url_log
+from expect_negative_control import matches as negative_control_matches
 from summarize import REQUIRED, summarize
 
 WORKFLOW = Path(__file__).resolve().parents[2] / ".github" / "workflows" / "ios-release-verify.yml"
@@ -118,7 +119,11 @@ class WorkflowContractTests(unittest.TestCase):
         text = WORKFLOW.read_text(encoding="utf-8")
         self.assertIn("branches: [main]", text)
         self.assertIn("workflow_dispatch:", text)
-        self.assertNotIn("pull_request:", text)
+        self.assertIn("pull_request:", text)
+        self.assertNotIn("pull_request_target:", text)
+        self.assertIn("ios/UITests/**", text)
+        self.assertIn("scripts/ios-release-verify/**", text)
+        self.assertIn("-BeanstalkNegativeControl", text)
         self.assertNotIn("${{ secrets", text)
         self.assertNotRegex(text, r"secrets\.[A-Za-z0-9_]+")
         self.assertIn("contents: read", text)
@@ -133,6 +138,42 @@ class WorkflowContractTests(unittest.TestCase):
                 self.assertIn("SIMCTL_CHILD_CFNETWORK_DIAGNOSTICS", line)
             if line.strip().startswith("uses:"):
                 self.assertRegex(line, r"@[0-9a-f]{40}")
+
+
+class NegativeControlTests(unittest.TestCase):
+    def test_expected_failure_is_accepted(self) -> None:
+        text = "\n".join(
+            [
+                "PASS\turl-positive-control",
+                "FAIL\turl-zero-v1-devices",
+                "FAIL\turl-zero-jacobrakai-org",
+                "PASS\turl-zero-PUT",
+            ]
+        )
+        ok, _message = negative_control_matches(text)
+        self.assertTrue(ok)
+
+    def test_clean_pass_is_rejected(self) -> None:
+        text = "\n".join(f"PASS\t{name}" for name in (
+            "url-positive-control",
+            "url-zero-v1-devices",
+            "url-zero-jacobrakai-org",
+            "url-zero-PUT",
+        ))
+        ok, _message = negative_control_matches(text)
+        self.assertFalse(ok)
+
+    def test_missing_positive_control_is_rejected(self) -> None:
+        text = "\n".join(
+            [
+                "FAIL\turl-positive-control",
+                "FAIL\turl-zero-v1-devices",
+                "FAIL\turl-zero-jacobrakai-org",
+                "PASS\turl-zero-PUT",
+            ]
+        )
+        ok, _message = negative_control_matches(text)
+        self.assertFalse(ok)
 
 
 class SummaryTests(unittest.TestCase):
