@@ -247,6 +247,38 @@ jobs:
         working-directory: android
         run: ./gradlew :app:assembleDebug --no-daemon
 
+      # Test-only. assembleDebug / bundle do not read this directory.
+      # A hit restores the jar so prepareRobolectricOffline stays skipped.
+      - name: Cache Robolectric offline jars
+        id: robolectric-offline
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: android/app/build/robolectric-offline
+          key: robolectric-android-all-15-robolectric-13954326-i7-v1
+
+      - name: Robolectric offline cache result
+        run: echo "robolectric offline cache-hit=${{ steps.robolectric-offline.outputs.cache-hit }} key=robolectric-android-all-15-robolectric-13954326-i7-v1"
+
+      - name: Prefetch Robolectric offline jars
+        if: steps.robolectric-offline.outputs.cache-hit != 'true'
+        working-directory: android
+        run: |
+          set -euo pipefail
+          attempt=1
+          for delay in 0 15 30 60; do
+            if [ "$delay" -gt 0 ]; then
+              echo "prepareRobolectricOffline attempt ${attempt} failed; retrying in ${delay}s"
+              sleep "$delay"
+            fi
+            if ./gradlew :app:prepareRobolectricOffline :app:verifyRobolectricOfflineJar --no-daemon; then
+              echo "prepareRobolectricOffline succeeded on attempt ${attempt}"
+              exit 0
+            fi
+            attempt=$((attempt + 1))
+          done
+          echo "prepareRobolectricOffline failed after retries"
+          exit 1
+
       - name: Native JVM unit tests
         working-directory: android
         run: >-
@@ -263,6 +295,41 @@ jobs:
           --tests org.jacobrakaifoundation.beanstalk.ui.WatchlistScreenTest
           --tests org.jacobrakaifoundation.beanstalk.domain.EnforcementReportLinkTest
           --tests org.jacobrakaifoundation.beanstalk.ui.SettingsScreenTest
+
+      - name: Summarize Native JVM unit tests
+        if: always()
+        working-directory: android
+        run: |
+          python3 - <<'PY'
+          import glob
+          import os
+          import sys
+          import xml.etree.ElementTree as ET
+
+          paths = sorted(glob.glob("app/build/test-results/testDebugUnitTest/TEST-*.xml"))
+          if not paths:
+              print("Native JVM unit tests: no results")
+              sys.exit(1)
+          total = failed = skipped = 0
+          rows = []
+          for path in paths:
+              root = ET.parse(path).getroot()
+              suites = [root] if root.tag == "testsuite" else root.findall("testsuite")
+              for suite in suites:
+                  tests = int(suite.attrib.get("tests", 0))
+                  failures = int(suite.attrib.get("failures", 0)) + int(suite.attrib.get("errors", 0))
+                  skips = int(suite.attrib.get("skipped", 0))
+                  total += tests
+                  failed += failures
+                  skipped += skips
+                  name = suite.attrib.get("name", os.path.basename(path)).rsplit(".", 1)[-1]
+                  rows.append((name, tests, failures, skips))
+          print(f"Native JVM unit tests: {total} run, {failed} failed, {skipped} skipped")
+          for name, tests, failures, skips in rows:
+              print(f"{name}: tests={tests} failures={failures} skipped={skips}")
+          if total != 55 or failed != 0 or skipped != 0:
+              sys.exit(1)
+          PY
 
       - name: Upload native debug APK
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
