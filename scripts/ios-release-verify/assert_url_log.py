@@ -58,6 +58,10 @@ def main(argv: list[str]) -> int:
     lines = url_lines(text)
     results = evaluate(text)
     print(f"url: lines: {len(lines)}", file=sys.stderr)
+    forbidden = [needle for _item, needle in URL_ITEMS[1:]]
+    for line in lines:
+        if any(needle in line for needle in forbidden):
+            print(line, file=sys.stderr)
     positive_ok = any(
         status == "PASS" and item == "url-positive-control" for status, item, _count in results
     )

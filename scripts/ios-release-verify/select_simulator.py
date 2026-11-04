@@ -17,7 +17,45 @@ def runtime_key(value: str) -> list[int]:
     return [int(part) for part in re.findall(r"\d+", value)]
 
 
+def create_device(name: str) -> str:
+    runtimes = [
+        runtime
+        for runtime in simctl("runtimes").get("runtimes", [])
+        if runtime.get("isAvailable") and "iOS" in runtime.get("name", "")
+    ]
+    if not runtimes:
+        raise SystemExit("no iOS simulator runtime")
+    runtime = max(runtimes, key=lambda item: runtime_key(str(item.get("version", ""))))
+    types = [
+        device_type
+        for device_type in simctl("devicetypes").get("devicetypes", [])
+        if str(device_type.get("name", "")).startswith("iPhone") and "SE" not in str(device_type.get("name", ""))
+    ]
+    if not types:
+        raise SystemExit("no iPhone simulator device type")
+
+    def type_rank(device_type: dict) -> tuple[int, str]:
+        numbers = [int(part) for part in re.findall(r"\d+", str(device_type.get("name", "")))]
+        return (numbers[0] if numbers else 0, str(device_type.get("name", "")))
+
+    device_type = max(types, key=type_rank)
+    return subprocess.check_output(
+        [
+            "xcrun",
+            "simctl",
+            "create",
+            name,
+            str(device_type["identifier"]),
+            str(runtime["identifier"]),
+        ],
+        text=True,
+    ).strip()
+
+
 def main() -> int:
+    if "--create" in sys.argv[1:]:
+        print(create_device("Beanstalk Negative Control"))
+        return 0
     devices = simctl("devices").get("devices", {})
     candidates: list[tuple[str, dict]] = []
     for runtime, entries in devices.items():
@@ -37,41 +75,7 @@ def main() -> int:
         print(chosen["udid"])
         return 0
 
-    runtimes = [
-        runtime
-        for runtime in simctl("runtimes").get("runtimes", [])
-        if runtime.get("isAvailable") and "iOS" in runtime.get("name", "")
-    ]
-    if not runtimes:
-        print("no iOS simulator runtime", file=sys.stderr)
-        return 1
-    runtime = max(runtimes, key=lambda item: runtime_key(str(item.get("version", ""))))
-    types = [
-        device_type
-        for device_type in simctl("devicetypes").get("devicetypes", [])
-        if str(device_type.get("name", "")).startswith("iPhone") and "SE" not in str(device_type.get("name", ""))
-    ]
-    if not types:
-        print("no iPhone simulator device type", file=sys.stderr)
-        return 1
-
-    def type_rank(device_type: dict) -> tuple[int, str]:
-        numbers = [int(part) for part in re.findall(r"\d+", str(device_type.get("name", "")))]
-        return (numbers[0] if numbers else 0, str(device_type.get("name", "")))
-
-    device_type = max(types, key=type_rank)
-    created = subprocess.check_output(
-        [
-            "xcrun",
-            "simctl",
-            "create",
-            "Beanstalk Release Verify",
-            str(device_type["identifier"]),
-            str(runtime["identifier"]),
-        ],
-        text=True,
-    ).strip()
-    print(created)
+    print(create_device("Beanstalk Release Verify"))
     return 0
 
 

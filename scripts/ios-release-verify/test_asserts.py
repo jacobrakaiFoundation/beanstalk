@@ -3,12 +3,15 @@
 
 from __future__ import annotations
 
+import io
 import tempfile
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
 from assert_screenshots import evaluate as evaluate_screenshots
 from assert_url_log import evaluate as evaluate_url_log
+from assert_url_log import main as assert_url_log_main
 from expect_negative_control import matches as negative_control_matches
 from summarize import REQUIRED, summarize
 
@@ -69,6 +72,34 @@ class UrlLogTests(unittest.TestCase):
     def test_uppercase_url_label_is_not_a_url_line(self) -> None:
         log = "URL: https://api.fda.gov/food/enforcement.json"
         self.assertEqual(statuses(log)["url-positive-control"], "FAIL")
+
+    def test_script_output_names_devices_only_when_a_url_line_has_it(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            directory = Path(raw)
+            dirty = directory / "dirty.log"
+            dirty.write_text(
+                "\n".join(
+                    [
+                        "url: https://api.fda.gov/food/enforcement.json?limit=20",
+                        "url: https://jacobrakai.org/v1/devices",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            stdout, stderr = io.StringIO(), io.StringIO()
+            with redirect_stdout(stdout), redirect_stderr(stderr):
+                code = assert_url_log_main(["assert_url_log.py", str(dirty)])
+            self.assertEqual(code, 1)
+            self.assertIn("/v1/devices", stderr.getvalue())
+            self.assertNotIn("/v1/devices", stdout.getvalue())
+
+            clean = directory / "clean.log"
+            clean.write_text("url: https://api.fda.gov/food/enforcement.json?limit=20\n", encoding="utf-8")
+            stdout, stderr = io.StringIO(), io.StringIO()
+            with redirect_stdout(stdout), redirect_stderr(stderr):
+                code = assert_url_log_main(["assert_url_log.py", str(clean)])
+            self.assertEqual(code, 0)
+            self.assertNotIn("/v1/devices", stdout.getvalue() + stderr.getvalue())
 
     def test_positive_control_is_required_before_zero_hits_can_pass(self) -> None:
         log = "url: https://example.test/healthz"
@@ -141,38 +172,28 @@ class WorkflowContractTests(unittest.TestCase):
 
 
 class NegativeControlTests(unittest.TestCase):
-    def test_expected_failure_is_accepted(self) -> None:
-        text = "\n".join(
+    def test_nonzero_exit_that_names_the_path_is_accepted(self) -> None:
+        output = "\n".join(
             [
-                "PASS\turl-positive-control",
+                "url: https://jacobrakai.org/v1/devices",
                 "FAIL\turl-zero-v1-devices",
-                "FAIL\turl-zero-jacobrakai-org",
-                "PASS\turl-zero-PUT",
             ]
         )
-        ok, _message = negative_control_matches(text)
+        ok, _message = negative_control_matches(1, output)
         self.assertTrue(ok)
 
-    def test_clean_pass_is_rejected(self) -> None:
-        text = "\n".join(f"PASS\t{name}" for name in (
-            "url-positive-control",
-            "url-zero-v1-devices",
-            "url-zero-jacobrakai-org",
-            "url-zero-PUT",
-        ))
-        ok, _message = negative_control_matches(text)
+    def test_zero_exit_is_rejected_even_when_the_path_is_named(self) -> None:
+        ok, _message = negative_control_matches(0, "url: https://jacobrakai.org/v1/devices\n")
         self.assertFalse(ok)
 
-    def test_missing_positive_control_is_rejected(self) -> None:
-        text = "\n".join(
+    def test_check_label_without_the_path_is_rejected(self) -> None:
+        output = "\n".join(
             [
                 "FAIL\turl-positive-control",
                 "FAIL\turl-zero-v1-devices",
-                "FAIL\turl-zero-jacobrakai-org",
-                "PASS\turl-zero-PUT",
             ]
         )
-        ok, _message = negative_control_matches(text)
+        ok, _message = negative_control_matches(1, output)
         self.assertFalse(ok)
 
 

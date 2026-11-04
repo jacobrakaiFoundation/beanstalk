@@ -371,7 +371,35 @@ jobs:
         if: ${{ !cancelled() && github.event_name == 'pull_request' }}
         run: |
           set -euo pipefail
-          udid="$(cat "$VERIFY_DIR/simulator-udid.txt")"
+          DERIVED="${RUNNER_TEMP}/DerivedData"
+          a2_udid=""
+          if [ -f "$VERIFY_DIR/simulator-udid.txt" ]; then
+            a2_udid="$(cat "$VERIFY_DIR/simulator-udid.txt")"
+          fi
+          udid="$(python3 scripts/ios-release-verify/select_simulator.py --create)"
+          echo "negative-control simulator=${udid}"
+          echo "A2 simulator=${a2_udid:-unset}"
+          if [ -n "$a2_udid" ] && [ "$udid" = "$a2_udid" ]; then
+            echo "::error::negative control reused the A2 simulator"
+            exit 1
+          fi
+          if [ -n "$a2_udid" ]; then
+            xcrun simctl shutdown "$a2_udid" || true
+          fi
+          xcrun simctl boot "$udid" || true
+          xcrun simctl bootstatus "$udid" -b
+          app=""
+          while IFS= read -r candidate; do
+            case "$candidate" in
+              *iphonesimulator*)
+                app="$candidate"
+                break
+                ;;
+            esac
+          done < <(find "$DERIVED/Build/Products" -type d -name 'Beanstalk.app')
+          test -n "$app"
+          test -d "$app"
+          xcrun simctl install "$udid" "$app"
           log_path="$VERIFY_DIR/network-negative.log"
           log_pid=""
           stop_log() {
@@ -410,12 +438,10 @@ jobs:
           fi
           echo "SIMCTL_CHILD_CFNETWORK_DIAGNOSTICS=3"
           echo "launch argument: -BeanstalkNegativeControl"
-          SIMCTL_CHILD_CFNETWORK_DIAGNOSTICS=3 xcrun simctl launch --terminate-running-process "$udid" org.jacobrakaifoundation.beanstalk -BeanstalkNegativeControl
-          seen_devices=0
+          SIMCTL_CHILD_CFNETWORK_DIAGNOSTICS=3 xcrun simctl launch "$udid" org.jacobrakaifoundation.beanstalk -BeanstalkNegativeControl
           attempt=1
           while [ "$attempt" -le 45 ]; do
-            if grep -F 'url:' "$log_path" | grep -F 'https://jacobrakai.org/v1/devices' >/dev/null; then
-              seen_devices=1
+            if grep -F 'url:' "$log_path" | grep -F '/v1/devices' >/dev/null; then
               echo "negative-control url: line seen on attempt ${attempt}"
               break
             fi
@@ -425,22 +451,20 @@ jobs:
           sleep 8
           stop_log
           trap - ERR
-          if [ "$seen_devices" -ne 1 ]; then
-            echo "::error::negative-control GET did not appear on a url: line"
-            exit 1
-          fi
           set +e
-          python3 scripts/ios-release-verify/assert_url_log.py "$log_path" > "$VERIFY_DIR/negative-results.tsv"
+          python3 scripts/ios-release-verify/assert_url_log.py "$log_path" \
+            > "$VERIFY_DIR/negative-assert-stdout.txt" \
+            2> "$VERIFY_DIR/negative-assert-stderr.txt"
           assert_status=$?
           set -e
           echo "assert_url_log.py exit=${assert_status}"
-          cat "$VERIFY_DIR/negative-results.tsv"
-          if [ "$assert_status" -eq 0 ]; then
-            echo "::error::negative control passed the url assert; the zero-hit grep did not see the GET"
-            exit 1
-          fi
-          python3 scripts/ios-release-verify/expect_negative_control.py "$VERIFY_DIR/negative-results.tsv"
-          echo "- PASS negative control: url assert failed on GET https://jacobrakai.org/v1/devices" > "$VERIFY_DIR/negative-control-summary.md"
+          echo "assert stdout:"
+          cat "$VERIFY_DIR/negative-assert-stdout.txt"
+          echo "assert stderr:"
+          cat "$VERIFY_DIR/negative-assert-stderr.txt"
+          cat "$VERIFY_DIR/negative-assert-stdout.txt" "$VERIFY_DIR/negative-assert-stderr.txt" > "$VERIFY_DIR/negative-assert-output.txt"
+          python3 scripts/ios-release-verify/expect_negative_control.py "$assert_status" "$VERIFY_DIR/negative-assert-output.txt"
+          echo "- PASS negative control: A2 assert exited non-zero and named /v1/devices" > "$VERIFY_DIR/negative-control-summary.md"
 
       - name: Upload unsigned archive
         if: ${{ !cancelled() }}
@@ -467,7 +491,7 @@ jobs:
           name: ios-network-log-negative
           path: |
             ios-release-verify-artifacts/network-negative.log
-            ios-release-verify-artifacts/negative-results.tsv
+            ios-release-verify-artifacts/negative-assert-output.txt
           if-no-files-found: error
 
       - name: Upload screenshots

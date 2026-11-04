@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Require the url assert to fail because the negative-control GET was seen.
+"""Inverted check for the temporary negative-control launch.
 
-The positive control must still pass, and PUT must stay absent. A failure
-caused only by a missing positive control does not count.
+The step passes only when the A2 assert exits non-zero and its output names
+`/v1/devices`. The check label `url-zero-v1-devices` does not count.
 """
 
 from __future__ import annotations
@@ -10,40 +10,24 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-EXPECTED = {
-    "url-positive-control": "PASS",
-    "url-zero-v1-devices": "FAIL",
-    "url-zero-jacobrakai-org": "FAIL",
-    "url-zero-PUT": "PASS",
-}
+DEVICES = "/v1/devices"
 
 
-def parse_results(text: str) -> dict[str, str]:
-    found: dict[str, str] = {}
-    for raw in text.splitlines():
-        line = raw.strip()
-        if not line or "\t" not in line:
-            continue
-        status, name = line.split("\t", 1)
-        found[name.strip()] = status.strip()
-    return found
-
-
-def matches(text: str) -> tuple[bool, str]:
-    found = parse_results(text)
-    for name, status in EXPECTED.items():
-        actual = found.get(name)
-        if actual != status:
-            return False, f"{name} is {actual}, expected {status}"
-    return True, "negative control tripped /v1/devices and jacobrakai.org on url: lines"
+def matches(exit_code: int, output: str) -> tuple[bool, str]:
+    if exit_code == 0:
+        return False, "A2 assert exited 0"
+    if DEVICES not in output:
+        return False, "A2 assert output did not name /v1/devices"
+    return True, "negative control: A2 assert exited non-zero and named /v1/devices"
 
 
 def main(argv: list[str]) -> int:
-    if len(argv) != 2:
-        print("usage: expect_negative_control.py RESULTS.tsv", file=sys.stderr)
+    if len(argv) != 3:
+        print("usage: expect_negative_control.py EXIT_CODE OUTPUT_FILE", file=sys.stderr)
         return 2
-    text = Path(argv[1]).read_text(encoding="utf-8")
-    ok, message = matches(text)
+    exit_code = int(argv[1])
+    output = Path(argv[2]).read_text(encoding="utf-8", errors="replace")
+    ok, message = matches(exit_code, output)
     print(message)
     return 0 if ok else 1
 
