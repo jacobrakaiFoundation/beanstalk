@@ -2,7 +2,7 @@
 
 **Help people find and understand public food recall records.**
 
-[Try the web app](https://jacobrakaifoundation.github.io/beanstalk/) · [Contact JACOBRAKAI FOUNDATION](https://jacobrakai.org/about/) · [Support the Foundation](https://jacobrakai.org/donate/)
+[Try the web app](https://jacobrakaifoundation.github.io/beanstalk/) · [Contact Jacobrakai Foundation](https://jacobrakai.org/about/) · [Support the Foundation](https://jacobrakai.org/donate/)
 
 ## The problem and the people
 
@@ -41,6 +41,6 @@ The proposed evaluation starts by establishing a baseline for task completion, s
 
 ## Discuss a grant or make a gift
 
-**JACOBRAKAI FOUNDATION · EIN 33-3382083.** The [Foundation details page](https://jacobrakai.org/about/) provides public-charity information and a contact route for discussing a Beanstalk-specific scope and budget.
+**Jacobrakai Foundation · EIN 33-3382083.** The [Foundation details page](https://jacobrakai.org/about/) provides public-charity information and a contact route for discussing a Beanstalk-specific scope and budget.
 
 [The existing donation page](https://jacobrakai.org/donate/) accepts gifts to the Foundation. It does not by itself designate a gift for Beanstalk. Beanstalk's features remain free to use, and a donation unlocks nothing.

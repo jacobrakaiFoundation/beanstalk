@@ -4,7 +4,7 @@
 
 **Find the product, the recall, and the original source. Free to use. No account required.**
 
-Beanstalk helps people search **FDA openFDA and USDA FSIS food recall records** by product, company, or hazard, with filters for distribution state, classification, status, source (All / FDA / USDA-FSIS), and dietary terms. It is a public-service project of [JACOBRAKAI FOUNDATION](https://jacobrakai.org/about/). Product details, lot codes, and links to original agency sources help readers investigate a record without treating a search result as a safety determination.
+Beanstalk helps people search **FDA openFDA and USDA FSIS food recall records** by product, company, or hazard, with filters for distribution state, classification, status, source (All / FDA / USDA-FSIS), and dietary terms. It is a public-service project of [Jacobrakai Foundation](https://jacobrakai.org/), which publishes security research and forensic audits, builds free resources for people navigating New Jersey courts, and makes free apps and games. Product details, lot codes, and links to original agency sources help readers investigate a record without treating a search result as a safety determination.
 
 [**Search food recall records**](https://jacobrakaifoundation.github.io/beanstalk/) · [**Read the funding brief**](docs/FUNDING.md) · [FDA fetch recipe](docs/recipes/fda-fetch.md) · [Support the Foundation](https://jacobrakai.org/donate/) · [Report a problem](https://github.com/jacobrakaiFoundation/beanstalk/issues)
 
@@ -137,7 +137,7 @@ The repository contains the implementation and a draft release package. Its App 
 
 ## Support the Foundation
 
-[Donate to JACOBRAKAI FOUNDATION](https://jacobrakai.org/donate/), a 501(c)(3) public charity (legal name JACOBRAKAI FOUNDATION; EIN 33-3382083). Donations are optional and unlock no app feature.
+[Donate to Jacobrakai Foundation](https://jacobrakai.org/donate/), a 501(c)(3) public charity (legal name JACOBRAKAI FOUNDATION; EIN 33-3382083). Donations are optional and unlock no app feature.
 
 ## License
 

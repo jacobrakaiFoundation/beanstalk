@@ -112,4 +112,4 @@ Related package docs: [`food-recall-app/README.md`](../../food-recall-app/README
 
 ---
 
-A project of JACOBRAKAI FOUNDATION, a 501(c)(3) public charity (EIN 33-3382083).
+A project of [Jacobrakai Foundation](https://jacobrakai.org/), a 501(c)(3) public charity (EIN 33-3382083).

@@ -51,7 +51,7 @@ describe("index.html discovery", () => {
     expect(data.url).toBe(`${SITE}/`);
     expect(data.keywords).toEqual(expect.arrayContaining(["FDA", "USDA FSIS", "openFDA", "food recall"]));
     const creator = data.creator as Record<string, unknown>;
-    expect(creator.name).toBe("JACOBRAKAI FOUNDATION");
+    expect(creator.name).toBe("Jacobrakai Foundation");
     expect(creator.taxID).toBe("33-3382083");
   });
 
