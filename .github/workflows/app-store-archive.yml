@@ -1,0 +1,133 @@
+name: app-store-archive
+
+# Manual App Store archive. Does not run on pull requests or pushes.
+# The IPA is a workflow artifact, not an App Store Connect upload.
+#
+# Required repository secrets, all read at build time and never committed:
+#   APPLE_TEAM_ID
+#   APPLE_DISTRIBUTION_CERTIFICATE_P12          base64-encoded .p12
+#   APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD
+#   APPLE_PROVISIONING_PROFILE                  base64-encoded .mobileprovision
+#     for org.jacobrakaifoundation.beanstalk
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  archive:
+    name: App Store archive
+    runs-on: macos-26
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: .
+    env:
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      APPLE_DISTRIBUTION_CERTIFICATE_P12: ${{ secrets.APPLE_DISTRIBUTION_CERTIFICATE_P12 }}
+      APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD }}
+      APPLE_PROVISIONING_PROFILE: ${{ secrets.APPLE_PROVISIONING_PROFILE }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Verify App Store toolchain
+        run: |
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+          version=$(xcodebuild -version | awk '/^Xcode / { print $2 }')
+          major=${version%%.*}
+          if [ -z "$major" ] || [ "$major" -lt 26 ]; then
+            echo "::error::App Store builds require Xcode 26 or later"
+            exit 1
+          fi
+
+      - name: Test portable Swift core
+        run: swift test --package-path ios/Core
+
+      - name: Require App Store signing secrets
+        run: |
+          missing=()
+          [ -n "$APPLE_TEAM_ID" ] || missing+=("APPLE_TEAM_ID")
+          [ -n "$APPLE_DISTRIBUTION_CERTIFICATE_P12" ] || missing+=("APPLE_DISTRIBUTION_CERTIFICATE_P12")
+          [ -n "$APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD" ] || missing+=("APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD")
+          [ -n "$APPLE_PROVISIONING_PROFILE" ] || missing+=("APPLE_PROVISIONING_PROFILE")
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "::error::App Store archive needs signing secrets that are not set: ${missing[*]}. Refusing to produce an unsigned archive."
+            exit 1
+          fi
+
+      - name: Install distribution certificate and provisioning profile
+        run: |
+          set -euo pipefail
+          work="$RUNNER_TEMP/signing"
+          mkdir -p "$work"
+          printf '%s' "$APPLE_DISTRIBUTION_CERTIFICATE_P12" | base64 -D -o "$work/distribution.p12"
+          printf '%s' "$APPLE_PROVISIONING_PROFILE" | base64 -D -o "$work/profile.mobileprovision"
+          keychain="$work/build.keychain"
+          keychain_password=$(openssl rand -base64 32)
+          security create-keychain -p "$keychain_password" "$keychain"
+          security set-keychain-settings -lut 3600 "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          security import "$work/distribution.p12" -k "$keychain" -P "$APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$keychain_password" "$keychain"
+          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+          security default-keychain -s "$keychain"
+          profile_plist="$work/profile.plist"
+          security cms -D -i "$work/profile.mobileprovision" > "$profile_plist"
+          profile_uuid=$(plutil -extract UUID raw "$profile_plist")
+          profile_name=$(plutil -extract Name raw "$profile_plist")
+          install_dir="$HOME/Library/MobileDevice/Provisioning Profiles"
+          mkdir -p "$install_dir"
+          cp "$work/profile.mobileprovision" "$install_dir/$profile_uuid.mobileprovision"
+          {
+            echo "PROFILE_NAME<<EOF"
+            echo "$profile_name"
+            echo "EOF"
+          } >> "$GITHUB_ENV"
+          rm -f "$work/distribution.p12"
+
+      - name: Archive Release iPhone app
+        run: |
+          xcodebuild archive \
+            -project ios/Beanstalk.xcodeproj \
+            -scheme Beanstalk \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/Beanstalk.xcarchive" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME"
+
+      - name: Export App Store IPA
+        run: |
+          export EXPORT_OPTIONS="$RUNNER_TEMP/ExportOptions.plist"
+          PROFILE_NAME="$PROFILE_NAME" APPLE_TEAM_ID="$APPLE_TEAM_ID" python3 - <<'PY'
+          import os
+          import plistlib
+          plist = {
+              "method": "app-store-connect",
+              "teamID": os.environ["APPLE_TEAM_ID"],
+              "signingStyle": "manual",
+              "uploadSymbols": True,
+              "destination": "export",
+              "provisioningProfiles": {
+                  "org.jacobrakaifoundation.beanstalk": os.environ["PROFILE_NAME"],
+              },
+          }
+          with open(os.environ["EXPORT_OPTIONS"], "wb") as handle:
+              plistlib.dump(plist, handle)
+          PY
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/Beanstalk.xcarchive" \
+            -exportPath "$RUNNER_TEMP/ipa" \
+            -exportOptionsPlist "$EXPORT_OPTIONS"
+
+      - name: Upload App Store IPA
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: beanstalk-app-store-ipa
+          path: ${{ runner.temp }}/ipa/*.ipa
+          if-no-files-found: error
