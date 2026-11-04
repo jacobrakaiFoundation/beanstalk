@@ -8,6 +8,7 @@ name: iOS release verify
 # pull_request event that SHA is the merge commit, not the pull request head.
 #
 # No secrets. No signing identity. Archive and simulator builds pass
+# The proof run is retried when a macOS runner is not acquired.
 # CODE_SIGNING_ALLOWED=NO, and that assignment is printed in the log.
 # Actions are pinned to full commit SHAs. The runner is the repo's macOS 26
 # image, which carries Xcode 26.
