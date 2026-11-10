@@ -62,6 +62,7 @@ npm run test   # vitest (unit + component)
 ## Deploy
 
 Any static host (Vercel, Netlify, Cloudflare Pages, GitHub Pages):
+
 ```bash
 npm run build  # outputs dist/ with base /beanstalk/ for GitHub Pages
 ```
