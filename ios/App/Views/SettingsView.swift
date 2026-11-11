@@ -1,14 +1,10 @@
-import BeanstalkCore
 import SwiftData
 import SwiftUI
-import UIKit
 
 struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
-    @EnvironmentObject private var notifications: NotificationRegistrationService
     @Query private var savedItems: [SavedRecallItem]
     @Query private var watchTerms: [WatchTermEntity]
-    @State private var confirmingServerDeletion = false
     @State private var confirmingLocalDeletion = false
     @State private var localDataMessage: String?
 
@@ -17,35 +13,8 @@ struct SettingsView: View {
             Form {
                 Section {
                     BeanstalkHeader()
-                    Text("Beanstalk is free. Every search, saved record, watch term, and alert feature is available without payment.")
+                    Text("Beanstalk is free. Every search, saved record, and watch term is available without payment.")
                         .font(.subheadline)
-                }
-
-                Section("Notifications") {
-                    Text(notifications.statusMessage)
-                        .foregroundStyle(.secondary)
-                    Button("Open iOS notification settings") {
-                        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
-                        UIApplication.shared.open(url)
-                    }
-                    .accessibilityHint("Opens iOS Settings")
-                    switch alertSettingsAction {
-                    case .turnOn:
-                        Button("Turn on alerts for this watchlist") {
-                            Task { await notifications.requestAfterFirstWatchTerm(terms: watchTerms.map(\.normalizedTerm)) }
-                        }
-                    case .turnOff:
-                        Button("Remove this device from Beanstalk alerts", role: .destructive) {
-                            confirmingServerDeletion = true
-                        }
-                    case .none:
-                        EmptyView()
-                    }
-                    if alertSettingsAction != .turnOff, notifications.hasStoredRegistration {
-                        Button("Retry Removing This Device", role: .destructive) {
-                            confirmingServerDeletion = true
-                        }
-                    }
                 }
 
                 Section("Data on this iPhone") {
@@ -63,7 +32,7 @@ struct SettingsView: View {
                 }
 
                 Section("Support the Foundation") {
-                    Text("Donations are optional. Donating unlocks nothing in Beanstalk and does not change recall results or alerts.")
+                    Text("Donations are optional. Donating unlocks nothing in Beanstalk and does not change recall results.")
                     Link(destination: AppConfiguration.donationURL) {
                         Label("Donate to JACOBRAKAI FOUNDATION", systemImage: "arrow.up.right.square")
                     }
@@ -102,17 +71,6 @@ struct SettingsView: View {
             }
             .navigationTitle("Settings")
             .confirmationDialog(
-                "Remove this device from Beanstalk alerts",
-                isPresented: $confirmingServerDeletion,
-                titleVisibility: .visible
-            ) {
-                Button("Remove this device", role: .destructive) {
-                    Task { await notifications.disableAlerts() }
-                }
-            } message: {
-                Text("Beanstalk will stop local alerts and delete the server registration if one exists. Your watchlist remains on this iPhone.")
-            }
-            .confirmationDialog(
                 "Clear Beanstalk data from this iPhone?",
                 isPresented: $confirmingLocalDeletion,
                 titleVisibility: .visible
@@ -122,14 +80,6 @@ struct SettingsView: View {
                 Text("This removes saved recall copies and watch terms from this iPhone. It cannot be undone.")
             }
         }
-    }
-
-    private var alertSettingsAction: AlertSettingsAction {
-        AlertControlPolicy.settingsAction(
-            alertsEnabled: notifications.alertsEnabled,
-            alertsAvailable: notifications.alertsAvailable,
-            watchTermCount: watchTerms.count
-        )
     }
 
     private func clearLocalData() {
@@ -143,6 +93,5 @@ struct SettingsView: View {
             return
         }
         localDataMessage = "Saved recalls and watch terms were cleared from this iPhone."
-        Task { await notifications.syncWatchlist(terms: []) }
     }
 }

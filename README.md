@@ -16,7 +16,7 @@ Beanstalk helps people search **FDA openFDA and USDA FSIS food recall records** 
 | --- | --- |
 | **Web app — available now** | Search the [openFDA](https://open.fda.gov/apis/food/enforcement/) weekly enforcement archive (no live FDA feed), inspect source fields, use local watchlists, and browse clearly labeled, unverified CAERS Early Signals. A USDA FSIS recall snapshot is merged on the first results page with a Source filter (All / FDA / USDA-FSIS). The web app is not a real-time safety alert service. |
 | **Android sideload APK — available now** | Debug-signed Capacitor wrap of the web app. Download the `beanstalk-debug-apk` artifact from the `android sideload apk` CI job. The native Compose project in `android/` also `assembleDebug`s; CI uploads it as `beanstalk-native-debug-apk`. Play upload signing for that native app uses uncommitted `ANDROID_UPLOAD_*` values. See [`android/README.md`](android/README.md) and [`android-apk/README.md`](android-apk/README.md). |
-| **iPhone — implementation in this repository** | Native recall announcements, saved records, watchlists, and an optional notification service. App Store publication and production notification delivery still require the [release checks](docs/app-store/release-checklist.md). |
+| **iPhone — implementation in this repository** | Native recall announcements, saved records, and on-device watchlists. The iPhone app has no notifications. App Store publication still requires the [release checks](docs/app-store/release-checklist.md). |
 
 <img src="docs/readme/app-demo-20260911.png" alt="Beanstalk web demo with product search, state and dietary filters, and recall cards showing hazards and source details." width="1280">
 
@@ -37,10 +37,10 @@ The native SwiftUI app targets iOS 17 and later. It includes:
 - **Recalls:** recent FDA public announcements and a separately labeled openFDA historical search.
 - **Saved:** offline SwiftData copies with a reminder that saved records can become outdated.
 - **Watchlist:** case-insensitive whole-word and phrase matching with visible match evidence. `salmon` does not match `salmonella`, and `cod` does not match `code`.
-- **Settings:** notification controls, privacy and support links, and an optional Foundation donation link that opens in the external browser. Donations unlock nothing.
-- Native search, server-side historical filters, pagination, sharing, dark appearance, Dynamic Type, VoiceOver labels, and notification-to-detail routing.
+- **Settings:** local data controls, privacy and support links, and an optional Foundation donation link that opens in the external browser. Donations unlock nothing.
+- Native search, server-side historical filters, pagination, sharing, dark appearance, Dynamic Type, and VoiceOver labels.
 
-The app stores saved records and watch terms locally. If the user enables alerts, an app-specific APNs token, watch terms, and a random device credential are sent to the Foundation notification service. The credential is kept in the iPhone Keychain.
+The app stores saved records and watch terms locally and matches watch terms on the device. It sends no watch terms, device token, or credential to the Foundation.
 
 ## Data and notification boundaries
 
@@ -91,7 +91,7 @@ The portable core package can be checked without launching the app:
 swift test --package-path ios/Core
 ```
 
-Full simulator, signing, notification, and physical-device checks require Xcode, a Foundation Apple Developer team, and APNs credentials. None are stored in this repository.
+Full simulator, signing, and physical-device checks require Xcode and a Foundation Apple Developer team. None are stored in this repository.
 
 ## Run the notification service
 

@@ -51,23 +51,25 @@ fun SettingsScreen(
             contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            item { Text("Notifications", style = MaterialTheme.typography.titleMedium) }
-            item { InformationBanner(state.notificationState.message) }
             val alerts = state.notificationState
-            when (AlertControlPolicy.settingsAction(alerts.alertsEnabled, alerts.alertsAvailable)) {
-                AlertSettingsAction.TURN_OFF -> item {
-                    OutlinedButton(onClick = onDisableNotifications, modifier = Modifier.fillMaxWidth()) {
-                        Text("Turn alerts off")
+            if (AlertControlPolicy.showsAlertControls(alerts.alertsEnabled, alerts.alertsAvailable)) {
+                item { Text("Notifications", style = MaterialTheme.typography.titleMedium) }
+                item { InformationBanner(alerts.message) }
+                when (AlertControlPolicy.settingsAction(alerts.alertsEnabled, alerts.alertsAvailable)) {
+                    AlertSettingsAction.TURN_OFF -> item {
+                        OutlinedButton(onClick = onDisableNotifications, modifier = Modifier.fillMaxWidth()) {
+                            Text("Turn alerts off")
+                        }
                     }
+                    AlertSettingsAction.TURN_ON -> item {
+                        Button(
+                            onClick = onRequestNotifications,
+                            enabled = !alerts.isWorking,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text("Enable alerts") }
+                    }
+                    AlertSettingsAction.NONE -> Unit
                 }
-                AlertSettingsAction.TURN_ON -> item {
-                    Button(
-                        onClick = onRequestNotifications,
-                        enabled = !alerts.isWorking,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) { Text("Enable alerts") }
-                }
-                AlertSettingsAction.NONE -> Unit
             }
             item { Text("This device", style = MaterialTheme.typography.titleMedium) }
             item {

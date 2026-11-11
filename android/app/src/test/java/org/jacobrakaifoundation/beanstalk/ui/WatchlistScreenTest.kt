@@ -1,7 +1,9 @@
 package org.jacobrakaifoundation.beanstalk.ui
 
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -49,12 +51,26 @@ class WatchlistScreenTest {
     }
 
     @Test
-    fun `coming soon is a banner not a trapping overlay`() {
+    fun `push off hides alert status and still leaves the watchlist usable`() {
         setWatchlist(state = BeanstalkUiState(notificationState = NotificationState("Coming soon")))
-        compose.onNodeWithText("Coming soon").assertIsDisplayed()
+        compose.onAllNodesWithText("Coming soon", substring = true).assertCountEquals(0)
+        compose.onAllNodesWithText("Alert status").assertCountEquals(0)
+        compose.onAllNodesWithText("alert", substring = true, ignoreCase = true).assertCountEquals(0)
         compose.onNodeWithContentDescription("Close watchlist").assertIsDisplayed()
+        compose.onNodeWithText("Add a watch term").assertIsDisplayed()
         compose.onNodeWithText("Watching").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("No watch terms yet").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `push on keeps alert status`() {
+        setWatchlist(
+            state = BeanstalkUiState(
+                notificationState = NotificationState("Alerts are off. Watch terms stay on this device.", alertsAvailable = true),
+            ),
+        )
+        compose.onNodeWithText("Alert status").assertIsDisplayed()
+        compose.onNodeWithText("Alerts are off. Watch terms stay on this device.").assertIsDisplayed()
     }
 
     @Test

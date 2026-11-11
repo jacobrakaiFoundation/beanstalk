@@ -415,7 +415,10 @@ async function fetchBounded(
       const location = response.headers.get("location");
       if (!location) throw new Error("FDA source redirect omitted Location");
       await response.body?.cancel();
-      current = validatedFdaHttpsUrl(new URL(location, current).toString());
+      const next = new URL(location, current);
+      // FDA's edge emits http:// Locations for its own https pages.
+      if (next.protocol === "http:") next.protocol = "https:";
+      current = validatedFdaHttpsUrl(next.toString());
       continue;
     }
     if (!response.ok) throw new Error(`FDA source returned HTTP ${response.status}`);

@@ -14,7 +14,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.NotificationsNone
+import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -100,8 +100,15 @@ fun WatchlistScreen(
             InformationBanner(
                 "Matches use case-insensitive whole words or exact phrases and show where each match occurred. A match does not determine dietary safety.",
             )
-            Text("Alert status", style = MaterialTheme.typography.titleMedium)
-            InformationBanner(state.notificationState.message)
+            if (
+                AlertControlPolicy.showsAlertControls(
+                    state.notificationState.alertsEnabled,
+                    state.notificationState.alertsAvailable,
+                )
+            ) {
+                Text("Alert status", style = MaterialTheme.typography.titleMedium)
+                InformationBanner(state.notificationState.message)
+            }
             Text("Add a watch term", style = MaterialTheme.typography.titleMedium)
             OutlinedTextField(
                 value = draft,
@@ -124,7 +131,7 @@ fun WatchlistScreen(
                 EmptyState(
                     "No watch terms yet",
                     "Add a word or exact phrase to check recent announcements.",
-                    Icons.Outlined.NotificationsNone,
+                    Icons.Outlined.Visibility,
                 )
             } else {
                 state.watchTerms.forEach { term ->
@@ -138,7 +145,7 @@ fun WatchlistScreen(
                     EmptyState(
                         "No recent loaded announcement matches these terms.",
                         "This does not mean a product is safe or that every FDA announcement has been received.",
-                        Icons.Outlined.NotificationsNone,
+                        Icons.Outlined.Visibility,
                     )
                 } else {
                     state.watchMatches.forEach { match ->

@@ -3,9 +3,11 @@
 Search and filter openFDA enforcement records and a USDA FSIS recall snapshot, with dietary concern matching, watchlist alerts, and an offline-capable PWA. Not a live FDA or USDA recall-lifecycle feed.
 
 ## Stack
+
 Vite + React 19 + TypeScript + Tailwind CSS v4 + PWA (Workbox)
 
 ## Data
+
 - **Primary recalls**: [openFDA Food Enforcement API](https://api.fda.gov/food/enforcement.json) ([overview & disclaimer](https://open.fda.gov/apis/food/enforcement/), [example queries](https://open.fda.gov/apis/food/enforcement/example-api-queries/)) — 29,000+ records **as published by openFDA** (not live FDA lifecycle), paginated
 - **USDA FSIS recalls**: official [FSIS Recall API](https://www.fsis.usda.gov/fsis/api/recall/v/1) snapshot (`npm run fetch:fsis` during build). Merge on page 0 with a Source filter (All / FDA / USDA-FSIS). Fetch failure writes `{ recalls: [], error }` — no seed rows.
 - **Early Signals (CAERS)**: [openFDA Food Adverse Event API](https://api.fda.gov/food/event.json) — same proxy/auth/rate limits as enforcement
@@ -19,6 +21,7 @@ Vite + React 19 + TypeScript + Tailwind CSS v4 + PWA (Workbox)
 - **Fallback**: stale cached data from the last successful fetch (no automatic mock fallback)
 
 ## Run
+
 ```bash
 cd food-recall-app
 npm ci
@@ -28,6 +31,7 @@ npm run test   # vitest (unit + component)
 ```
 
 ## Features
+
 - **Tabs**: **Recalls** (enforcement) and **Early Signals** (unverified CAERS adverse event reports)
 - **Search**: Debounced cross-field search (product, reason, firm, reaction) with grouped OR clauses
 - **Early Signals**: Search product brand / reactions / outcomes; FDA “not scientifically verified” disclaimer on every event surface; related CAERS links on recall detail
@@ -41,6 +45,7 @@ npm run test   # vitest (unit + component)
 - **Demo**: `?demo=1` with conspicuously fictional recall and event data
 
 ## Test Coverage
+
 - `api.test.ts` — API fetching, caching, error handling, search clause building
 - `events.test.ts` — CAERS mapping, search, errors, demo mode, related-event lookup
 - `dietary.test.ts` — Allergen matching, negation, predicate building
@@ -55,7 +60,9 @@ npm run test   # vitest (unit + component)
 - `landingPages.test.ts` — Discovery tags, JSON-LD, sitemap, and social meta on public HTML pages
 
 ## Deploy
+
 Any static host (Vercel, Netlify, Cloudflare Pages, GitHub Pages):
+
 ```bash
 npm run build  # outputs dist/ with base /beanstalk/ for GitHub Pages
 ```
@@ -63,9 +70,10 @@ npm run build  # outputs dist/ with base /beanstalk/ for GitHub Pages
 The Android sideload APK uses `npm run build:android` (`VITE_BASE=/` plus `npx cap sync android`) so the WebView can load assets at the origin root. That path does not change the Pages deploy. See [`../android-apk/README.md`](../android-apk/README.md).
 
 ## Environment Variables
-| Variable | Required | Description |
-|---|---|---|
-| `VITE_OPENFDA_KEY` | No | openFDA API key (40→240 req/min); also usable by the Vite proxy |
-| `OPENFDA_API_KEY` | No | Server-side key for the Vite `/api/food` proxy (`vite.config.ts`); preferred over bundling `VITE_OPENFDA_KEY` |
-| `VITE_OPENFDA_PROXY` | No (Pages build sets it) | CORS proxy origin that re-exposes `Link` / `search_after`. No trailing slash. |
-| `VITE_DEMO` | No | Set to `true` to enable demo mode by default |
+
+| Variable             | Required                 | Description                                                                                                   |
+| -------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| `VITE_OPENFDA_KEY`   | No                       | openFDA API key (40→240 req/min); also usable by the Vite proxy                                               |
+| `OPENFDA_API_KEY`    | No                       | Server-side key for the Vite `/api/food` proxy (`vite.config.ts`); preferred over bundling `VITE_OPENFDA_KEY` |
+| `VITE_OPENFDA_PROXY` | No (Pages build sets it) | CORS proxy origin that re-exposes `Link` / `search_after`. No trailing slash.                                 |
+| `VITE_DEMO`          | No                       | Set to `true` to enable demo mode by default                                                                  |

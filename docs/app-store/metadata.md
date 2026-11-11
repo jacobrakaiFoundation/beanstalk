@@ -5,7 +5,7 @@
 | Field | Value |
 | --- | --- |
 | Name | `Beanstalk: Food Recalls` |
-| Subtitle | `Alerts, watchlists, FDA search` |
+| Subtitle | `Watchlists and FDA search` |
 | Primary language | English (U.S.) |
 | Price | Free |
 | Availability | United States |
@@ -29,7 +29,7 @@ Name and subtitle are within Apple's 30-character limits. Confirm name availabil
 
 > Understand what a food recall notice actually says.
 >
-> Beanstalk is a calm, searchable way to browse food recall announcements published by the U.S. Food and Drug Administration. Save important notices on your iPhone, build a watchlist for products or hazards you care about, and choose whether to receive matching notifications.
+> Beanstalk is a calm, searchable way to browse food recall announcements published by the U.S. Food and Drug Administration. Save important notices on your iPhone and build a watchlist that highlights recent announcements mentioning products or hazards you care about.
 >
 > FEATURES
 >
@@ -42,11 +42,11 @@ Name and subtitle are within Apple's 30-character limits. Confirm name availabil
 >
 > PRIVATE BY DEFAULT
 >
-> No account is required. Saved recalls stay on your device. If you enable alerts, Beanstalk sends your watch terms and an app-specific device token to the Foundation's service only to match and deliver recall notifications. There are no ads or cross-app tracking.
+> No account is required. Saved recalls and watch terms stay on your device, and watchlist matching happens on your iPhone. There are no ads or cross-app tracking.
 >
 > IMPORTANT LIMITS
 >
-> Notifications are a convenience and may be delayed. FDA notes that not every recall has a public announcement. Historical openFDA enforcement records are a separate archive and should not be treated as a live recall-lifecycle feed. A search with no results does not establish that a product is safe. Always verify the original notice and follow current instructions from FDA and the recalling firm.
+> Watchlist matches cover only the recent announcements Beanstalk has loaded. FDA notes that not every recall has a public announcement. Historical openFDA enforcement records are a separate archive and should not be treated as a live recall-lifecycle feed. A search with no results does not establish that a product is safe. Always verify the original notice and follow current instructions from FDA and the recalling firm.
 >
 > Beanstalk covers FDA-regulated food content. Also check USDA FSIS for meat, poultry, and processed egg product recalls.
 >

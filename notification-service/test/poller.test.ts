@@ -53,6 +53,23 @@ describe("FDA poller", () => {
     expect(queueCount(database)).toBe(0);
   });
 
+  it("follows an FDA slug rename of the cursor instead of pausing", async () => {
+    const { database, source, clock, poller } = context();
+    const base = "https://www.fda.gov/safety/recalls-market-withdrawals-safety-alerts";
+    source.rss = rss([{ slug: "cheddar-e-coli-o157h7", title: "Cheddar recall", date: "Thu, 15 Oct 2026 16:04:00 EDT" }]);
+    await poller.pollOnce();
+    clock.now = new Date("2026-10-16T20:00:00.000Z");
+    source.rss = rss([
+      { slug: "gelato-salmonella", title: "Gelato Salmonella recall", date: "Fri, 16 Oct 2026 12:00:00 EDT" },
+      { slug: "cheddar-e-coli-o26h11", title: "Cheddar recall", date: "Thu, 15 Oct 2026 16:04:00 EDT" },
+    ]);
+    const renamed = await source.fetchAnnouncement(`${base}/cheddar-e-coli-o26h11`);
+    source.announcementDocuments.set(`${base}/cheddar-e-coli-o157h7`, renamed);
+    source.annual = [annual([{ slug: "unrelated", date: "10/14/2026" }])];
+    expect(await poller.pollOnce()).toEqual({ kind: "updated", newNoticeCount: 1, queuedCount: 1 });
+    expect(database.getPollState()).toMatchObject({ gapStatus: "normal", cursorKey: `${base}/gelato-salmonella` });
+  });
+
   it("reconciles a prior-year cursor without alerting annual-only backfill", async () => {
     const { database, source, clock, poller } = context();
     source.rss = rss([

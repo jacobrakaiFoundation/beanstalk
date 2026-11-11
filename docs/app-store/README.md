@@ -19,6 +19,6 @@ This is a draft package for release preparation. Complete the screenshots, publi
 
 - Every feature is free; there are no purchases, subscriptions, ads, or paid unlocks.
 - The optional donation action opens the Foundation's donation page in the user's external browser; Stripe handles payment only if the user continues. A donation provides no app benefit.
-- Latest notices and notifications use FDA-published food recall announcements. Historical search is separately labeled as openFDA enforcement data.
-- Notifications are optional matching aids. Copy must not promise completeness or immediate delivery.
+- Latest notices use FDA-published food recall announcements. Historical search is separately labeled as openFDA enforcement data.
+- The iPhone app has no notifications. Watchlist matches are on-device aids over loaded announcements; copy must not promise completeness.
 - The app is an independent project of JACOBRAKAI FOUNDATION and is not affiliated with or endorsed by FDA.

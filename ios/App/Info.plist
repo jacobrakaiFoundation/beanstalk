@@ -20,10 +20,6 @@
     <string>$(CURRENT_PROJECT_VERSION)</string>
     <key>BEANSTALK_BACKEND_BASE_URL</key>
     <string>https://api.jacobrakai.org</string>
-    <key>APNS_ENVIRONMENT</key>
-    <string>$(APNS_ENVIRONMENT)</string>
-    <key>BEANSTALK_PUSH_CONFIGURED</key>
-    <false/>
     <key>LSRequiresIPhoneOS</key>
     <true/>
     <key>UIApplicationSceneManifest</key>

@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BookmarkBorder
-import androidx.compose.material.icons.outlined.NotificationsNone
+import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.Icon
@@ -39,7 +39,7 @@ private enum class AppTab(
 ) {
     RECALLS("recalls", "Recalls", Icons.Outlined.WarningAmber),
     SAVED("saved", "Saved", Icons.Outlined.BookmarkBorder),
-    WATCHLIST("watchlist", "Watchlist", Icons.Outlined.NotificationsNone),
+    WATCHLIST("watchlist", "Watchlist", Icons.Outlined.Visibility),
     SETTINGS("settings", "Settings", Icons.Outlined.Settings),
 }
 

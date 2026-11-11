@@ -3,9 +3,6 @@ import SwiftUI
 
 @main
 struct BeanstalkApp: App {
-    @UIApplicationDelegateAdaptor(BeanstalkAppDelegate.self) private var appDelegate
-    @StateObject private var router = AppRouter()
-    @StateObject private var notificationService = NotificationRegistrationService()
 
     private let modelContainer: ModelContainer = {
         do {
@@ -18,8 +15,6 @@ struct BeanstalkApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
-                .environmentObject(router)
-                .environmentObject(notificationService)
                 .tint(Color("AccentColor"))
         }
         .modelContainer(modelContainer)

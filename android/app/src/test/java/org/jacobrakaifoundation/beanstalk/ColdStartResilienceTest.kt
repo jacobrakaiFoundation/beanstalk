@@ -1,6 +1,7 @@
 package org.jacobrakaifoundation.beanstalk
 
 import android.app.Application
+import android.app.NotificationManager
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import com.google.firebase.FirebaseApp
@@ -26,6 +27,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -46,6 +48,8 @@ class ColdStartResilienceTest {
         val app = RuntimeEnvironment.getApplication() as BeanstalkApplication
         assertFalse(app.repository.hasDeviceRegistration())
         assertTrue(FirebaseApp.getApps(app).isEmpty())
+        val manager = app.getSystemService(NotificationManager::class.java)
+        assertNull(manager.getNotificationChannel(BeanstalkApplication.RECALL_MATCHES_CHANNEL_ID))
     }
 
     @Test
