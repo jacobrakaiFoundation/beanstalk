@@ -35,3 +35,4 @@ jobs:
     with:
       codeql-languages: '["javascript-typescript"]'
       codeql-build-mode: none
+      auto-approve-dependabot: false
